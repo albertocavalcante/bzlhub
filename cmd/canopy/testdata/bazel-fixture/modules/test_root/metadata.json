@@ -1,0 +1,7 @@
+{
+  "homepage": "https://example.test/test_root",
+  "maintainers": [{"name": "canopy E2E test", "email": "noreply@example.test"}],
+  "repository": ["github:example/test_root"],
+  "versions": ["1.0.0"],
+  "yanked_versions": {}
+}

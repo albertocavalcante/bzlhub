@@ -1,0 +1,60 @@
+# DORMANT — workflow_dispatch only.
+#
+# Primary CI runs on Forgejo at git.alberto.engineer
+# (see .forgejo/workflows/ci.yml). This GitHub counterpart exists so
+# anyone forking the canopy repo on GitHub can opt into CI manually
+# from the Actions UI without it duplicating runs against the
+# Forgejo mirror on every push/PR.
+#
+# To turn this into an always-on CI on a GitHub fork, add the same
+# triggers from .forgejo/workflows/ci.yml here (push: branches:
+# [main], pull_request:). The action references already use the
+# canonical github.com/actions/* form (Forgejo uses
+# code.forgejo.org/actions/* in its workflow) so no other changes
+# are needed.
+
+name: ci (dormant)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: go vet
+        run: go vet ./...
+      - name: go build
+        run: go build ./...
+      - name: go test
+        run: go test -race -count=1 ./...
+
+  ui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+      - name: enable corepack
+        run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+      - name: pnpm run check
+        run: pnpm run check
+      - name: pnpm run build
+        run: pnpm run build

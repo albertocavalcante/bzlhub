@@ -1,0 +1,6 @@
+"""Hermetic E2E fixture: leaf module, no deps."""
+module(
+    name = "test_leaf",
+    version = "1.0.0",
+    compatibility_level = 1,
+)

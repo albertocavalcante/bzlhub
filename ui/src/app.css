@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+/*
+  Tailwind v4 — CSS-first config. Tokens below are referenced via
+  bg-bg, text-fg, etc. throughout the app. Keep this palette restrained:
+  neutral surface tones + one accent (cyan-300). No gradients, no shadows
+  on every element, no chromatic decoration.
+*/
+@theme {
+  --color-bg: oklch(15% 0.01 240);
+  --color-bg-elev: oklch(19% 0.012 240);
+  --color-bg-elev2: oklch(23% 0.014 240);
+  --color-fg: oklch(95% 0.005 240);
+  --color-fg-mute: oklch(72% 0.01 240);
+  --color-fg-dim: oklch(55% 0.012 240);
+  --color-line: oklch(28% 0.014 240);
+  --color-line-strong: oklch(38% 0.016 240);
+
+  --color-accent: oklch(82% 0.12 220);
+  --color-accent-mute: oklch(60% 0.09 220);
+
+  /* Drift palette (Plan 19 Idea A + Plan 21 layered staleness).
+     Used by DriftChip.svelte; the chip is rendered silent (no DOM)
+     on in-sync and unknown — those tokens exist for the rare
+     "tell me explicitly we're in-sync" surface (e.g. the airgap
+     status page's per-mirror health row), NOT the listing chip.
+
+     Hue separation: blue=behind (forward-looking, "newer up there"),
+     magenta=yanked (alarm, distinct from the herm-reprule red),
+     muted grey=insync/error so they don't compete with brand cyan. */
+  --color-drift-insync: oklch(60% 0.02 240);
+  --color-drift-behind: oklch(72% 0.14 240);
+  --color-drift-yanked: oklch(70% 0.20 330);
+  --color-drift-local:  oklch(58% 0.02 240);
+  --color-drift-error:  oklch(55% 0.03 0);
+
+  /* Activity pulse (Plan 19 Idea J): tied to brand so the "canopy
+     is alive" affordance reads as canopy-coloured, not as a third
+     hue competing with herm-pure green or drift-behind blue. */
+  --color-activity-pulse: var(--color-accent);
+
+  /* Search-hit kind palette: one hue per match_kind, used by
+     ResultRow.svelte for the per-hit kind chip. Family follows the
+     herm-* convention. */
+  --color-kind-rule:            oklch(78% 0.12 145);
+  --color-kind-provider:        oklch(78% 0.12 290);
+  --color-kind-macro:           oklch(78% 0.12 60);
+  --color-kind-repository-rule: oklch(78% 0.12 25);
+
+  /* Hermeticity-class palette: one hue per class, OKLCH-tuned for parity. */
+  --color-herm-pure: oklch(80% 0.16 145);
+  --color-herm-pinned: oklch(80% 0.14 200);
+  --color-herm-fromsrc: oklch(80% 0.14 245);
+  --color-herm-fetch: oklch(82% 0.14 80);
+  --color-herm-unpinned: oklch(75% 0.18 50);
+  --color-herm-systool: oklch(72% 0.16 30);
+  --color-herm-reprule: oklch(72% 0.18 10);
+
+  --color-ok: oklch(80% 0.16 145);
+  --color-warn: oklch(82% 0.14 80);
+  --color-err: oklch(70% 0.20 25);
+
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Menlo", ui-monospace, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+}
+
+/* Light-mode override: we default to dark via <html class="dark"> in app.html.
+   A future preference toggle can swap the class. */
+@media (prefers-color-scheme: light) {
+  html:not(.dark) {
+    color-scheme: light;
+  }
+}
+
+/*
+  Element defaults. We deliberately don't reset Tailwind beyond its
+  Preflight; just adjust a few things that always need tuning.
+*/
+html {
+  font-feature-settings: "ss01", "cv01", "cv11";
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-feature-settings: "ss01", "cv01", "cv11";
+}
+
+::selection {
+  background: color-mix(in oklch, var(--color-accent) 35%, transparent);
+}
+
+/* Focus ring: visible but not garish. Inherits accent color. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Custom utility for the FTS5 snippet markers ([word]). The store returns
+   raw [..] brackets; we replace them at render time with a span.match. */
+.match {
+  background: color-mix(in oklch, var(--color-accent) 22%, transparent);
+  color: var(--color-fg);
+  border-radius: 2px;
+  padding: 0 2px;
+  font-weight: 500;
+}
+
+/* Skeleton shimmer for placeholder loaders. Subtle: no animation noise. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-elev) 0%,
+    var(--color-bg-elev2) 50%,
+    var(--color-bg-elev) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Code blocks: tight, mono, edge-to-edge inside their containers. */
+code, pre, kbd {
+  font-family: var(--font-mono);
+  font-feature-settings: "calt", "ss01";
+}
+
+/* Keyboard hint chips ([⌘K] etc.) — used in empty states and the palette. */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.4em;
+  height: 1.4em;
+  font-size: 0.85em;
+  background: var(--color-bg-elev2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  color: var(--color-fg-mute);
+}

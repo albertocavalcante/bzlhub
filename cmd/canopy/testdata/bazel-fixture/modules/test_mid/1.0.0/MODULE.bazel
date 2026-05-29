@@ -1,0 +1,7 @@
+"""Hermetic E2E fixture: mid module, depends on test_leaf."""
+module(
+    name = "test_mid",
+    version = "1.0.0",
+    compatibility_level = 1,
+)
+bazel_dep(name = "test_leaf", version = "1.0.0")

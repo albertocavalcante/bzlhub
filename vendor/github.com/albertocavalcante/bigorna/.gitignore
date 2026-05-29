@@ -1,0 +1,12 @@
+# Test + build artifacts
+*.test
+*.out
+*.exe
+coverage.out
+coverage.html
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+.DS_Store

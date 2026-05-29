@@ -1,0 +1,23 @@
+apiVersion: v2
+name: canopy
+description: Bazel-first self-hosted module registry — BCR-compatible, with module intelligence + drift dashboard.
+type: application
+# Chart version follows semver; bumped per chart-template change.
+version: 0.1.0
+# appVersion tracks the canopy binary release the chart's defaults are
+# pinned against. Override at install time via image.tag if you run a
+# different version.
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/albertocavalcante/canopy
+sources:
+  - https://github.com/albertocavalcante/canopy
+keywords:
+  - bazel
+  - registry
+  - bcr
+  - bzlmod
+maintainers:
+  - name: Alberto Cavalcante
+    url: https://github.com/albertocavalcante
+icon: ""

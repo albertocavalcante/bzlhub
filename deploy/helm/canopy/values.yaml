@@ -1,0 +1,287 @@
+# Default values for canopy.
+#
+# canopy is a single-process Bazel module registry with a local SQLite
+# index and a filesystem BCR mirror tree. It is NOT horizontally
+# scalable: replicas are pinned to 1, storage is ReadWriteOnce, and
+# upgrades roll one pod at a time. If you need HA, that's a roadmap
+# conversation, not a values.yaml conversation.
+
+# -------- Image -------------------------------------------------------------
+#
+# Registry-agnostic shape. Three knobs cover every realistic scenario:
+#   - default public install      → leave as-is
+#   - corporate OCI mirror        → override image.registry (and image.repository if path differs)
+#   - local build (kind/minikube) → image.registry="", image.pullPolicy=Never
+#
+# A digest, when set, takes precedence over tag (compliance-friendly
+# pinning). pullSecrets references Secrets you create out-of-band; the
+# chart never templates a Secret from values.
+image:
+  registry: ghcr.io
+  repository: albertocavalcante/canopy
+  # Empty tag falls back to .Chart.AppVersion via canopy.image helper.
+  tag: ""
+  # Optional sha256:… pin. When set, the helper uses @digest and ignores tag.
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+    # - name: corp-registry-creds
+
+# Bitnami-style global overrides. Honored by umbrella charts and tools
+# like ArgoCD that pass --set global.imageRegistry=… universally.
+# Costs nothing to support; saves enterprise users from forking.
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+# -------- Naming / metadata -------------------------------------------------
+nameOverride: ""
+fullnameOverride: ""
+
+commonLabels: {}
+commonAnnotations: {}
+
+# -------- Workload ----------------------------------------------------------
+#
+# StatefulSet, not Deployment: canopy owns persistent state on disk and
+# wants stable identity. replicas is fixed at 1 — DO NOT scale; SQLite
+# + filesystem mirror have one writer.
+statefulSet:
+  annotations: {}
+  podAnnotations: {}
+  podLabels: {}
+  # Update strategy for the underlying StatefulSet.
+  updateStrategy:
+    type: RollingUpdate
+
+# canopy serve listens here. The container's CANOPY_BIND env defaults
+# to 0.0.0.0:8090; if you change containerPort, also change service.port.
+containerPort: 8090
+
+# Env passed to the canopy container. The entrypoint reads CANOPY_*
+# vars; anything else (featureflags etc.) is just plain env.
+env: {}
+  # CANOPY_MIRROR_BASE_URL: "https://canopy.example.com/m/"
+  # CANOPY_INGEST_WRITE_ENABLED: "true"
+
+# Extra env from existing ConfigMaps or Secrets — referenced by name.
+envFrom: []
+  # - configMapRef:
+  #     name: canopy-extra
+  # - secretRef:
+  #     name: canopy-secrets
+
+# Extra volumes + mounts. Common use: a ConfigMap of custom root CAs
+# the canopy server should trust when fetching from an internal BCR
+# mirror, or a Secret containing a registry.yaml for curation.
+# Both lists are appended verbatim to the StatefulSet — schema mirrors
+# the corev1 Volume and VolumeMount shapes.
+extraVolumes: []
+  # - name: corp-ca
+  #   configMap:
+  #     name: corp-root-ca
+extraVolumeMounts: []
+  # - name: corp-ca
+  #   mountPath: /etc/ssl/certs/corp-ca.crt
+  #   subPath: corp-ca.crt
+  #   readOnly: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Pod security defaults — non-root, no privilege escalation, read-only
+# root FS. UID/GID/fsGroup match what the canopy image creates
+# (Dockerfile pins 65532). fsGroupChangePolicy=OnRootMismatch avoids
+# the per-restart recursive chown of the entire mirror PVC, which is
+# minutes-long on a large mirror.
+#
+# OpenShift users: clear runAsUser/runAsGroup so SCC can assign UIDs
+# from the namespace range — the image dirs are chmod g+rwX with
+# group 0 ownership, which is the OpenShift contract.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop: ["ALL"]
+
+# Both probes hit /healthz by default — canopy also serves /readyz
+# (mirrors /healthz today) for operators who want to differentiate
+# liveness from readiness later. Switch readinessProbe.httpGet.path
+# to /readyz if you wire stricter readiness semantics in the future
+# (e.g. blocking on rehydration progress). Both BCR-only and DB-only
+# deployments answer 200 on each.
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 30
+  timeoutSeconds: 3
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 2
+  periodSeconds: 10
+  timeoutSeconds: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# -------- Persistence ------------------------------------------------------
+#
+# Two PVCs, one per data dir. Separated because operators may want to
+# put the SQLite index on faster (smaller) storage than the mirror
+# tarball tree.
+persistence:
+  mirror:
+    enabled: true
+    size: 20Gi
+    storageClass: ""  # "" = cluster default
+    accessModes: ["ReadWriteOnce"]
+    annotations: {}
+  index:
+    enabled: true
+    size: 2Gi
+    storageClass: ""
+    accessModes: ["ReadWriteOnce"]
+    annotations: {}
+
+# Mount path inside the container. Must match the env defaults the
+# entrypoint expects. If you change these, also override the matching
+# CANOPY_ROOT / CANOPY_DB env values.
+paths:
+  mirror: /var/lib/canopy/mirror
+  index: /var/lib/canopy/index
+
+# -------- Service ----------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 8090
+  annotations: {}
+
+# -------- Ingress ----------------------------------------------------------
+#
+# Standard networking.k8s.io/v1 Ingress. Honored by nginx-ingress,
+# traefik, contour, istio-gateway, alb-ingress, gke-ingress, and
+# anything else that implements the core API. CRD-specific resources
+# (Traefik IngressRoute, Contour HTTPProxy, Istio VirtualService) are
+# OUT OF SCOPE for this chart — wrap externally if you need those.
+#
+# For SSE (/api/events) on nginx-ingress, add:
+#   annotations:
+#     nginx.ingress.kubernetes.io/proxy-buffering: "off"
+#     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: canopy.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - hosts: [canopy.example.com]
+    #   secretName: canopy-tls
+
+# -------- Gateway API ------------------------------------------------------
+#
+# Optional second path for clusters using Gateway API (Cilium, Envoy
+# Gateway, modern Istio). Ships an HTTPRoute. Mutually independent of
+# the Ingress block — enable whichever your cluster uses.
+gateway:
+  enabled: false
+  # parentRefs select the Gateway resource(s) this route attaches to.
+  parentRefs: []
+    # - name: external-gateway
+    #   namespace: gateway-system
+    #   sectionName: https
+  hostnames: []
+    # - canopy.example.com
+
+# -------- ServiceAccount ---------------------------------------------------
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false
+
+# -------- CronJobs ---------------------------------------------------------
+#
+# Periodic mirror refresh + drift report. Both are off by default — a
+# fresh install with no upstream mirror configured doesn't need them.
+# Both share the canopy PVCs, so they must NOT overlap with serve
+# writes; canopy ingest's writes are atomic-rename, but parallel
+# recursive ingests against the same store will contend on SQLite.
+#
+# In practice: run ingest weekly, drift daily, serve continuously.
+#
+# CronJobs hit canopy's HTTP API (/api/ingest-recursive, /api/drift)
+# from inside the cluster network — no kubectl, no exec RBAC, no
+# extra image dependency. They reuse the canopy image itself (which
+# has wget baked in for the HEALTHCHECK).
+#
+# IMPORTANT: enabling cronjobs.ingest also requires the running
+# canopy server to have CANOPY_INGEST_WRITE_ENABLED=true in its env.
+# The chart fails the install with a clear message if you forget.
+# Once that flag is on, any HTTP caller reaching the canopy service
+# can trigger ingests — fine within the cluster, but DO NOT expose
+# canopy via Ingress in this mode until canopy ships auth.
+cronjobs:
+  ingest:
+    enabled: false
+    # Cron expression — default weekly Sunday 03:00 UTC.
+    schedule: "0 3 * * 0"
+    upstream: "https://bcr.bazel.build"
+    # Closure root to refresh. Supports multiple module@version pairs.
+    modules: []
+      # - bazel_skylib@1.7.1
+      # - rules_go@0.50.1
+    # Extra args appended to the canopy ingest invocation.
+    extraArgs: []
+    concurrencyPolicy: Forbid
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+    resources: {}
+    podAnnotations: {}
+  drift:
+    enabled: false
+    schedule: "30 6 * * *"
+    upstream: "https://bcr.bazel.build"
+    extraArgs: []
+    concurrencyPolicy: Forbid
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+    resources: {}
+    podAnnotations: {}
+
+# -------- Misc -------------------------------------------------------------
+# Extra arbitrary manifests rendered alongside the chart. Useful for
+# NetworkPolicy, PodDisruptionBudget, ServiceMonitor, etc. without
+# forking the chart.
+extraManifests: []
+  # - apiVersion: policy/v1
+  #   kind: PodDisruptionBudget
+  #   metadata:
+  #     name: canopy
+  #   spec:
+  #     minAvailable: 1
+  #     selector:
+  #       matchLabels:
+  #         app.kubernetes.io/name: canopy

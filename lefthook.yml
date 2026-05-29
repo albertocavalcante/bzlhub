@@ -1,0 +1,4 @@
+commit-msg:
+  commands:
+    conventional-commit:
+      run: ./tools/check-commit-msg.sh {1}

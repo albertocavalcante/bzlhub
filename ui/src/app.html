@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <!-- HEADTAGS: the Go server's SPA-fallback handler swaps this
+         sentinel for per-path SEO tags (title, description, OG, canonical)
+         before serving index.html. SvelteKit's build preserves comments
+         verbatim. See internal/server/headtags/. When the server isn't
+         the Go binary (eg `pnpm dev`), this stays as-is and the title
+         below + svelte:head from individual routes take over. -->
+    <title>bzlhub — Bazel module registry with introspection</title>
+    <meta name="description" content="bzlhub mirrors the Bazel Central Registry with structured introspection, hermeticity intelligence, and an MCP surface for coding agents." />
+    <!-- HEADTAGS-SENTINEL -->
+    %sveltekit.head%
+  </head>
+  <body class="bg-bg text-fg font-sans antialiased">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

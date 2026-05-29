@@ -1,0 +1,32 @@
+.git/
+.github/
+docs/
+*.md
+
+Dockerfile
+.dockerignore
+.gitignore
+
+# Test caches + binary outputs from local builds.
+*.test
+testdata/canopy.db
+testdata/mirror/
+
+# Any locally-checked-out ingest output the user may have.
+mirror/
+*.db
+
+# Editor / OS junk
+.DS_Store
+.idea/
+.vscode/
+
+# UI workspace junk (canopy's SvelteKit shell isn't built into this
+# image yet; whenever it lands these get filtered before send).
+ui/node_modules/
+ui/.svelte-kit/
+ui/build/
+
+# IMPORTANT: do NOT add `vendor/` here. The Dockerfile expects
+# vendor/ to be in the build context (produced by `go mod vendor`
+# on the dev machine, or by ship-local.sh's PRE_BUILD_CMD hook).

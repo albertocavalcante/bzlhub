@@ -1,0 +1,240 @@
+# golangci-lint v2 configuration
+# https://golangci-lint.run/docs/configuration/
+version = "2"
+
+# Run options
+[run]
+timeout = "5m"
+tests = true
+modules-download-mode = "readonly"
+
+# Linters
+[linters]
+default = "standard"
+enable = [
+  # Code quality
+  "errcheck", # Check for unchecked errors
+  "govet", # Go vet checks
+  "staticcheck", # Staticcheck suite
+  "unused", # Find unused code
+  "ineffassign", # Detect ineffectual assignments
+
+  # Style & consistency
+  "dogsled", # Check for too many blank identifiers
+  "goconst", # Find repeated strings that could be constants
+  "gocritic", # Opinionated meta-linter
+  "goprintffuncname", # Printf-like functions should end with 'f'
+  "misspell", # Find misspellings
+  "nakedret", # Find naked returns in long functions
+  "nolintlint", # Validate nolint directives
+  "unconvert", # Remove unnecessary type conversions
+  "unparam", # Find unused function parameters
+  "whitespace", # Check for unnecessary whitespace
+
+  # Bug prevention
+  "bodyclose", # HTTP response body must be closed
+  "exhaustive", # Check exhaustive enum switches
+  "gochecknoinits", # No init() functions
+  "noctx", # HTTP requests should use context
+  "rowserrcheck", # Check sql.Rows.Err()
+  "sqlclosecheck", # Check sql.Rows/Stmt are closed
+
+  # Complexity
+  "gocyclo", # Cyclomatic complexity checker
+  "mnd", # Magic number detector
+
+  # Modern Go
+  "copyloopvar", # Detect unnecessary loop var copies (Go 1.22+)
+  "intrange", # Suggest range over int (Go 1.22+)
+
+  # Security
+  "gosec", # Security checks
+
+  # Performance
+  "prealloc", # Suggest slice preallocation
+]
+disable = [
+  # Too noisy for this project
+  "wrapcheck", # We don't wrap all errors
+  "exhaustruct", # Don't require all struct fields
+  "varnamelen", # Short var names are fine
+  "nlreturn", # Blank line before return not required
+  "wsl", # Whitespace linter too strict
+]
+
+# Linter-specific settings
+[linters.settings]
+
+[linters.settings.errcheck]
+check-type-assertions = false # Type assertions from sync.Map are safe (we control the types)
+check-blank = false # Allow _ = err for intentional ignores
+
+[linters.settings.goconst]
+min-len = 3
+min-occurrences = 3
+
+[linters.settings.gocritic]
+enabled-tags = [
+  "diagnostic",
+  "experimental",
+  "opinionated",
+  "performance",
+  "style",
+]
+disabled-checks = [
+  "hugeParam", # Label types are value types by design
+  "ifElseChain", # Sometimes if-else is clearer than switch
+  "appendAssign", # Intentional slice copy pattern
+  "rangeValCopy", # Module structs are small enough to copy
+]
+
+[linters.settings.gocyclo]
+min-complexity = 40 # Parser/resolver functions are inherently complex
+
+[linters.settings.govet]
+enable-all = true
+disable = ["fieldalignment"] # Not worth the churn
+
+[linters.settings.misspell]
+locale = "US"
+
+[linters.settings.nakedret]
+max-func-lines = 30
+
+[linters.settings.prealloc]
+simple = true
+for-loops = true
+
+[linters.settings.staticcheck]
+checks = ["all", "-SA1019"] # Allow deprecated for now
+
+[linters.settings.gosec]
+excludes = [
+  "G104", # Audit errors not checked (we handle intentionally)
+]
+
+[linters.settings.mnd]
+ignored-numbers = [
+  "2",
+  "3",
+  "4",
+  "5",
+  "10", # Common small numbers
+  "15", # Default timeout seconds
+  "401",
+  "403",
+  "404",
+  "429", # HTTP status codes
+]
+ignored-functions = [
+  "time.Duration",
+  "time.Second",
+  "time.Minute",
+]
+
+# Exclusions
+[linters.exclusions]
+generated = "lax"
+paths = [
+  "third_party/",
+  "builtin/",
+  "examples/",
+]
+
+# Test files - relaxed linting
+[[linters.exclusions.rules]]
+path = "_test\\.go"
+linters = [
+  "errcheck",
+  "gocritic",
+  "gosec",
+  "govet",
+  "misspell",
+  "mnd",
+  "funlen",
+  "goconst",
+  "gocyclo",
+  "unparam",
+  "prealloc",
+  "intrange",
+]
+
+# Test helper files (not _test.go but used for testing)
+[[linters.exclusions.rules]]
+path = "_testing\\.go"
+linters = [
+  "errcheck",
+  "gocritic",
+  "gosec",
+  "mnd",
+  "funlen",
+  "goconst",
+  "gocyclo",
+  "unparam",
+]
+
+# e2e tests - relaxed linting
+[[linters.exclusions.rules]]
+path = "e2e/"
+linters = [
+  "errcheck",
+  "gocritic",
+  "gosec",
+  "mnd",
+  "funlen",
+  "goconst",
+  "gocyclo",
+  "unparam",
+  "prealloc",
+  "staticcheck",
+]
+
+# Parser index checks are self-explanatory
+[[linters.exclusions.rules]]
+path = "ast/"
+linters = ["mnd"]
+
+# G304: File path from variable is required for our use case
+[[linters.exclusions.rules]]
+linters = ["gosec"]
+text = "G304"
+
+# G306: 0644 permissions are intentional for MODULE.bazel files
+[[linters.exclusions.rules]]
+linters = ["gosec"]
+text = "G306"
+
+# G301: 0755 permissions are standard for directories
+[[linters.exclusions.rules]]
+linters = ["gosec"]
+text = "G301"
+
+# G204: Subprocess with variable is required for e2e tests
+[[linters.exclusions.rules]]
+linters = ["gosec"]
+text = "G204"
+
+# Formatters
+[formatters]
+enable = [
+  "gofmt",
+  "goimports",
+]
+
+[formatters.exclusions]
+generated = "lax"
+paths = [
+  "third_party/",
+  "builtin/",
+  "examples/",
+]
+
+# Output format
+[output]
+sort-order = ["linter", "file"]
+show-stats = true
+
+# Issues
+[issues]
+max-issues-per-linter = 50
+max-same-issues = 3

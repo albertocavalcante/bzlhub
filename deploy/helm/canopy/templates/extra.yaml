@@ -1,0 +1,11 @@
+{{- /*
+   extraManifests escape hatch — each entry is rendered through `tpl`
+   so users can reference chart values and helpers inside their
+   custom manifest strings, e.g. {{ include "canopy.fullname" . }} or
+   {{ .Release.Namespace }}. Anything you'd write into a regular k8s
+   manifest fits here without forking the chart.
+*/ -}}
+{{- range .Values.extraManifests }}
+---
+{{ tpl (toYaml .) $ }}
+{{- end }}

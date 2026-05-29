@@ -1,0 +1,23 @@
+starlark-go-bazel
+Copyright 2026 Alberto Cavalcante
+
+This project implements Bazel's Starlark dialect in Go. It is a clean-room
+implementation that references Bazel's public API and documented behavior,
+but does not copy code from Bazel.
+
+This project uses the following dependencies:
+
+--------------------------------------------------------------------------------
+go.starlark.net - Starlark interpreter in Go
+Copyright 2017 The Bazel Authors
+License: BSD-3-Clause
+https://github.com/google/starlark-go
+--------------------------------------------------------------------------------
+
+The Bazel project, which defines the Starlark dialect this project implements:
+https://github.com/bazelbuild/bazel
+Copyright 2014 The Bazel Authors
+License: Apache-2.0
+
+While this implementation references Bazel's API design and documented behavior
+for compatibility, no Bazel source code has been copied into this project.

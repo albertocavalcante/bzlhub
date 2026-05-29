@@ -1,0 +1,55 @@
+# Lefthook hook config — git hooks for bigorna.
+# Install with: lefthook install (registers under .git/hooks/).
+#
+# What this enforces:
+#   commit-msg: every commit subject MUST follow Conventional Commits
+#               format. Merge and Revert commits are exempted.
+#
+# Conventional Commits cheat-sheet:
+#   <type>(<scope>?)<!?>: <subject>
+#
+#   types:    feat fix docs chore refactor test build ci perf style revert
+#   scope:    optional kebab-case identifier in parens, e.g. (github), (bitbucket-dc)
+#   !:        optional, signals a breaking change
+#   subject:  imperative, lowercase, no trailing period
+#
+# Examples:
+#   feat: add gitlab provider
+#   feat(github): paginate ListOpenPRs across pages
+#   fix(bitbucket-dc): reject non-advancing nextPageStart in pagination
+#   feat!: rename Forge.OpenPR signature  ← breaking change
+#   docs: clarify Authorizer contract in README
+
+commit-msg:
+  parallel: false
+  commands:
+    conventional:
+      # Lefthook passes the commit-message file path as {1}.
+      # Subject is the first line; body and footer follow.
+      run: |
+        msg=$(head -n1 "{1}")
+        case "$msg" in
+          Merge*|Revert*) exit 0 ;;
+        esac
+        if echo "$msg" | grep -qE '^(feat|fix|docs|chore|refactor|test|build|ci|perf|style|revert)(\([a-z0-9-]+\))?!?: .+'; then
+          exit 0
+        fi
+        cat <<'EOM'
+        ✗ Commit subject does not follow Conventional Commits.
+
+          Expected: <type>(<scope>?)<!?>: <subject>
+          Got:      $MSG
+
+          Types:  feat fix docs chore refactor test build ci perf style revert
+          Scope:  optional, lowercase, kebab-case (e.g. github, bitbucket-dc)
+          Break:  add ! before the colon to mark a breaking change
+
+          Examples:
+            feat: add gitlab provider
+            feat(github): paginate ListOpenPRs
+            fix(bitbucket-dc): reject non-advancing nextPageStart
+            feat!: rename Forge.OpenPR signature
+        EOM
+        echo
+        echo "  Your subject: $msg"
+        exit 1

@@ -1,0 +1,28 @@
+# Build artifacts.
+/assay
+*.test
+*.exe
+
+# Test artifacts.
+/coverage.out
+/profile.out
+
+# Editor / OS.
+.DS_Store
+.idea/
+.vscode/
+
+# vendor/ — TEMPORARILY COMMITTED.
+#
+# assay depends on sibling libraries (go-bzlmod, starlark-go-bazel)
+# that aren't yet published with stable tags. go.mod uses relative-path
+# `replace` directives to find them during local dev (`../sibling-name`),
+# but those paths don't exist in a fresh clone or a stock CI checkout —
+# `go build` would fail without committed vendor/. Vendoring closes the
+# gap until the sibling libs ship real versions on the module proxy.
+#
+# When that day comes: uncomment the line below + run
+# `git rm -r --cached vendor/` + drop the `replace` directives from
+# go.mod + pin the `require` lines to real versions.
+#
+# /vendor/

@@ -1,0 +1,5 @@
+{
+  "url": "http://localhost:8765/blobs/foo-1.0.0.1.tar.gz",
+  "integrity": "sha256-+4yZ42vs/eN+SMb8E0ThhhgU4qFCkFm3eDm9TlwkW/k=",
+  "strip_prefix": "foo-1.0.0.1"
+}

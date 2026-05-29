@@ -1,0 +1,65 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Go source files
+*.go text eol=lf
+
+# Documentation
+*.md text eol=lf
+
+# Config files
+*.json text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# Justfile
+justfile text eol=lf
+
+# Export ignore - files excluded from source archives
+# (go mod download, GitHub releases, etc.)
+
+# CI/CD and GitHub-specific
+.github/             export-ignore
+
+# Git files
+.gitignore           export-ignore
+.gitattributes       export-ignore
+
+# Development tools and configs
+.golangci.toml       export-ignore
+dprint.json          export-ignore
+lefthook.yml         export-ignore
+justfile             export-ignore
+
+# Development documentation
+AGENTS.md            export-ignore
+CONTRIBUTING.md      export-ignore
+
+# Development scripts
+scripts/             export-ignore
+
+# Lint tools (separate Go module for development only)
+tools/lint/          export-ignore
+
+# Test artifacts (should be in .gitignore but belt-and-suspenders)
+*.test               export-ignore
+coverage.out         export-ignore
+coverage.*           export-ignore
+
+# Cache directories
+.bcr-cache/          export-ignore
+
+# Vendoring plan documentation (internal)
+tools/VENDORING_PLAN.md export-ignore
+
+# Keep in archive (explicitly NOT export-ignore):
+# - tools/vendor-parser/ - useful for maintaining vendored code
+# - third_party/ - contains vendored parser (required)
+# - examples/ - helpful for users
+# - README.md - documentation
+# - LICENSE* - required for compliance
+# - All *.go source files
