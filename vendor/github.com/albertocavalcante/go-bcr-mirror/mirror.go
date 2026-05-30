@@ -128,6 +128,24 @@ func verifyRemoteURL(repo *git.Repository, expected string) error {
 	return nil
 }
 
+// LastSync returns the wall-clock time of this Mirror's most recent
+// successful upstream contact — either Clone (on bootstrap) or
+// Sync (on subsequent probes, including the up-to-date case where
+// nothing advanced). Zero time when no successful sync has been
+// observed since Open.
+//
+// Drives canopy's DriftSummary.SyncedAt: the freshness of the
+// upstream snapshot used to compute drift, distinct from the
+// freshness of the drift verdict itself (ComputedAt).
+//
+// Safe for concurrent reads; serialised against the writers in
+// Clone + Sync via stateMu.
+func (m *Mirror) LastSync() time.Time {
+	m.stateMu.RLock()
+	defer m.stateMu.RUnlock()
+	return m.lastSync
+}
+
 // requireOpenRepo returns the go-git repo handle if Open has been
 // called, otherwise an ErrNoMirror-wrapped error. Used by read +
 // drift operations that require an opened mirror.

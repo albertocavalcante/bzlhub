@@ -164,10 +164,17 @@ func (m *Mirror) Sync(ctx context.Context, opts SyncOptions) (SyncReceipt, error
 	case pullErr == nil:
 		// Pull succeeded with new commits.
 	case errors.Is(pullErr, git.NoErrAlreadyUpToDate):
-		// Nothing to do.
+		// Nothing to fetch. Still update lastSync: an up-to-date
+		// probe IS evidence the operator confirmed upstream — the
+		// staleness signal LastSync drives must reflect "when did
+		// we last contact the remote", not "when did we last
+		// advance HEAD."
 		receipt.ToSHA = fromSHA
 		receipt.UpToDate = true
 		receipt.Duration = time.Since(start)
+		m.stateMu.Lock()
+		m.lastSync = time.Now().UTC()
+		m.stateMu.Unlock()
 		return receipt, nil
 	case errors.Is(pullErr, git.ErrNonFastForwardUpdate):
 		// go-git's PullOptions.Force only forces the fetch refspec

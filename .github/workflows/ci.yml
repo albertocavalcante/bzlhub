@@ -1,10 +1,10 @@
 # DORMANT — workflow_dispatch only.
 #
-# Primary CI runs on Forgejo at git.alberto.engineer
-# (see .forgejo/workflows/ci.yml). This GitHub counterpart exists so
-# anyone forking the canopy repo on GitHub can opt into CI manually
-# from the Actions UI without it duplicating runs against the
-# Forgejo mirror on every push/PR.
+# Primary CI runs on a Forgejo instance (see .forgejo/workflows/ci.yml
+# in the upstream repo). This GitHub counterpart exists so anyone
+# forking on GitHub can opt into CI manually from the Actions UI
+# without it duplicating runs against the Forgejo mirror on every
+# push/PR.
 #
 # To turn this into an always-on CI on a GitHub fork, add the same
 # triggers from .forgejo/workflows/ci.yml here (push: branches:

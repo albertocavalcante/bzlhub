@@ -15,7 +15,7 @@
   the per-IP rate limit).
 
   Origin is derived from window.location so this same component works
-  on bzlhub.com, canopy.alberto.engineer, internal Harbor-style
+  on bzlhub.com, an internal canopy.example.com, Harbor-style
   deployments — no per-deploy config.
 -->
 <script lang="ts">

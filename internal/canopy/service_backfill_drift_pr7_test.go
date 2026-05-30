@@ -229,6 +229,48 @@ func TestBackfillDriftSummary_DoesNotClobberPopulatedRows(t *testing.T) {
 	}
 }
 
+// TestBackfillDriftSummary_PopulatesLayeredStaleness asserts the
+// new staleness fields land on every written row: UpstreamSHA
+// from Mirror.SnapshotSHA, SyncedAt from Mirror.LastSync. These
+// fields are additive (Plan 22 #3) and let the UI distinguish
+// "computed 2h ago" from "synced 3 days ago" — operator's signal
+// that the verdict is fresh but the underlying upstream snapshot
+// might not be.
+//
+// Uses bootstrapMirrorFromRemote (not the lighter
+// seedMirrorWithModules) because LastSync is only populated by
+// Clone or Sync; an Open of a synthetic repo leaves it zero.
+func TestBackfillDriftSummary_PopulatesLayeredStaleness(t *testing.T) {
+	ctx := context.Background()
+	svc := newTestService(t)
+
+	_, _, mirror := bootstrapMirrorFromRemote(t, map[string]string{
+		"foo": `{"versions":["1.0.0","1.1.0"]}`,
+	})
+	svc.UseMirror(mirror)
+	writeServiceReport(t, ctx, svc, &report.ModuleReport{Name: "foo", Version: "1.0.0"})
+
+	wantSHA, _ := mirror.SnapshotSHA(ctx)
+	wantSyncedAt := mirror.LastSync()
+	if wantSyncedAt.IsZero() {
+		t.Fatalf("bootstrapMirrorFromRemote left Mirror.LastSync zero; library hook broken")
+	}
+
+	if _, err := svc.BackfillDriftSummary(ctx); err != nil {
+		t.Fatalf("BackfillDriftSummary: %v", err)
+	}
+
+	got, _ := svc.store.GetDriftSummary(ctx, "foo", "1.0.0")
+	var d api.DriftSummary
+	_ = json.Unmarshal(got, &d)
+	if d.UpstreamSHA != wantSHA {
+		t.Errorf("UpstreamSHA = %q; want %q (Mirror HEAD at compute time)", d.UpstreamSHA, wantSHA)
+	}
+	if !d.SyncedAt.Equal(wantSyncedAt) {
+		t.Errorf("SyncedAt = %v; want %v (Mirror.LastSync at compute time)", d.SyncedAt, wantSyncedAt)
+	}
+}
+
 // TestBackfillDriftSummary_NoMirrorNoWrites asserts the File-backed
 // install path. When Service.mirror == nil, the seam is a no-op
 // regardless of pending rows. Operators on a hand-assembled BCR

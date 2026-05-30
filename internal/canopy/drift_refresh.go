@@ -53,6 +53,8 @@ func (s *Service) RefreshDriftSummary(ctx context.Context) (int, error) {
 	}
 
 	now := time.Now().UTC()
+	upstreamSHA, _ := s.mirror.SnapshotSHA(ctx) // best-effort; empty SHA is fine
+	syncedAt := s.mirror.LastSync()
 	upstreams := newUpstreamCache(s.mirror)
 	var written int
 	for _, mv := range rows {
@@ -69,6 +71,8 @@ func (s *Service) RefreshDriftSummary(ctx context.Context) (int, error) {
 			Behind:         verdict.Behind,
 			LatestUpstream: verdict.LatestUpstream,
 			ComputedAt:     now,
+			UpstreamSHA:    upstreamSHA,
+			SyncedAt:       syncedAt,
 		}
 		encoded, err := json.Marshal(summary)
 		if err != nil {

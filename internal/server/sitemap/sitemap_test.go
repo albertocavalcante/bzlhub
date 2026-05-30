@@ -106,14 +106,14 @@ func TestStream_EmptyLastIngestedFallsBackToToday(t *testing.T) {
 
 func TestStream_OriginIsRespected(t *testing.T) {
 	var buf bytes.Buffer
-	if err := sitemap.Stream(context.Background(), nil, "https://canopy.alberto.engineer", &buf); err != nil {
+	if err := sitemap.Stream(context.Background(), nil, "https://canopy.example.com", &buf); err != nil {
 		t.Fatalf("Stream: %v", err)
 	}
 	out := buf.String()
 	if strings.Contains(out, "bzlhub.com") {
 		t.Error("origin should not leak bzlhub.com when given a different origin")
 	}
-	if !strings.Contains(out, "https://canopy.alberto.engineer/") {
+	if !strings.Contains(out, "https://canopy.example.com/") {
 		t.Error("custom origin missing from output")
 	}
 }

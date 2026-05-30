@@ -33,7 +33,7 @@ github.com/ProtonMail/go-crypto/openpgp/s2k
 github.com/ProtonMail/go-crypto/openpgp/x25519
 github.com/ProtonMail/go-crypto/openpgp/x448
 # github.com/albertocavalcante/assay v0.0.0 => ../assay
-## explicit; go 1.25.0
+## explicit; go 1.26.0
 github.com/albertocavalcante/assay
 github.com/albertocavalcante/assay/assets
 github.com/albertocavalcante/assay/bzlwalk
