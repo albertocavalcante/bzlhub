@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/albertocavalcante/canopy/internal/embed"
 	"github.com/albertocavalcante/canopy/internal/featureflags"
 	"github.com/albertocavalcante/canopy/internal/fetch"
+	"github.com/albertocavalcante/canopy/internal/mcpsrv"
 	"github.com/albertocavalcante/canopy/internal/ratelimit"
 	"github.com/albertocavalcante/canopy/internal/server/headtags"
 	"github.com/albertocavalcante/canopy/internal/server/sitemap"
@@ -102,6 +104,19 @@ type Options struct {
 	// the responses degrade to "plain report" shape rather than
 	// erroring, matching pre-helper behavior.
 	Helper ReadHelper
+
+	// Verifier is the implementation of the canopy_verify MCP tool.
+	// Wired by serve.go from *canopy.Service (the same value passed
+	// as the api.Canopy argument; one concrete satisfies both
+	// interfaces — see the Verifier doc-comment in mcpsrv for why
+	// they don't fuse). May be nil; when nil and MCPHTTPEnabled,
+	// the /mcp endpoint serves only the read-side tool catalogue.
+	Verifier mcpsrv.Verifier
+
+	// Version is the canopy build identifier ("0.1.0", a git sha,
+	// or "dev") surfaced over the MCP transport's `serverInfo`
+	// initialize response. Cosmetic; tools work regardless.
+	Version string
 }
 
 // New constructs an http.Handler. Either b or c can be nil for partial
@@ -115,7 +130,7 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := &handler{b: b, c: c, helper: opts.Helper, log: logger, opts: opts}
+	h := &handler{b: b, c: c, helper: opts.Helper, log: logger, opts: opts, startedAt: time.Now()}
 	if opts.MirrorBaseURL != "" && opts.MirrorRoot != "" {
 		h.mirrorIdx = newMirrorIndex(opts.MirrorRoot)
 	}
@@ -282,6 +297,11 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 		// call; no flags, no rate limit — the upstream BCR's own
 		// caching is the relevant defense.
 		r.Get("/bcr-probe", h.apiBCRProbe)
+		// /status is the human-shaped operational snapshot that
+		// drives the /status page (plan-65 v2 §Part 3). Cache-Control:
+		// no-store handled inside the handler so reverse proxies
+		// never serve stale state.
+		r.Get("/status", h.apiStatus)
 	})
 
 	// /robots.txt — allow-all + sitemap pointer. The sitemap URL is
@@ -316,20 +336,57 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 	// always returns 200 — unfurl crawlers don't retry.
 	r.Get("/og/*", h.apiOGImage)
 
-	// SPA fallback: any unmatched path serves the embedded SvelteKit UI
-	// (or, if the embed is empty, a polite "UI not built" page). /api/*
-	// is excluded — unknown API routes get a JSON 404 instead of the
-	// SPA shell so machine consumers see a structured error.
-	//
-	// The transform composes per-URL SEO <head> tags (title, description,
+	// SPA handler — constructed once, reused by /mcp's browser-vs-MCP
+	// router below AND by the catch-all NotFound at the bottom. The
+	// transform composes per-URL SEO <head> tags (title, description,
 	// canonical, Open Graph, Twitter Card) and injects them into the
-	// HEADTAGS-SENTINEL placeholder in app.html. This makes module pages
-	// indexable + share-previewable despite the SPA being client-side-only
-	// rendered. See internal/server/headtags/.
+	// HEADTAGS-SENTINEL placeholder in app.html. This makes module
+	// pages indexable + share-previewable despite the SPA being
+	// client-side-only rendered. See internal/server/headtags/.
 	spa := embed.HandlerWithTransform(func(req *http.Request, htmlBody []byte) []byte {
 		tags := headtags.Compose(req.Context(), req.URL.Path, originFromRequest(req), c)
 		return headtags.Inject(htmlBody, tags)
 	})
+
+	// /mcp — Streamable HTTP MCP transport AND browser-facing setup page.
+	//
+	// The same URL serves two audiences:
+	//   - MCP clients (Claude Code, Cursor, agents) POST JSON-RPC with
+	//     Accept: application/json, text/event-stream → route to the
+	//     mark3labs/mcp-go transport.
+	//   - Browsers landing on /mcp from /about or footer-nav have
+	//     Accept: text/html in the request → route to the SPA so
+	//     ui/src/routes/mcp/+page.svelte renders.
+	//
+	// The split is the most honest one: the URL the user pastes into
+	// their agent is the URL they can also visit in a browser to see
+	// the setup guide. Per plan-64 Gotcha 1 the MCP handler must own
+	// /mcp exclusively for its own purposes — this wrapper preserves
+	// that contract because the MCP handler still receives every
+	// non-browser request.
+	//
+	// When CANOPY_MCP_HTTP_ENABLED is off, no mount is registered and
+	// /mcp falls through to the NotFound SPA path below (which still
+	// serves the setup page; the /mcp page's onMount JSON probe then
+	// surfaces "MCP-over-HTTP is not enabled on this instance"
+	// inline — honest empty state).
+	if c != nil && opts.Flags.MCPHTTPEnabled {
+		mcpHandler := mcpsrv.NewHTTPHandler(c, opts.Verifier, opts.Version,
+			opts.Flags.MCPWriteToolsEnabled)
+		r.Mount("/mcp", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if req.Method == http.MethodGet &&
+				strings.Contains(req.Header.Get("Accept"), "text/html") {
+				spa.ServeHTTP(w, req)
+				return
+			}
+			mcpHandler.ServeHTTP(w, req)
+		}))
+	}
+
+	// SPA fallback: any unmatched path serves the embedded SvelteKit
+	// UI (or, if the embed is empty, a polite "UI not built" page).
+	// /api/* is excluded — unknown API routes get a JSON 404 instead
+	// of the SPA shell so machine consumers see a structured error.
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
 		if strings.HasPrefix(req.URL.Path, "/api/") {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
@@ -351,4 +408,9 @@ type handler struct {
 	codenav       *codenav.Resolver // nil unless MirrorRoot + SourcesCacheDir are both set
 	ingestLimiter *ratelimit.IngestLimiter
 	bcrFetch      bcrprobe.Prober
+	// startedAt is captured at handler construction. Drives
+	// SystemStatus.UptimeSeconds. Not "process start" — close
+	// enough for human-scale reporting and avoids reaching into
+	// runtime internals.
+	startedAt time.Time
 }

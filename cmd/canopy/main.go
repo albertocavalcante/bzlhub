@@ -65,6 +65,7 @@ func main() {
 	root.AddCommand(newShowCmd())
 	root.AddCommand(newMCPCmd())
 	root.AddCommand(newDriftCmd())
+	root.AddCommand(newSyncCmd())
 	root.AddCommand(diff.NewCmd())
 	root.AddCommand(diff.NewClosureCmd())
 	root.AddCommand(newVerifyCmd())

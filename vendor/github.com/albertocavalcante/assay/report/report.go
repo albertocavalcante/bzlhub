@@ -15,13 +15,13 @@ type ModuleReport struct {
 
 	BazelDeps []ModuleKey `json:"bazel_deps,omitempty"`
 
-	Rules            []RuleSpec        `json:"rules,omitempty"`
-	Providers        []ProviderSpec    `json:"providers,omitempty"`
-	Macros           []MacroSpec       `json:"macros,omitempty"`
-	Aspects          []AspectSpec      `json:"aspects,omitempty"`
-	Toolchains       []ToolchainSpec   `json:"toolchains,omitempty"`
-	RepositoryRules  []RepoRuleSpec    `json:"repository_rules,omitempty"`
-	ModuleExtensions []ModuleExtSpec   `json:"module_extensions,omitempty"`
+	Rules            []RuleSpec      `json:"rules,omitempty"`
+	Providers        []ProviderSpec  `json:"providers,omitempty"`
+	Macros           []MacroSpec     `json:"macros,omitempty"`
+	Aspects          []AspectSpec    `json:"aspects,omitempty"`
+	Toolchains       []ToolchainSpec `json:"toolchains,omitempty"`
+	RepositoryRules  []RepoRuleSpec  `json:"repository_rules,omitempty"`
+	ModuleExtensions []ModuleExtSpec `json:"module_extensions,omitempty"`
 
 	Hermeticity HermeticityProfile `json:"hermeticity"`
 
@@ -30,7 +30,7 @@ type ModuleReport struct {
 	// Assets surfaces "registry-page-grade" supporting docs and
 	// directories sitting alongside the .bzl sources. Populated by
 	// assay/assets during Analyze. Empty when none are present.
-	Assets ModuleAssets `json:"assets,omitempty"`
+	Assets ModuleAssets `json:"assets"`
 }
 
 // ModuleAssets is the per-module bundle of human-facing supporting

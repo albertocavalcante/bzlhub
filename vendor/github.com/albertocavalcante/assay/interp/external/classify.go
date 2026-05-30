@@ -11,29 +11,29 @@ import (
 // classifyHost; never rename existing ones (canopy SQLite schema
 // stores them).
 const (
-	ClassBCR             = "bcr"
-	ClassMaven           = "maven"
-	ClassPyPICanonical   = "pypi-canonical"
-	ClassPyPIExtra       = "pypi-extra"
-	ClassNPM             = "npm"
-	ClassGoProxy         = "go-proxy"
-	ClassGitHubRelease   = "github-release"
-	ClassGitHubArchive   = "github-archive"
-	ClassGitHubOther     = "github-other"
-	ClassGitLabRelease   = "gitlab-release"
-	ClassGitLabArchive   = "gitlab-archive"
-	ClassGitLabOther     = "gitlab-other"
-	ClassOCI             = "oci"
-	ClassCloudStorage    = "cloud-storage"
-	ClassVendorHTTP      = "vendor-http"
-	ClassUnknown         = "unknown"
+	ClassBCR           = "bcr"
+	ClassMaven         = "maven"
+	ClassPyPICanonical = "pypi-canonical"
+	ClassPyPIExtra     = "pypi-extra"
+	ClassNPM           = "npm"
+	ClassGoProxy       = "go-proxy"
+	ClassGitHubRelease = "github-release"
+	ClassGitHubArchive = "github-archive"
+	ClassGitHubOther   = "github-other"
+	ClassGitLabRelease = "gitlab-release"
+	ClassGitLabArchive = "gitlab-archive"
+	ClassGitLabOther   = "gitlab-other"
+	ClassOCI           = "oci"
+	ClassCloudStorage  = "cloud-storage"
+	ClassVendorHTTP    = "vendor-http"
+	ClassUnknown       = "unknown"
 )
 
 // Mutability constants.
 const (
-	MutabilityImmutable    = "immutable"     // hash-pinned or OCI digest
-	MutabilityMutableHost  = "mutable-host"  // host serves mutable content (e.g. github-archive of a branch)
-	MutabilityUnknown      = "unknown"       // taint or insufficient info
+	MutabilityImmutable   = "immutable"    // hash-pinned or OCI digest
+	MutabilityMutableHost = "mutable-host" // host serves mutable content (e.g. github-archive of a branch)
+	MutabilityUnknown     = "unknown"      // taint or insufficient info
 )
 
 // classifyHost maps a (lowercased host, full URL) pair to one of the

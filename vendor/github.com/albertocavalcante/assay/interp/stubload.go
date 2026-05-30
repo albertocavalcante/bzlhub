@@ -2,6 +2,7 @@ package interp
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"go.starlark.net/syntax"
@@ -40,7 +41,7 @@ import (
 // aren't valid Starlark anyway), comments containing the word "load"
 // — is untouched.
 func stubExternalLoads(src []byte, filename string) ([]byte, int, error) {
-	f, err := syntax.Parse(filename, src, syntax.RetainComments)
+	f, err := (&syntax.FileOptions{}).Parse(filename, src, syntax.RetainComments)
 	if err != nil {
 		// Parse errors mean we can't rewrite confidently — return the
 		// original source and let the interpreter fail the same way it
@@ -110,8 +111,8 @@ func stubExternalLoads(src []byte, filename string) ([]byte, int, error) {
 	// its stub block, padded with a trailing newline so the next
 	// statement still starts on a fresh line.
 	out := append([]byte(nil), src...)
-	for i := len(edits) - 1; i >= 0; i-- {
-		e := edits[i]
+	for _, e := range slices.Backward(edits) {
+
 		replacement := []byte(e.stubLines)
 		out = append(append(out[:e.startByte:e.startByte], replacement...), out[e.endByte:]...)
 	}
@@ -146,7 +147,7 @@ func byteOffsetForPos(src []byte, line, col int) (int, error) {
 		return 0, fmt.Errorf("invalid 1-based position: line=%d col=%d", line, col)
 	}
 	curLine := 1
-	for i := 0; i < len(src); i++ {
+	for i := range src {
 		if curLine == line {
 			return i + (col - 1), nil
 		}

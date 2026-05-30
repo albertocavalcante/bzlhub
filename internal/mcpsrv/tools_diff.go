@@ -10,10 +10,13 @@ import (
 	"github.com/albertocavalcante/canopy/internal/api"
 )
 
-// registerDiffTools registers impact-analysis + bump tools:
-// drift, bump, diff, diff_closure, compat_check. The flow these tools
-// support is "find what's behind → understand what would break →
-// bump intelligently".
+// registerDiffTools registers the READ-side analysis tools: drift,
+// diff, diff_closure, compat_check. These read canopy state + may
+// fetch upstream metadata transiently but never write the mirror.
+// Safe to expose anonymously on a public read-only instance.
+//
+// The write-side companion canopy_bump lives in
+// registerDiffWriteTools below.
 func registerDiffTools(srv *server.MCPServer, c api.Canopy) {
 	srv.AddTool(
 		mcp.NewTool("canopy_drift",
@@ -22,16 +25,6 @@ func registerDiffTools(srv *server.MCPServer, c api.Canopy) {
 			mcp.WithString("module", mcp.Description("Optional: limit the report to this single module name.")),
 		),
 		driftHandler(c),
-	)
-
-	srv.AddTool(
-		mcp.NewTool("canopy_bump",
-			mcp.WithDescription("Fetch one (module, version) from an upstream BCR-shape registry, mirror it locally, and index it. Idempotent: re-bumping the same version is a no-op. Use this after canopy_drift to advance a module to its upstream-latest. Returns the produced ModuleReport. Errors return early: 'not configured' means canopy was started without a mirror root; integrity / upstream errors are surfaced verbatim."),
-			mcp.WithString("module", mcp.Required(), mcp.Description("Bazel module name (e.g., 'rules_go').")),
-			mcp.WithString("version", mcp.Required(), mcp.Description("Target version (e.g., '0.52.0' or a 4-component canopy variant '0.52.0.1').")),
-			mcp.WithString("upstream", mcp.Description("Upstream registry URL. Default: the service's configured default (typically https://bcr.bazel.build).")),
-		),
-		bumpHandler(c),
 	)
 
 	srv.AddTool(
@@ -63,6 +56,23 @@ func registerDiffTools(srv *server.MCPServer, c api.Canopy) {
 			mcp.WithBoolean("include_dev", mcp.Description("Include dev_dependency = True bazel_deps in the analysis. Default false (matches the 'will my prod build break?' framing).")),
 		),
 		compatCheckHandler(c),
+	)
+}
+
+// registerDiffWriteTools registers the mutation tools in the diff
+// family — currently canopy_bump, which fetches and persists a
+// (module, version) into the local mirror. Called separately by the
+// dispatcher so HTTP deployments can opt out via
+// featureflags.MCPWriteToolsEnabled; stdio always registers it.
+func registerDiffWriteTools(srv *server.MCPServer, c api.Canopy) {
+	srv.AddTool(
+		mcp.NewTool("canopy_bump",
+			mcp.WithDescription("Fetch one (module, version) from an upstream BCR-shape registry, mirror it locally, and index it. Idempotent: re-bumping the same version is a no-op. Use this after canopy_drift to advance a module to its upstream-latest. Returns the produced ModuleReport. Errors return early: 'not configured' means canopy was started without a mirror root; integrity / upstream errors are surfaced verbatim."),
+			mcp.WithString("module", mcp.Required(), mcp.Description("Bazel module name (e.g., 'rules_go').")),
+			mcp.WithString("version", mcp.Required(), mcp.Description("Target version (e.g., '0.52.0' or a 4-component canopy variant '0.52.0.1').")),
+			mcp.WithString("upstream", mcp.Description("Upstream registry URL. Default: the service's configured default (typically https://bcr.bazel.build).")),
+		),
+		bumpHandler(c),
 	)
 }
 

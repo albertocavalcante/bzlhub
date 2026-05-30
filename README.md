@@ -1,4 +1,4 @@
-<h1 align="center">canopy</h1>
+<h1 align="center">bzlhub</h1>
 
 <p align="center">
   <em>A self-hosted Bazel module registry with introspection, search, drift detection,<br/>and an MCP surface for coding agents — shipping as a single Go binary.</em>

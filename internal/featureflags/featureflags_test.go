@@ -35,6 +35,12 @@ func TestParse_Defaults(t *testing.T) {
 	if f.DemoBanner != "" {
 		t.Errorf("DemoBanner default = %q, want empty", f.DemoBanner)
 	}
+	if f.MCPHTTPEnabled {
+		t.Errorf("MCPHTTPEnabled default = true, want false")
+	}
+	if f.MCPWriteToolsEnabled {
+		t.Errorf("MCPWriteToolsEnabled default = true, want false")
+	}
 }
 
 func TestParse_OverridesViaEnv(t *testing.T) {
@@ -47,6 +53,8 @@ func TestParse_OverridesViaEnv(t *testing.T) {
 		"CANOPY_INGEST_RATE_BYPASS_IPS":       "1.2.3.4, 5.6.7.8 ,",
 		"CANOPY_DEMO_MODE":                    "true",
 		"CANOPY_DEMO_BANNER":                  " public demo ",
+		"CANOPY_MCP_HTTP_ENABLED":             "true",
+		"CANOPY_MCP_WRITE_TOOLS_ENABLED":      "true",
 	})
 	f, err := Parse()
 	if err != nil {
@@ -81,6 +89,12 @@ func TestParse_OverridesViaEnv(t *testing.T) {
 	}
 	if f.DemoBanner != "public demo" {
 		t.Errorf("DemoBanner = %q, want public demo", f.DemoBanner)
+	}
+	if !f.MCPHTTPEnabled {
+		t.Errorf("MCPHTTPEnabled = false, want true")
+	}
+	if !f.MCPWriteToolsEnabled {
+		t.Errorf("MCPWriteToolsEnabled = false, want true")
 	}
 }
 
@@ -155,6 +169,8 @@ func withEnv(t *testing.T, vars map[string]string) {
 		"CANOPY_INGEST_RATE_BYPASS_IPS",
 		"CANOPY_DEMO_MODE",
 		"CANOPY_DEMO_BANNER",
+		"CANOPY_MCP_HTTP_ENABLED",
+		"CANOPY_MCP_WRITE_TOOLS_ENABLED",
 	} {
 		t.Setenv(k, "")
 	}

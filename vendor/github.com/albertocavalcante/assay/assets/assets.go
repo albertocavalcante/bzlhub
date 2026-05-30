@@ -19,6 +19,7 @@ package assets
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/albertocavalcante/assay/report"
@@ -161,11 +162,8 @@ func findExampleDirs(moduleDir string) []string {
 			continue
 		}
 		name := strings.ToLower(e.Name())
-		for _, candidate := range exampleDirNames {
-			if name == candidate {
-				out = append(out, e.Name())
-				break
-			}
+		if slices.Contains(exampleDirNames, name) {
+			out = append(out, e.Name())
 		}
 	}
 	return out

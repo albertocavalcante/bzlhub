@@ -29,8 +29,11 @@ package bzlwalk
 // schema" message fires — never a half-answer.
 
 import (
+	"maps"
+
 	"go.starlark.net/syntax"
 
+	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/report"
 )
 
@@ -66,32 +69,15 @@ import (
 type symbolTable map[string]*syntax.DictExpr
 
 // collectSymbols scans the top-level statements of f and returns the
-// bindings the folder can rely on. Two-pass design: we run this once
-// per file before the existing scanFile() walk, so dict-literal
-// assignments visible BELOW the rule() call site still get used —
-// Starlark resolves at definition time, not parse time, but for
-// module-level constants the order doesn't matter.
+// bindings the folder can rely on. Order-independent: we run this once
+// per file before the main scan, so dict-literal assignments visible
+// BELOW the rule() call site still get used — matches Starlark's
+// definition-time resolution for module-level constants.
+//
+// Delegates to [syntaxutil.CollectTopLevelDictBindings] so bzlwalk
+// and hermetic's pinned-dict scanner share one pre-pass shape.
 func collectSymbols(f *syntax.File) symbolTable {
-	if f == nil {
-		return nil
-	}
-	out := symbolTable{}
-	for _, stmt := range f.Stmts {
-		assign, ok := stmt.(*syntax.AssignStmt)
-		if !ok || assign.Op != syntax.EQ {
-			continue
-		}
-		ident, ok := assign.LHS.(*syntax.Ident)
-		if !ok {
-			continue
-		}
-		dict, ok := assign.RHS.(*syntax.DictExpr)
-		if !ok {
-			continue
-		}
-		out[ident.Name] = dict
-	}
-	return out
+	return symbolTable(syntaxutil.CollectTopLevelDictBindings(f))
 }
 
 // foldContext carries the per-resolution state for foldDictExpr:
@@ -246,7 +232,7 @@ func foldDictExprAcrossLoad(name string, ctx *foldContext) ([]*syntax.DictEntry,
 	if ctx.index == nil {
 		return nil, false
 	}
-	imp, ok := ctx.loads.imports[name]
+	imp, ok := ctx.loads[name]
 	if !ok {
 		return nil, false
 	}
@@ -353,9 +339,9 @@ func dictEntriesToAttrs(entries []*syntax.DictEntry) []report.AttrSpec {
 		spec := report.AttrSpec{Name: key}
 		if valCall, ok := e.Value.(*syntax.CallExpr); ok {
 			spec.Type = attrTypeFromCall(valCall)
-			spec.Doc = stringKeywordArg(valCall, "doc")
-			spec.Mandatory = boolKeywordArg(valCall, "mandatory")
-			if def := keywordArg(valCall, "default"); def != nil {
+			spec.Doc = syntaxutil.StringKeywordArg(valCall, "doc")
+			spec.Mandatory = syntaxutil.BoolKeywordArg(valCall, "mandatory")
+			if def := syntaxutil.KeywordArg(valCall, "default"); def != nil {
 				spec.Default = literalAsText(def)
 			}
 		}
@@ -369,8 +355,6 @@ func dictEntriesToAttrs(entries []*syntax.DictEntry) []report.AttrSpec {
 // identifier sets — each subexpression has its own resolution path.
 func cloneSeen(m map[string]bool) map[string]bool {
 	out := make(map[string]bool, len(m)+1)
-	for k, v := range m {
-		out[k] = v
-	}
+	maps.Copy(out, m)
 	return out
 }

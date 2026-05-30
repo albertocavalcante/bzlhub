@@ -22,6 +22,7 @@ import (
 	"github.com/albertocavalcante/canopy/internal/featureflags"
 	"github.com/albertocavalcante/canopy/internal/server"
 	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/canopy/internal/version"
 	farol "github.com/albertocavalcante/farol/sdk"
 )
 
@@ -44,10 +45,15 @@ func newServeCmd() *cobra.Command {
 
 			var bk backend.Backend
 			if rootDir != "" {
-				if _, err := os.Stat(rootDir); err != nil {
+				// NewFromRoot picks File for a plain dir and
+				// BCRMirror for a git clone — operators get the
+				// drift-aware backend transparently once the registry
+				// is sync'd via `canopy sync` (PR8).
+				b, err := backend.NewFromRoot(cmd.Context(), rootDir)
+				if err != nil {
 					return fmt.Errorf("registry root %q: %w", rootDir, err)
 				}
-				bk = backend.NewFile(rootDir)
+				bk = b
 			}
 
 			// Federation (Plan 16). Flag overrides env; env is
@@ -129,6 +135,13 @@ func newServeCmd() *cobra.Command {
 			}
 
 			var svc api.Canopy
+			// verifier carries the concrete *canopy.Service so the
+			// /mcp transport (when CANOPY_MCP_HTTP_ENABLED) can wire
+			// canopy_verify alongside the read-side tools. Same
+			// concrete also satisfies api.Canopy; the split here is
+			// purely to keep server.Options' Verifier field typed
+			// against mcpsrv.Verifier without an unsafe assertion.
+			var verifier *canopy.Service
 			var storeRef *store.Store
 			if dbPath != "" {
 				s, err := store.Open(cmd.Context(), dbPath)
@@ -139,6 +152,16 @@ func newServeCmd() *cobra.Command {
 				storeRef = s
 				cs := canopy.New(s)
 				cs.MirrorRoot = rootDir
+				// When the auto-detected backend is the git-aware
+				// BCRMirror, thread the underlying Mirror to Service
+				// so BackfillDriftSummary (PR7) can compute drift
+				// from upstream metadata. On the File path bk is
+				// *backend.File and the type-assertion is a no-op —
+				// drift stays at the default unknown state and
+				// surfaces in the boot log.
+				if mb, ok := bk.(*backend.BCRMirror); ok {
+					cs.UseMirror(mb.Mirror())
+				}
 				// SourcesCacheDir lets canopy.Service.Summary find the
 				// unpacked source tree for bazel-module-summary-go. Same
 				// path the codenav handler uses; threaded here so the
@@ -169,6 +192,7 @@ func newServeCmd() *cobra.Command {
 				}
 				// AttrsInterpret is set after featureflags parse below.
 				svc = cs
+				verifier = cs
 			}
 			_ = storeRef
 
@@ -271,6 +295,11 @@ func newServeCmd() *cobra.Command {
 				SourcesCacheDir:   defaultSourcesCacheDir(),
 				Flags:             flags,
 				TrustedProxyCIDRs: trustedProxyCIDRs,
+				// verifier is the concrete *canopy.Service (nil when
+				// --db is unset). The /mcp transport gates further
+				// on flags.MCPHTTPEnabled.
+				Verifier: verifier,
+				Version:  version.Version,
 			})
 			// Wrap the canopy handler with farol's HTTP middleware:
 			// request-id, W3C trace propagation, RED-metric histogram

@@ -37,9 +37,9 @@ func ResolveLoadedFile(callerRelPath, loadPath string) (string, bool) {
 	switch {
 	case strings.HasPrefix(loadPath, "//"):
 		rest := loadPath[2:]
-		if i := strings.Index(rest, ":"); i >= 0 {
-			pkg = rest[:i]
-			file = rest[i+1:]
+		if before, after, ok := strings.Cut(rest, ":"); ok {
+			pkg = before
+			file = after
 		} else {
 			file = rest
 		}

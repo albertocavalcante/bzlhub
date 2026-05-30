@@ -174,4 +174,3 @@ func lockfileRuleName(repoRuleID string) string {
 	}
 	return repoRuleID
 }
-

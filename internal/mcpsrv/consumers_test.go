@@ -44,7 +44,7 @@ func TestMCP_NewToolsAreRegisteredByName(t *testing.T) {
 	}
 
 	srv := server.NewMCPServer("canopy-test", "test")
-	registerTools(srv, canopy.New(s), nil)
+	registerTools(srv, canopy.New(s), nil, true)
 
 	cases := []struct {
 		toolName string

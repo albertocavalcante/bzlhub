@@ -117,9 +117,13 @@ func Analyze(ctx context.Context, moduleDir string, opts ...Option) (*report.Mod
 	}
 
 	modPath := filepath.Join(moduleDir, "MODULE.bazel")
+	// modulefile.ParseFile already names the path (via the underlying
+	// *fs.PathError on I/O failure) and tags parse-time failures with
+	// "parse MODULE.bazel:" — wrapping again here would double-name
+	// the path or shadow the parse-vs-read distinction.
 	r, err := modulefile.ParseFile(modPath)
 	if err != nil {
-		return nil, fmt.Errorf("parse %s: %w", modPath, err)
+		return nil, err
 	}
 
 	// Single shared walk + parse. Both bzlwalk and hermetic consume

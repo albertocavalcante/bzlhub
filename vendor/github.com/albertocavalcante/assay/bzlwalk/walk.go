@@ -26,6 +26,7 @@ import (
 	"go.starlark.net/syntax"
 
 	"github.com/albertocavalcante/assay/dialect"
+	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/internal/walkparse"
 	"github.com/albertocavalcante/assay/report"
 )
@@ -204,7 +205,7 @@ func (v *visitor) consumeFile(f walkparse.File) {
 func (v *visitor) scanFile(f *syntax.File, relPath string) {
 	v.symbols = collectSymbols(f)
 	v.macroCtx = collectMacroContext(f, v.dialect)
-	v.loads = collectLoads(f)
+	v.loads = syntaxutil.CollectLoads(f)
 	// relPath already comes in slash-form from walkparse.File.Path.
 	v.currentFile = relPath
 	// Persist per-file state so the Phase B fixpoint can re-evaluate

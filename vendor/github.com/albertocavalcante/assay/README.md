@@ -20,7 +20,7 @@ The intelligence engine for [canopy](https://github.com/albertocavalcante/canopy
 
 ## Status
 
-v0 working. Bazel modules only; a `Dialect` abstraction is in place from day one for future Buck2 support. Validated against 6 real-world modules (rules_cc, rules_go, rules_java, rules_python, rules_jvm_external, bazel-gazelle) via a corpus test.
+v0 working, hardened through multiple iterations. Bazel modules only; a `Dialect` abstraction is in place from day one for future Buck2 support. Validated against 13 real-world modules in the corpus test (rules_cc, rules_go, rules_java, rules_python, rules_jvm_external, bazel-gazelle, contrib_rules_jvm, rules_kotlin, aspect_rules_lint, rules_scala, rules_swift, stardoc, bazel-lib) plus determinism + benchmark gates.
 
 ## Corpus testing
 
@@ -38,7 +38,7 @@ The test is skipped if `REFS_DIR` is unset. Per-module summary lines print rule/
 - **Hermeticity `network-fetch-pinned` vs `network-fetch-unpinned`** is determined by whether the `sha256` / `integrity` kwarg is a *literal* string. References like `ctx.attr.sha256` are conservatively flagged as unpinned — the rule itself can't prove pinning.
 - **`prebuilt-binaries-pinned`** fires when a fetch call has both `executable = True` and a pinned `sha256` / `integrity` kwarg. "Pinned" recognizes three shapes: a literal string, a same-file all-literal-dict subscript (`INTEGRITY[platform]`), or a cross-file all-literal-dict subscript via `load()` (the canonical bazel-lib pattern where `RELEASED_BINARY_INTEGRITY` lives in `tools/integrity.bzl` and is loaded into the toolchain `.bzl`).
 - **`build-from-source`** fires when the module's own `BUILD` / `BUILD.bazel` files (outside `test/`, `examples/`, `vendor/`, `third_party/`, etc.) invoke a compilation rule — `go_binary`, `cc_library`, `java_binary`, `kt_jvm_binary`, `rust_library`, `swift_library`, `py_binary`, `scala_library`, and friends. That signal distinguishes rulesets the consumer's build compiles (rules_go's gobuilder, bazel-gazelle, rules_kotlin's compiler helpers, rules_lint's sarif) from ones whose source exists only for the maintainer's release pipeline (bazel-lib's `copy_directory`, where consumers download the released binary via toolchain). The discriminator: if the module's repository rules download executables from URLs containing its own name (`github.com/bazel-contrib/bazel-lib/releases/...`) AND every compilation rule call lives under `tools/`, the BFS finding is demoted — the consumer never compiles. The two main classes (`prebuilt-binaries-pinned` and `build-from-source`) are orthogonal — `rules_lint` is the canonical hybrid that fires both (pins linter binaries upstream, compiles its sarif converter from source).
-- **AST-only** — modules that construct rule attributes dynamically (e.g., `MY_ATTRS = build_attrs(); rule(attrs = MY_ATTRS)`) are missed. v1 may add optional evaluation-based fallback via `starlark-go-bazel`.
+- **Attrs extraction tier ladder** — Tier 0 (literal dict) → Tier 1 (same-file symbol fold) → Tier 2 (cross-file `load()` resolution). Each tier is fully deterministic; the per-rule `AttrsExtractionMethod` field tells consumers which tier resolved the attrs (or empty when no tier could). For rules built via helper functions (`MY_ATTRS = build_attrs(); rule(attrs = MY_ATTRS)`), Tier 3 runs the `.bzl` in a sandboxed Starlark interpreter via `assay.WithInterpreterFallback()` — opt-in because it's significantly slower than AST-only.
 
 ## Usage
 
@@ -55,8 +55,10 @@ For rules whose attrs Tier 0-2 (literal / same-file fold / cross-file load) can'
 CLI:
 
 ```bash
-assay report /path/to/module-source --json
-assay report /path/to/module-source --markdown
+assay report /path/to/module-source                     # JSON by default
+assay report /path/to/module-source --format=markdown   # human-readable
+assay report /path/to/module-source --interp            # opt into Tier-3
+assay --version                                          # version + VCS revision
 ```
 
 ## Performance
@@ -79,6 +81,10 @@ Every output field is either an exact AST extraction (deterministic) or a patter
 ## Naming
 
 `assay` = to determine the composition or quality of something (chemistry/metallurgy). The library determines the composition of a Bazel module. Working name; rename is cheap (single Go module path).
+
+## Further reading
+
+See [`docs/README.md`](docs/README.md) for the navigation index over the per-topic reference docs (validation audit, epistemic status, roadmap, refactoring plan, macro-detection plan, determinism contract, benchmarks).
 
 ## License
 

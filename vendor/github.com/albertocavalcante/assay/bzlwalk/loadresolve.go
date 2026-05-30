@@ -10,73 +10,14 @@ package bzlwalk
 // guessing.
 
 import (
-	"go.starlark.net/syntax"
-
 	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/internal/walkparse"
 )
 
-// fileLoads is the per-file map of load()-imported names to their
-// source-module descriptor. Populated alongside symbolTable during
-// the pre-walk indexing pass.
-type fileLoads struct {
-	// imports maps the local-binding name to the import descriptor.
-	// For `load(":consts.bzl", "BASE")` the entry is "BASE" → {
-	// ModulePath: ":consts.bzl", OriginalName: "BASE" }.
-	// For `load(":consts.bzl", local = "remote")` the entry is
-	// "local" → { ":consts.bzl", "remote" }.
-	imports map[string]importedSymbol
-}
-
-// importedSymbol describes one `load()` binding.
-type importedSymbol struct {
-	// ModulePath is the verbatim load string — `:foo.bzl`,
-	// `//pkg:foo.bzl`, `@external//...`. resolveLoadedFile turns
-	// this into a relative file path or rejects external loads.
-	ModulePath string
-	// OriginalName is the symbol's name in the loaded module
-	// (potentially different from the local alias).
-	OriginalName string
-}
-
-// collectLoads scans a parsed file for top-level load() statements
-// and returns the binding map. Reverse of LoadStmt's From/To naming:
-// `From[i].Name` is the local-binding name (the one we look up later
-// when something in this file references it); `To[i].Name` is the
-// name in the loaded module.
-func collectLoads(f *syntax.File) fileLoads {
-	out := fileLoads{imports: map[string]importedSymbol{}}
-	if f == nil {
-		return out
-	}
-	for _, stmt := range f.Stmts {
-		load, ok := stmt.(*syntax.LoadStmt)
-		if !ok {
-			continue
-		}
-		if load.Module == nil {
-			continue
-		}
-		modulePath, ok := load.Module.Value.(string)
-		if !ok {
-			continue
-		}
-		for i, from := range load.From {
-			if from == nil || i >= len(load.To) {
-				continue
-			}
-			to := load.To[i]
-			if to == nil {
-				continue
-			}
-			out.imports[from.Name] = importedSymbol{
-				ModulePath:   modulePath,
-				OriginalName: to.Name,
-			}
-		}
-	}
-	return out
-}
+// fileLoads aliases [syntaxutil.ImportedSymbol] maps so legacy bzlwalk
+// code that names the wrapper type keeps working. New code can use the
+// map type directly.
+type fileLoads = map[string]syntaxutil.ImportedSymbol
 
 // moduleSymbolIndex is the module-wide cache built in a pre-walk
 // pass. It lets the Tier-2 resolver look up `name` in another file's
@@ -115,7 +56,7 @@ func buildModuleSymbolIndexFromFiles(files []walkparse.File) *moduleSymbolIndex 
 			continue
 		}
 		idx.perFile[f.Path] = collectSymbols(f.AST)
-		idx.loads[f.Path] = collectLoads(f.AST)
+		idx.loads[f.Path] = syntaxutil.CollectLoads(f.AST)
 	}
 	return idx
 }

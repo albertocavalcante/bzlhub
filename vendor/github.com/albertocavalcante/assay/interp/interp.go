@@ -135,45 +135,41 @@ func newEvalCache(workspaceRoot string) *evalCache {
 	}
 }
 
-// lookupRuleClass returns the named global from the evaluated .bzl
-// file, but only if it's a *types.RuleClass. nil for any other case
-// (eval failure, missing global, wrong type). Caller treats nil as
-// "leave this rule untouched."
+// lookupRuleClass returns the named global as a *types.RuleClass, or
+// nil if the file failed to eval, the symbol is missing, or the value
+// is a different type. Caller treats nil as "leave this rule alone."
 func (c *evalCache) lookupRuleClass(relFile, symbol string) *types.RuleClass {
-	globals, ok := c.evalFile(relFile)
-	if !ok {
-		return nil
-	}
-	val, found := globals[symbol]
-	if !found {
-		return nil
-	}
-	rc, ok := val.(*types.RuleClass)
-	if !ok {
-		return nil
-	}
-	return rc
+	return lookupAs[*types.RuleClass](c, relFile, symbol)
 }
 
 // lookupRepositoryRuleClass mirrors lookupRuleClass for the
-// repository_rule path. The upstream type is types.RepositoryRuleClass
-// (separate from types.RuleClass for analysis-time rule()), which
-// became available when starlark-go-bazel landed M2 of the
-// bazel-builtins-emulation plan.
+// repository_rule path. starlark-go-bazel exposes
+// types.RepositoryRuleClass as a distinct type from RuleClass; users
+// who built their rules via the older rule()-shaped path fall through
+// to lookupRuleClass at the call site.
 func (c *evalCache) lookupRepositoryRuleClass(relFile, symbol string) *types.RepositoryRuleClass {
+	return lookupAs[*types.RepositoryRuleClass](c, relFile, symbol)
+}
+
+// lookupAs is the shared evalFile + global-lookup + type-assert flow.
+// Returns the zero value of T (typically nil for pointer types) on any
+// step's failure. Avoids the four-line repetition that the two
+// concrete lookups previously expanded out.
+func lookupAs[T any](c *evalCache, relFile, symbol string) T {
+	var zero T
 	globals, ok := c.evalFile(relFile)
 	if !ok {
-		return nil
+		return zero
 	}
 	val, found := globals[symbol]
 	if !found {
-		return nil
+		return zero
 	}
-	rc, ok := val.(*types.RepositoryRuleClass)
+	t, ok := val.(T)
 	if !ok {
-		return nil
+		return zero
 	}
-	return rc
+	return t
 }
 
 // attrsFromRepositoryRuleClass mirrors attrsFromRuleClass for
@@ -229,24 +225,6 @@ func (c *evalCache) evalFile(relFile string) (starlark.StringDict, bool) {
 	slog.Debug("interp: eval ok", "file", relFile, "stubbed_loads", stubbed, "globals", len(res.Globals))
 	c.results[relFile] = res.Globals
 	return res.Globals, true
-}
-
-// joinPath avoids a dependency on path/filepath in the hot path —
-// the interp call wants a single absolute path string. Workspace
-// roots are absolute, file paths are workspace-relative POSIX, and
-// the OS filesystem the loader uses accepts both separators on
-// macOS/Linux, so a simple `/` join is enough.
-func joinPath(root, rel string) string {
-	if root == "" {
-		return rel
-	}
-	if rel == "" {
-		return root
-	}
-	if root[len(root)-1] == '/' {
-		return root + rel
-	}
-	return root + "/" + rel
 }
 
 // implicitBazelAttrs are the attribute names Bazel automatically adds

@@ -200,6 +200,11 @@
           class="hover:text-fg transition-colors"
           class:text-fg={page.url.pathname === '/history'}>history</a
         >
+        <a
+          href="/mcp"
+          class="hover:text-fg transition-colors"
+          class:text-fg={page.url.pathname === '/mcp'}>mcp</a
+        >
       </nav>
       <div class="ml-auto text-xs text-fg-dim flex items-center gap-3">
         <span class="flex items-center gap-1.5">
@@ -306,6 +311,22 @@
         {/if}
       </span>
       <span class="flex shrink-0 items-center gap-3">
+        <a
+          href="/about"
+          class="hover:text-fg transition-colors"
+          class:text-fg={page.url.pathname === '/about'}
+          title="about bzlhub"
+        >
+          about
+        </a>
+        <a
+          href="/status"
+          class="hover:text-fg transition-colors"
+          class:text-fg={page.url.pathname === '/status'}
+          title="live operational status"
+        >
+          status
+        </a>
         <a
           href="https://github.com/albertocavalcante/bzlhub"
           target="_blank"

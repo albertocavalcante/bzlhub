@@ -91,6 +91,29 @@ type Flags struct {
 	// non-empty. Lets operators surface a custom note ("staging",
 	// "read-only mirror", etc.) without code changes.
 	DemoBanner string
+
+	// MCPHTTPEnabled mounts the Streamable-HTTP MCP transport at /mcp
+	// when true. Default off — exposing canopy's tool catalogue over
+	// HTTP without an explicit operator opt-in is too sharp a default
+	// for self-hosted installs. Per plan-64 §2 decision 8 the handler
+	// constructs a per-request *MCPServer to defend against the
+	// stateless-mode cross-client leak class (SDK 1.26.0 fix).
+	MCPHTTPEnabled bool
+
+	// MCPWriteToolsEnabled gates the registration of WRITE-side MCP
+	// tools (canopy_ingest_recursive, canopy_bump) on the HTTP
+	// transport. Default off — the public bzlhub.com instance and
+	// any other anonymous-read deployment should NOT advertise write
+	// tools in tools/list. The stdio transport (cmd/canopy/mcp.go)
+	// always registers write tools because stdio implies local trust:
+	// the operator started the binary themselves and the agent is
+	// running in-process.
+	//
+	// Distinct from IngestWriteEnabled which gates the HTTP
+	// /api/v1/actions/* surface; an operator hosting a private
+	// canopy with HTTP MCP for trusted internal agents can flip both
+	// on, and a public instance keeps both off.
+	MCPWriteToolsEnabled bool
 }
 
 // Parse reads the canopy feature-flag env vars and returns the Flags.
@@ -112,6 +135,8 @@ func Parse() (Flags, error) {
 	f.AttrsInterpret = envBool("CANOPY_ATTRS_INTERPRET", false, &errs)
 	f.DemoMode = envBool("CANOPY_DEMO_MODE", false, &errs)
 	f.DemoBanner = strings.TrimSpace(os.Getenv("CANOPY_DEMO_BANNER"))
+	f.MCPHTTPEnabled = envBool("CANOPY_MCP_HTTP_ENABLED", false, &errs)
+	f.MCPWriteToolsEnabled = envBool("CANOPY_MCP_WRITE_TOOLS_ENABLED", false, &errs)
 
 	if f.IngestRateLimitPerMin < 0 {
 		errs = append(errs, fmt.Errorf("CANOPY_INGEST_RATE_LIMIT_PER_MIN must be >= 0, got %d", f.IngestRateLimitPerMin))

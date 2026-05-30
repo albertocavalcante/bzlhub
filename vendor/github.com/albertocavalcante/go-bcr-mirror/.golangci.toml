@@ -1,0 +1,37 @@
+# Portfolio standard golangci-lint config.
+# Conservative + opinionated; matches canopy / other portfolio libraries.
+
+[run]
+  timeout = "5m"
+
+[linters]
+  disable-all = true
+  enable = [
+    "errcheck",
+    "govet",
+    "ineffassign",
+    "staticcheck",
+    "unused",
+    "gosimple",
+    "gocritic",
+    "gosec",
+  ]
+
+[linters-settings]
+  [linters-settings.gosec]
+    # G104 (unhandled errors): errcheck owns this; gosec double-flags.
+    excludes = ["G104"]
+
+  [linters-settings.gocritic]
+    enabled-tags = ["diagnostic", "style", "performance"]
+    disabled-checks = [
+      # Allow `if x == nil { ... }` style; `unnecessaryDefer` over-triggers on
+      # cleanup-shaped defers we use deliberately.
+      "unnecessaryDefer",
+    ]
+
+[issues]
+  exclude-rules = [
+    # Tests can be verbose + repetitive without earning lint flags.
+    { path = "_test\\.go", linters = ["gocritic", "gosec"] },
+  ]

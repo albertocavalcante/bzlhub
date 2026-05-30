@@ -35,11 +35,16 @@ type Verifier interface {
 	Verify(ctx context.Context, opts verify.Options) (*verify.Report, error)
 }
 
-// Serve runs the MCP server over stdio. Blocks until stdin closes or ctx is cancelled.
-// If v is non-nil, the canopy_verify tool is registered alongside the others.
+// Serve runs the MCP server over stdio. Blocks until stdin closes or
+// ctx is cancelled. If v is non-nil, canopy_verify is registered
+// alongside the others. Stdio implies local trust — the operator
+// started the binary themselves and the agent runs in-process — so
+// write tools (canopy_ingest_recursive, canopy_bump) are always
+// registered. HTTP callers should use registerTools directly and
+// pass writeEnabled=false for anonymous-read deployments.
 func Serve(ctx context.Context, c api.Canopy, v Verifier, version string) error {
 	srv := server.NewMCPServer("canopy", version)
-	registerTools(srv, c, v)
+	registerTools(srv, c, v, true)
 	// ServeStdio doesn't take a context in the current API; the function
 	// returns when stdin closes. Cancellation hooks can be added if/when
 	// the library exposes them.
@@ -54,13 +59,23 @@ func Serve(ctx context.Context, c api.Canopy, v Verifier, version string) error 
 // register<Domain> function for its group of tools. Splitting by
 // domain keeps the AddTool spec + handler co-located so adding a new
 // tool touches one file, not three.
-func registerTools(srv *server.MCPServer, c api.Canopy, v Verifier) {
+//
+// writeEnabled gates the mutation tools (canopy_ingest_recursive,
+// canopy_bump). The HTTP transport on a public-read instance
+// (bzlhub.com) passes false so anonymous visitors can't ingest or
+// bump via tools/call; stdio and trusted-internal HTTP deployments
+// pass true.
+func registerTools(srv *server.MCPServer, c api.Canopy, v Verifier, writeEnabled bool) {
 	registerSearchTools(srv, c)
 	registerSurfaceTools(srv, c)
 	registerDiffTools(srv, c)
 	registerCodenavTools(srv, c)
 	if v != nil {
 		registerVerifyTools(srv, v)
+	}
+	if writeEnabled {
+		registerSurfaceWriteTools(srv, c)
+		registerDiffWriteTools(srv, c)
 	}
 }
 

@@ -201,13 +201,13 @@ func TestRepositoryRulesDiff(t *testing.T) {
 func TestModuleExtensionsTagClassDiff(t *testing.T) {
 	a := &report.ModuleReport{
 		ModuleExtensions: []report.ModuleExtSpec{
-			{Name: "pip", TagClasses: []string{"parse"}},
+			{Name: "pip", TagClasses: []report.TagClassSpec{{Name: "parse"}}},
 			{Name: "removed_ext"},
 		},
 	}
 	b := &report.ModuleReport{
 		ModuleExtensions: []report.ModuleExtSpec{
-			{Name: "pip", TagClasses: []string{"parse", "override"}},
+			{Name: "pip", TagClasses: []report.TagClassSpec{{Name: "parse"}, {Name: "override"}}},
 			{Name: "fresh_ext"},
 		},
 	}
@@ -247,7 +247,7 @@ func TestClassifyBreaking(t *testing.T) {
 		},
 		Macros: []report.MacroSpec{{Name: "old_macro"}},
 		ModuleExtensions: []report.ModuleExtSpec{
-			{Name: "kept_ext", TagClasses: []string{"keep", "doomed_tag"}},
+			{Name: "kept_ext", TagClasses: []report.TagClassSpec{{Name: "keep"}, {Name: "doomed_tag"}}},
 			{Name: "will_be_removed_ext"},
 		},
 		RepositoryRules: []report.RepoRuleSpec{
@@ -273,7 +273,7 @@ func TestClassifyBreaking(t *testing.T) {
 		},
 		Macros: []report.MacroSpec{{Name: "new_macro"}}, // macro removed isn't classified breaking — intentional
 		ModuleExtensions: []report.ModuleExtSpec{
-			{Name: "kept_ext", TagClasses: []string{"keep"}}, // doomed_tag removed
+			{Name: "kept_ext", TagClasses: []report.TagClassSpec{{Name: "keep"}}}, // doomed_tag removed
 			// will_be_removed_ext gone
 		},
 		RepositoryRules: []report.RepoRuleSpec{

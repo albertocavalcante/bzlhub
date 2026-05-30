@@ -8,8 +8,8 @@
   via canopy?" — Plan 19 Idea C.
 
   The registry URL is read from window.location.origin so this
-  works for any operator-hosted instance (bzlhub.com,
-  canopy.alberto.engineer, internal Harbor-style deployments).
+  works for any operator-hosted instance (bzlhub.com, an internal
+  canopy.example.com, Harbor-style behind-VPN deployments).
   MODULE.bazel format only — Bzlmod is the answer in 2026; we don't
   ship a legacy WORKSPACE snippet.
 -->

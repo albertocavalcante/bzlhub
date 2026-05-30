@@ -10,10 +10,15 @@ import (
 	"github.com/albertocavalcante/canopy/internal/api"
 )
 
-// registerSurfaceTools registers URL-surface + closure-graph queries:
-// airgap_surface, external_surface, closure_graph, reverse_deps,
-// ingest_recursive. These are the "what does this module pull in,
-// what does it expose, who depends on it" tools.
+// registerSurfaceTools registers the READ-side surface tools:
+// airgap_surface, external_surface, closure_graph, reverse_deps —
+// "what does this module pull in, what does it expose, who depends
+// on it." Safe to expose anonymously on a public read-only instance.
+//
+// The write-side companion canopy_ingest_recursive lives in
+// registerSurfaceWriteTools below; the dispatcher in server.go calls
+// it separately so HTTP deployments can opt out of advertising
+// mutation tools via CANOPY_MCP_WRITE_TOOLS_ENABLED.
 func registerSurfaceTools(srv *server.MCPServer, c api.Canopy) {
 	srv.AddTool(
 		mcp.NewTool("canopy_airgap_surface",
@@ -51,6 +56,19 @@ func registerSurfaceTools(srv *server.MCPServer, c api.Canopy) {
 		reverseDepsHandler(c),
 	)
 
+}
+
+// registerSurfaceWriteTools registers the mutation tools in the
+// surface family — currently canopy_ingest_recursive, which walks
+// a bazel_dep closure and writes every reached version into the
+// local mirror. Anonymous callers shouldn't get this on a public
+// instance because each call kicks off background fetch + disk
+// write that amplifies abuse beyond the per-request rate limiter.
+//
+// Caller (registerTools in server.go) decides whether to invoke
+// based on featureflags.MCPWriteToolsEnabled. stdio always invokes
+// (local trust); HTTP only invokes when the flag is on.
+func registerSurfaceWriteTools(srv *server.MCPServer, c api.Canopy) {
 	srv.AddTool(
 		mcp.NewTool("canopy_ingest_recursive",
 			mcp.WithDescription("Walk the bazel_dep closure of (module, version) and mirror every reached version into canopy's local tree. Each module is fetched, SRI-verified, mirrored (modules/<n>/<v>/* + content-addressed blobs/<sha256>), and indexed. Errors on individual modules don't abort sibling fetches — partial closures are useful inputs to canopy_drift. Returns visited/mirrored counts + per-module error list. Use with include_bazel_tools=true to also seed Bazel's implicit MODULE.tools deps for a self-sufficient air-gap mirror."),

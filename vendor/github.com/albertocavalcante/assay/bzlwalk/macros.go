@@ -47,6 +47,7 @@ import (
 	"go.starlark.net/syntax"
 
 	"github.com/albertocavalcante/assay/dialect"
+	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/report"
 )
 
@@ -104,7 +105,7 @@ func collectMacroContext(f *syntax.File, d dialect.Dialect) fileMacroContext {
 			if !ok {
 				continue
 			}
-			callee := identName(call.Fn)
+			callee := syntaxutil.IdentName(call.Fn)
 			if callee == "" {
 				continue
 			}

@@ -157,7 +157,6 @@ func Analyze(ctx context.Context, workspaceRoot string, opts Options) (*Result, 
 	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 	for i := range entries {
-		i := i
 		e := entries[i]
 		wg.Add(1)
 		sem <- struct{}{}

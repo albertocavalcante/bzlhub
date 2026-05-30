@@ -140,6 +140,36 @@ func Compose(ctx context.Context, path, origin string, c api.Canopy) Tags {
 		t.Canonical = origin + "/compat-check"
 		t.OGImage = ogImageURL(origin, "", "")
 
+	case path == "/about":
+		// Description matches the first paragraph of
+		// ui/src/lib/content/about.md verbatim — the locked content
+		// per plan-65 v2 §Part 2 is the source of truth for both.
+		t.Title = "About · bzlhub"
+		t.Description = "bzlhub mirrors the Bazel Central Registry and adds an indexing layer: search, hermeticity classification per module, drift detection against upstream, source-code navigation across modules, and a Model Context Protocol endpoint for coding agents to query."
+		t.Canonical = origin + "/about"
+		t.OGImage = ogImageURL(origin, "", "")
+
+	case path == "/status":
+		// Live operational snapshot — drives a low-cardinality,
+		// honest-empty-state page (plan-65 v2 §Part 3). Description
+		// stays factual; the page itself is the proof.
+		t.Title = "Status · bzlhub"
+		t.Description = "Live status for the bzlhub.com instance — mirror freshness, federation reachability, drift, addons."
+		t.Canonical = origin + "/status"
+		t.OGImage = ogImageURL(origin, "", "")
+
+	case path == "/mcp" || strings.HasPrefix(path, "/mcp?"):
+		// /mcp SPA page (plan-19 Idea E) — agent integration guide
+		// for the Streamable HTTP MCP transport mounted at /mcp.
+		// The transport itself is registered explicitly in server.go
+		// when CANOPY_MCP_HTTP_ENABLED is on, taking precedence over
+		// this SPA fallback for POST/GET — this case only fires for
+		// the GET /mcp that lands in the SPA's NotFound handler.
+		t.Title = "MCP · bzlhub"
+		t.Description = "Wire any MCP-capable coding agent (Claude Code, Cursor, Codex) to bzlhub's module index via the Streamable HTTP transport at /mcp."
+		t.Canonical = origin + "/mcp"
+		t.OGImage = ogImageURL(origin, "", "")
+
 	default:
 		// Unknown route — keep generic defaults; index.html's static
 		// title + description still apply.

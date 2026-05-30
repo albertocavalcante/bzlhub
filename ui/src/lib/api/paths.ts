@@ -79,5 +79,6 @@ export const paths = {
     version: () => `${PREFIX}/system/version`,
     features: () => `${PREFIX}/system/features`,
     bcrProbe: () => `${PREFIX}/system/bcr-probe`,
+    status: () => `${PREFIX}/system/status`,
   },
 };

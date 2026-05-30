@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/albertocavalcante/canopy/internal/api"
+	"github.com/albertocavalcante/canopy/internal/backend"
 	"github.com/albertocavalcante/canopy/internal/bcrprobe"
 	"github.com/albertocavalcante/canopy/internal/version"
 )
@@ -118,4 +119,109 @@ func (h *handler) apiVersion(w http.ResponseWriter, _ *http.Request) {
 		"commit":   version.Commit,
 		"built_at": version.BuiltAt,
 	})
+}
+
+// apiStatus returns the single-shot human-and-monitor-shaped
+// snapshot of this canopy instance. Contract: plan-65 v2 §Part 3.
+// Drives the /status page (15s polling) and any external poller that
+// wants one JSON read per probe.
+//
+// Composition rules (also in the api.SystemStatus doc comment):
+//   - Every field is derived from state canopy already tracks.
+//   - Fields with no honest source are omitted (omitempty) rather
+//     than emitted as theatrical 0 / null.
+//   - No probes happen inside this handler. The federation
+//     reachability snapshot reads the last cached probe state from
+//     backend.Cascade (refreshed by the cascade's own goroutine);
+//     the drift counts read cached per-module DriftSummary already
+//     persisted into ModuleSummary. Both are O(modules) loops over
+//     in-memory data; no upstream HTTP, no SQL aggregates beyond
+//     what ListModules already pays for.
+//
+// Cache-Control: no-store so reverse proxies / Cloudflare don't
+// serve stale state to the next visitor.
+func (h *handler) apiStatus(w http.ResponseWriter, r *http.Request) {
+	now := time.Now()
+	status := api.SystemStatus{
+		Version:       version.Version,
+		Commit:        version.Commit,
+		BuiltAt:       version.BuiltAt,
+		UptimeSeconds: int64(now.Sub(h.startedAt).Seconds()),
+		Federation:    api.FederationStatus{Upstreams: []api.UpstreamStatus{}},
+	}
+
+	// Mirror snapshot — derived from ListModules. Walks each module
+	// summary once: sum versions, find max LatestIngestedAt. Keeps
+	// the request O(modules); on a 27-module mirror this is ~µs.
+	if h.c != nil {
+		if mods, err := h.c.ListModules(r.Context()); err == nil {
+			status.Mirror.ModulesIndexed = len(mods)
+			var latest string
+			var behind, yanked int
+			var latestDriftRefresh string
+			for _, m := range mods {
+				status.Mirror.VersionsIndexed += m.VersionCount
+				if m.LatestIngestedAt > latest {
+					latest = m.LatestIngestedAt
+				}
+				switch m.Drift.Status {
+				case api.DriftStatusBehind:
+					behind++
+				case api.DriftStatusYankedUpstream:
+					yanked++
+				}
+				if m.Drift.Status != "" && m.LatestIngestedAt > latestDriftRefresh {
+					latestDriftRefresh = m.LatestIngestedAt
+				}
+			}
+			status.Mirror.LastIngestAt = latest
+			status.Drift = api.DriftStatusInfo{
+				LastRefreshAt:         latestDriftRefresh,
+				ModulesBehind:         behind,
+				ModulesYankedUpstream: yanked,
+			}
+		}
+	}
+
+	// Federation snapshot — same data source as /api/v1/upstreams,
+	// reshaped. Read the cascade's last-known probe state per
+	// upstream + the shared response-cache stats. When the cascade
+	// is absent (non-federated config) Upstreams stays the empty
+	// array.
+	if c, ok := h.b.(*backend.Cascade); ok {
+		cs := c.CacheStats()
+		hitRate := 0.0
+		if lookups := cs.Hits + cs.Misses; lookups > 0 {
+			hitRate = float64(cs.Hits) / float64(lookups)
+		}
+		for _, u := range c.Upstreams() {
+			reachable, lastProbe, latency, errMsg := u.Reachable()
+			entry := api.UpstreamStatus{
+				URL:          u.URL,
+				Reachable:    reachable,
+				CacheEntries: cs.Entries,
+				CacheHitRate: hitRate,
+			}
+			if !lastProbe.IsZero() {
+				entry.LastProbeAt = lastProbe.UTC().Format(time.RFC3339)
+				entry.LastProbeLatencyMs = latency.Milliseconds()
+			}
+			entry.LastProbeError = errMsg
+			status.Federation.Upstreams = append(status.Federation.Upstreams, entry)
+		}
+	}
+
+	// Addons. promote_on_serve / snapshot_publishing / litestream
+	// stay unwired in v0 (the underlying capabilities don't ship
+	// yet). mcp_http reflects the live flag so /status answers
+	// "is the /mcp endpoint live on this instance?" honestly.
+	status.Addons = api.AddonsStatus{
+		PromoteOnServe:     false,
+		SnapshotPublishing: false,
+		Litestream:         false,
+		MCPHTTP:            h.opts.Flags.MCPHTTPEnabled,
+	}
+
+	w.Header().Set("Cache-Control", "no-store, must-revalidate")
+	writeJSON(w, http.StatusOK, status)
 }

@@ -38,7 +38,7 @@ var TestOrExamplePathSegments = map[string]bool{
 // known test/example/vendor directory name. Path is split on forward
 // slashes; backslashes are normalized first.
 func IsTestOrExamplePath(p string) bool {
-	for _, seg := range strings.Split(filepath.ToSlash(p), "/") {
+	for seg := range strings.SplitSeq(filepath.ToSlash(p), "/") {
 		if TestOrExamplePathSegments[seg] {
 			return true
 		}

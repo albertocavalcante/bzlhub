@@ -62,6 +62,9 @@ func TestCompose_KnownRoutes(t *testing.T) {
 		{"/drift", "Drift"},
 		{"/history", "History"},
 		{"/compat-check", "Compatibility"},
+		{"/about", "About"},
+		{"/status", "Status"},
+		{"/mcp", "MCP"},
 	}
 	for _, c := range cases {
 		t.Run(c.path, func(t *testing.T) {

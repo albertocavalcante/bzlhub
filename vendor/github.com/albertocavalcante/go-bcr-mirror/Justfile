@@ -1,0 +1,31 @@
+# go-bcr-mirror portfolio recipes.
+# Run `just` to list available recipes.
+
+default:
+    @just --list
+
+# All checks gate-shaped: fmt-check, vet, lint, test, build.
+check: fmt-check vet test build
+    @echo "all checks passed"
+
+# Refuse formatting drift.
+fmt-check:
+    test -z "$(gofmt -l .)"
+
+vet:
+    go vet ./...
+
+# Lint via golangci-lint (added when tools.go.mod is wired; currently no-op).
+lint:
+    @echo "(lint: not yet wired; will land via tools.go.mod)"
+
+# Race-detector + count=1 to bypass test-result cache.
+test:
+    go test -race -count=1 ./...
+
+build:
+    go build ./...
+
+# Generate API doc from doc.go.
+doc:
+    go doc -all ./... > docs/api.md

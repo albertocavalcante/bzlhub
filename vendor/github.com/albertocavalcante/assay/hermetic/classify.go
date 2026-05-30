@@ -35,7 +35,7 @@
 //   - [dialect.Dialect].IsSystemExecAPI — currently just "execute"
 //   - classifyExec — well-known binary list (docker, git, python, …)
 //   - hasIntegrityHash — literal sha256/integrity + same/cross-file dict-subscript
-//   - hasExecutableTrue — literal `executable = True` only
+//   - [syntaxutil.BoolKeywordArg] — literal `executable = True` only
 //   - looksLikeSelfPublishURL — string-literal substring match
 //   - isTestOrExamplePath — curated directory-name list
 //   - isReleaseToolingPath — `tools/`/`tooling/` segment match
@@ -100,7 +100,6 @@ func ClassifyParsed(ctx context.Context, d dialect.Dialect, files []walkparse.Fi
 
 type classifier struct {
 	dialect  dialect.Dialect
-	root     string
 	findings []report.HermeticityFinding
 
 	// moduleName is the module's declared name from MODULE.bazel
@@ -163,7 +162,7 @@ func (c *classifier) scan(f *syntax.File, relPath string, isBuild bool) {
 		if !ok {
 			return true
 		}
-		name := selectorName(call.Fn)
+		name := syntaxutil.IdentName(call.Fn)
 		if name == "" {
 			return true
 		}
@@ -200,7 +199,7 @@ func (c *classifier) scan(f *syntax.File, relPath string, isBuild bool) {
 				Confidence: confidence,
 				Provenance: syntaxutil.ProvenanceFrom(relPath, call),
 			})
-			if pinned && hasExecutableTrue(call) {
+			if pinned && syntaxutil.BoolKeywordArg(call, "executable") {
 				// Definitive: both signals are literal AST shapes.
 				c.findings = append(c.findings, report.HermeticityFinding{
 					Class:      report.PrebuiltBinariesPinned,
@@ -365,7 +364,7 @@ func looksLikeSelfPublishURL(s, moduleName string) bool {
 // tooling/ directory at any depth." Used together with the
 // selfPublishesBinaries signal to decide BFS demotion.
 func isReleaseToolingPath(p string) bool {
-	for _, seg := range strings.Split(filepath.ToSlash(p), "/") {
+	for seg := range strings.SplitSeq(filepath.ToSlash(p), "/") {
 		if seg == "tools" || seg == "tooling" {
 			return true
 		}
@@ -381,41 +380,6 @@ func isTestOrExamplePath(p string) bool {
 	return syntaxutil.IsTestOrExamplePath(p)
 }
 
-// selectorName returns the trailing identifier of a Starlark callee.
-//   - foo()           → "foo"
-//   - a.foo()         → "foo"
-//   - a.b.foo()       → "foo"
-//   - subscript-based forms ignored
-func selectorName(e syntax.Expr) string {
-	switch n := e.(type) {
-	case *syntax.Ident:
-		return n.Name
-	case *syntax.DotExpr:
-		return n.Name.Name
-	}
-	return ""
-}
-
-// hasExecutableTrue reports whether the call passes `executable = True`
-// as a keyword argument. Distinguishes binary-tool downloads from
-// source-archive downloads.
-func hasExecutableTrue(call *syntax.CallExpr) bool {
-	for _, arg := range call.Args {
-		bin, ok := arg.(*syntax.BinaryExpr)
-		if !ok || bin.Op != syntax.EQ {
-			continue
-		}
-		key, ok := bin.X.(*syntax.Ident)
-		if !ok || key.Name != "executable" {
-			continue
-		}
-		if id, ok := bin.Y.(*syntax.Ident); ok && id.Name == "True" {
-			return true
-		}
-	}
-	return false
-}
-
 // pinnedDictSet is the set of module-level identifier names that bind
 // to literal dicts whose every value is a non-empty literal string.
 // Subscript expressions whose base is one of these idents always
@@ -423,31 +387,20 @@ func hasExecutableTrue(call *syntax.CallExpr) bool {
 // bare literal would.
 type pinnedDictSet map[string]bool
 
-// collectPinnedDicts scans top-level statements for
-// `IDENT = {literal: literal_nonempty_string, ...}` bindings.
-// Anything more dynamic (function call, conditional, partial-literal
-// dict) is rejected — pinning requires the WHOLE dict's value range
-// to be literal strings.
+// collectPinnedDicts projects [syntaxutil.CollectTopLevelDictBindings]
+// through the all-non-empty-string filter. Anything more dynamic
+// (function call, conditional, partial-literal dict) is rejected at
+// either layer — pinning requires the WHOLE dict's value range to be
+// literal strings.
 func collectPinnedDicts(f *syntax.File) pinnedDictSet {
-	if f == nil {
+	dicts := syntaxutil.CollectTopLevelDictBindings(f)
+	if dicts == nil {
 		return nil
 	}
 	out := pinnedDictSet{}
-	for _, stmt := range f.Stmts {
-		assign, ok := stmt.(*syntax.AssignStmt)
-		if !ok || assign.Op != syntax.EQ {
-			continue
-		}
-		ident, ok := assign.LHS.(*syntax.Ident)
-		if !ok {
-			continue
-		}
-		dict, ok := assign.RHS.(*syntax.DictExpr)
-		if !ok {
-			continue
-		}
+	for name, dict := range dicts {
 		if isAllNonEmptyStringDict(dict) {
-			out[ident.Name] = true
+			out[name] = true
 		}
 	}
 	return out
@@ -570,4 +523,3 @@ func identResolvesToPinnedDict(name string, sameFile pinnedDictSet, idx *hermeti
 	}
 	return targetIdx.pinnedDicts[imp.OriginalName]
 }
-

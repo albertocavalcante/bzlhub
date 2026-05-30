@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	"github.com/albertocavalcante/assay/report"
+	bcrmirror "github.com/albertocavalcante/go-bcr-mirror"
 
 	"github.com/albertocavalcante/canopy/internal/api"
 	"github.com/albertocavalcante/canopy/internal/auth"
@@ -65,6 +66,22 @@ type Service struct {
 	// ingest doesn't spend one GitHub API call per module. See
 	// bcrprov.go.
 	bcrProvCache bcrProv
+
+	// mirror is the git-aware BCR mirror handle. Non-nil when
+	// backend.NewFromRoot detected <root>/.git at boot and wired
+	// the Mirror via UseMirror. Drives the git-aware drift
+	// backfill (PR7) — when nil, BackfillDriftSummary stays a
+	// no-op and operators fall back to the HTTP-probe `canopy
+	// drift` CLI verb.
+	mirror *bcrmirror.Mirror
+}
+
+// UseMirror attaches an opened bcrmirror.Mirror to the Service. Wired
+// from cmd/canopy/serve.go after backend.NewFromRoot returns a
+// *backend.BCRMirror. Calling with nil is a no-op (so the wiring
+// code can call unconditionally and let auto-detect pick the path).
+func (s *Service) UseMirror(m *bcrmirror.Mirror) {
+	s.mirror = m
 }
 
 // New builds a Service backed by the given store.

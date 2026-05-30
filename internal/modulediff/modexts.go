@@ -37,13 +37,16 @@ func modExtsDiff(a, b []report.ModuleExtSpec) ModExtsDiff {
 }
 
 func compareModExt(a, b report.ModuleExtSpec) *ChangedModExt {
+	// TagClassSpec is a struct (post-assay-API-drift); key the
+	// dedup sets on .Name, which is the user-typed identifier and
+	// the granularity callers care about when reading the diff.
 	aSet := map[string]bool{}
 	for _, t := range a.TagClasses {
-		aSet[t] = true
+		aSet[t.Name] = true
 	}
 	bSet := map[string]bool{}
 	for _, t := range b.TagClasses {
-		bSet[t] = true
+		bSet[t.Name] = true
 	}
 	ch := &ChangedModExt{Name: a.Name}
 	for t := range bSet {

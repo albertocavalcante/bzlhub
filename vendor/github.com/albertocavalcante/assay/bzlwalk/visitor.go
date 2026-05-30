@@ -30,7 +30,7 @@ func (v *visitor) scanAssign(s *syntax.AssignStmt, file string) {
 	if !ok {
 		return
 	}
-	callee := identName(call.Fn)
+	callee := syntaxutil.IdentName(call.Fn)
 	if callee == "" {
 		return
 	}
@@ -44,11 +44,11 @@ func (v *visitor) scanAssign(s *syntax.AssignStmt, file string) {
 		attrs, method := v.extractAttrsWithFold(call)
 		v.report.Rules = append(v.report.Rules, report.RuleSpec{
 			Name:                  lhs.Name,
-			Doc:                   stringKeywordArg(call, "doc"),
+			Doc:                   syntaxutil.StringKeywordArg(call, "doc"),
 			Attrs:                 attrs,
 			AttrsExtractionMethod: method,
-			Executable:            boolKeywordArg(call, "executable"),
-			Test:                  boolKeywordArg(call, "test"),
+			Executable:            syntaxutil.BoolKeywordArg(call, "executable"),
+			Test:                  syntaxutil.BoolKeywordArg(call, "test"),
 			Private:               priv,
 			Provenance:            prov,
 		})
@@ -56,7 +56,7 @@ func (v *visitor) scanAssign(s *syntax.AssignStmt, file string) {
 	case d.IsProviderSymbol(callee):
 		v.report.Providers = append(v.report.Providers, report.ProviderSpec{
 			Name:       lhs.Name,
-			Doc:        stringKeywordArg(call, "doc"),
+			Doc:        syntaxutil.StringKeywordArg(call, "doc"),
 			Fields:     extractProviderFields(call),
 			Private:    priv,
 			Provenance: prov,
@@ -65,9 +65,9 @@ func (v *visitor) scanAssign(s *syntax.AssignStmt, file string) {
 	case d.IsAspectSymbol(callee):
 		v.report.Aspects = append(v.report.Aspects, report.AspectSpec{
 			Name:              lhs.Name,
-			Doc:               stringKeywordArg(call, "doc"),
-			AttrAspects:       stringListKeywordArg(call, "attr_aspects"),
-			RequiredProviders: stringListKeywordArg(call, "required_providers"),
+			Doc:               syntaxutil.StringKeywordArg(call, "doc"),
+			AttrAspects:       syntaxutil.StringListKeywordArg(call, "attr_aspects"),
+			RequiredProviders: syntaxutil.StringListKeywordArg(call, "required_providers"),
 			Private:           priv,
 			Provenance:        prov,
 		})
@@ -76,10 +76,10 @@ func (v *visitor) scanAssign(s *syntax.AssignStmt, file string) {
 		attrs, method := v.extractAttrsWithFold(call)
 		v.report.RepositoryRules = append(v.report.RepositoryRules, report.RepoRuleSpec{
 			Name:                  lhs.Name,
-			Doc:                   stringKeywordArg(call, "doc"),
+			Doc:                   syntaxutil.StringKeywordArg(call, "doc"),
 			Attrs:                 attrs,
 			AttrsExtractionMethod: method,
-			Local:                 boolKeywordArg(call, "local"),
+			Local:                 syntaxutil.BoolKeywordArg(call, "local"),
 			Private:               priv,
 			Provenance:            prov,
 		})
@@ -87,7 +87,7 @@ func (v *visitor) scanAssign(s *syntax.AssignStmt, file string) {
 	case d.IsModuleExtensionSymbol(callee):
 		v.report.ModuleExtensions = append(v.report.ModuleExtensions, report.ModuleExtSpec{
 			Name:       lhs.Name,
-			Doc:        stringKeywordArg(call, "doc"),
+			Doc:        syntaxutil.StringKeywordArg(call, "doc"),
 			Private:    priv,
 			Provenance: prov,
 		})
@@ -97,12 +97,12 @@ func (v *visitor) scanAssign(s *syntax.AssignStmt, file string) {
 // scanTopLevelCall handles top-level calls without an assignment, e.g.,
 // `toolchain_type(name = "...")` or `package(default_visibility = ...)`.
 func (v *visitor) scanTopLevelCall(call *syntax.CallExpr, file string) {
-	callee := identName(call.Fn)
+	callee := syntaxutil.IdentName(call.Fn)
 	if callee == "" {
 		return
 	}
 	if v.dialect.IsToolchainTypeSymbol(callee) {
-		name := stringKeywordArg(call, "name")
+		name := syntaxutil.StringKeywordArg(call, "name")
 		if name == "" {
 			return
 		}
@@ -139,7 +139,7 @@ func (v *visitor) scanDef(s *syntax.DefStmt, file string) {
 	}
 	params := make([]string, 0, len(s.Params))
 	for _, p := range s.Params {
-		if id := identName(p); id != "" {
+		if id := syntaxutil.IdentName(p); id != "" {
 			params = append(params, id)
 		}
 	}
@@ -180,83 +180,6 @@ func (v *visitor) emitMacro(c pendingMacroCandidate) {
 	v.composedMacros[c.file][c.name] = true
 }
 
-// identName returns the identifier name of common Expr shapes, or "" if not
-// a simple name. It handles bare Ident, DotExpr (a.b → "b"), and
-// parameter declarations.
-func identName(e syntax.Node) string {
-	switch n := e.(type) {
-	case *syntax.Ident:
-		return n.Name
-	case *syntax.DotExpr:
-		return n.Name.Name
-	case *syntax.BinaryExpr:
-		// Default-value params like `name = "x"` show up as binary EQ.
-		if n.Op == syntax.EQ {
-			return identName(n.X)
-		}
-	}
-	return ""
-}
-
-// stringKeywordArg returns the literal string value of a `name = "..."`
-// keyword argument, or "" if absent or non-literal.
-func stringKeywordArg(call *syntax.CallExpr, name string) string {
-	if expr := keywordArg(call, name); expr != nil {
-		if lit, ok := expr.(*syntax.Literal); ok {
-			if s, ok := lit.Value.(string); ok {
-				return s
-			}
-		}
-	}
-	return ""
-}
-
-func boolKeywordArg(call *syntax.CallExpr, name string) bool {
-	if expr := keywordArg(call, name); expr != nil {
-		if id, ok := expr.(*syntax.Ident); ok {
-			return id.Name == "True"
-		}
-	}
-	return false
-}
-
-func stringListKeywordArg(call *syntax.CallExpr, name string) []string {
-	expr := keywordArg(call, name)
-	if expr == nil {
-		return nil
-	}
-	list, ok := expr.(*syntax.ListExpr)
-	if !ok {
-		return nil
-	}
-	var out []string
-	for _, el := range list.List {
-		if lit, ok := el.(*syntax.Literal); ok {
-			if s, ok := lit.Value.(string); ok {
-				out = append(out, s)
-			}
-		}
-	}
-	return out
-}
-
-func keywordArg(call *syntax.CallExpr, name string) syntax.Expr {
-	for _, arg := range call.Args {
-		bin, ok := arg.(*syntax.BinaryExpr)
-		if !ok || bin.Op != syntax.EQ {
-			continue
-		}
-		key, ok := bin.X.(*syntax.Ident)
-		if !ok {
-			continue
-		}
-		if key.Name == name {
-			return bin.Y
-		}
-	}
-	return nil
-}
-
 // extractAttrsWithFold tries Tier-0 (literal dict) extraction first;
 // on miss it falls through to Tier-1 (same-file symbol fold). Returns
 // the attrs slice and the provenance tag the caller should set on
@@ -269,7 +192,7 @@ func (v *visitor) extractAttrsWithFold(call *syntax.CallExpr) ([]report.AttrSpec
 	if literal := extractAttrs(call, "attrs"); len(literal) > 0 {
 		return literal, report.AttrsLiteral
 	}
-	attrsExpr := keywordArg(call, "attrs")
+	attrsExpr := syntaxutil.KeywordArg(call, "attrs")
 	if attrsExpr == nil {
 		return nil, ""
 	}
@@ -294,7 +217,7 @@ func (v *visitor) extractAttrsWithFold(call *syntax.CallExpr) ([]report.AttrSpec
 // extractAttrs reads `attrs = { "name": attr.string(...), ... }` literally.
 // Non-literal entries are skipped with no error (best-effort static analysis).
 func extractAttrs(call *syntax.CallExpr, keyword string) []report.AttrSpec {
-	dict, ok := keywordArg(call, keyword).(*syntax.DictExpr)
+	dict, ok := syntaxutil.KeywordArg(call, keyword).(*syntax.DictExpr)
 	if !ok {
 		return nil
 	}
@@ -315,9 +238,9 @@ func extractAttrs(call *syntax.CallExpr, keyword string) []report.AttrSpec {
 		spec := report.AttrSpec{Name: keyStr}
 		if valCall, ok := entry.Value.(*syntax.CallExpr); ok {
 			spec.Type = attrTypeFromCall(valCall)
-			spec.Doc = stringKeywordArg(valCall, "doc")
-			spec.Mandatory = boolKeywordArg(valCall, "mandatory")
-			if def := keywordArg(valCall, "default"); def != nil {
+			spec.Doc = syntaxutil.StringKeywordArg(valCall, "doc")
+			spec.Mandatory = syntaxutil.BoolKeywordArg(valCall, "mandatory")
+			if def := syntaxutil.KeywordArg(valCall, "default"); def != nil {
 				spec.Default = literalAsText(def)
 			}
 		}
@@ -357,7 +280,7 @@ func literalAsText(e syntax.Expr) string {
 // extractProviderFields parses provider(fields = [...]) or
 // provider(fields = {"x": "doc"}).
 func extractProviderFields(call *syntax.CallExpr) []string {
-	expr := keywordArg(call, "fields")
+	expr := syntaxutil.KeywordArg(call, "fields")
 	if expr == nil {
 		return nil
 	}

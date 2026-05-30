@@ -38,7 +38,7 @@ func TestMCP_ExternalSurfaceTool_RoundTrip(t *testing.T) {
 	}
 
 	srv := server.NewMCPServer("canopy-test", "test")
-	registerTools(srv, canopy.New(s), nil)
+	registerTools(srv, canopy.New(s), nil, true)
 
 	req := mcp.CallToolRequest{}
 	req.Params.Name = "canopy_external_surface"
