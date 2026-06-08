@@ -379,6 +379,27 @@ func (s *Store) TransitionRequest(ctx context.Context, id int64, fromState, toSt
 	return nil
 }
 
+// CountOpenRequestsForUser returns how many non-terminal requests
+// submitterSub currently owns. "Non-terminal" means the row is NOT in
+// indexed or denied — every other state (pending / preflighting /
+// needs_review / auto_pass / approved / fetching) counts.
+//
+// Backs the Plan 76 §2.5 max_pending_per_user pool cap: the handler
+// rejects a new submit when this count is already at the configured
+// cap. Cheap query — submitter_sub has an index per the schema, and
+// the WHERE NOT IN list is small.
+func (s *Store) CountOpenRequestsForUser(ctx context.Context, submitterSub string) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM requests
+		WHERE submitter_sub = ? AND state NOT IN ('indexed', 'denied')
+	`, submitterSub).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("store: count open requests for user: %w", err)
+	}
+	return n, nil
+}
+
 // ReclaimStuckFetching resets requests stuck in state=fetching whose
 // state_changed_at is before `before` back to state=approved so the
 // admit loop picks them up on its next poll cycle.

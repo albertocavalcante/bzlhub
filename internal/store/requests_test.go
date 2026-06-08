@@ -368,6 +368,90 @@ func TestRequestState_Terminal(t *testing.T) {
 	}
 }
 
+// =================================================================
+// CountOpenRequestsForUser — backs Plan 76 §2.5 max_pending_per_user
+// =================================================================
+
+func TestCountOpenRequestsForUser_HappyPath(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	req := sampleRequest()
+	for _, v := range []string{"1.0", "1.1", "1.2"} {
+		req.Version = v
+		if _, err := s.CreateRequest(ctx, req); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n, err := s.CountOpenRequestsForUser(ctx, req.SubmitterSub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 3 {
+		t.Errorf("count=%d, want 3", n)
+	}
+}
+
+func TestCountOpenRequestsForUser_IgnoresTerminal(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	req := sampleRequest()
+	req.Version = "1.0"
+	id1, err := s.CreateRequest(ctx, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Version = "1.1"
+	if _, err := s.CreateRequest(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+	// Deny id1 → terminal; should drop out of the count.
+	if err := s.TransitionRequest(ctx, id1,
+		RequestStatePending, RequestStateDenied,
+		&RequestFields{DenialReason: "test"}); err != nil {
+		t.Fatal(err)
+	}
+	n, err := s.CountOpenRequestsForUser(ctx, req.SubmitterSub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("count=%d, want 1 (denied row excluded)", n)
+	}
+}
+
+func TestCountOpenRequestsForUser_ScopesPerSubmitter(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	alice := sampleRequest()
+	alice.SubmitterSub = "alice@example.com"
+	alice.Version = "1.0"
+	if _, err := s.CreateRequest(ctx, alice); err != nil {
+		t.Fatal(err)
+	}
+	alice.Version = "1.1"
+	if _, err := s.CreateRequest(ctx, alice); err != nil {
+		t.Fatal(err)
+	}
+	bob := sampleRequest()
+	bob.SubmitterSub = "bob@example.com"
+	bob.Version = "1.0"
+	if _, err := s.CreateRequest(ctx, bob); err != nil {
+		t.Fatal(err)
+	}
+
+	aliceCount, _ := s.CountOpenRequestsForUser(ctx, "alice@example.com")
+	bobCount, _ := s.CountOpenRequestsForUser(ctx, "bob@example.com")
+	if aliceCount != 2 {
+		t.Errorf("alice count=%d, want 2", aliceCount)
+	}
+	if bobCount != 1 {
+		t.Errorf("bob count=%d, want 1", bobCount)
+	}
+}
+
 // TestReclaimStuckFetching covers the crash-mid-retry recovery path
 // (Plan 76 §2.3). A request that entered `fetching` and never reached
 // a terminal — because the worker process died — must be resettable to

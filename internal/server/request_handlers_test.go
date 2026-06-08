@@ -871,6 +871,117 @@ func TestSubmitRequest_PerUserRateLimit_UnsetSkipsGate(t *testing.T) {
 	}
 }
 
+// =================================================================
+// Plan 76 §2.5: max_pending_per_user pool-size enforcement
+// =================================================================
+
+func TestSubmitRequest_MaxPendingPerUser_RejectsAtCap(t *testing.T) {
+	p := openPolicy(t)
+	p.Auth.MaxPendingPerUser = 2
+	env := newRequestTestEnvRateLimited(t, p)
+
+	alice := bearerUser("alice@example.com")
+	// First 2 distinct (module,version) pairs land.
+	for i := range 2 {
+		w := env.post(t, "/api/v1/requests",
+			map[string]string{"module": "rules_x", "version": "1." + itoa(int64(i))},
+			alice)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("attempt %d: status=%d, want 201", i, w.Code)
+		}
+	}
+	// Third distinct submission should be rejected.
+	w := env.post(t, "/api/v1/requests",
+		map[string]string{"module": "rules_x", "version": "1.99"},
+		alice)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("3rd attempt status=%d, want 429", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "max pending requests exceeded") {
+		t.Errorf("body=%q, want max-pending message", w.Body.String())
+	}
+}
+
+func TestSubmitRequest_MaxPendingPerUser_DisabledWhenZero(t *testing.T) {
+	p := openPolicy(t)
+	p.Auth.MaxPendingPerUser = 0 // disabled
+	env := newRequestTestEnvRateLimited(t, p)
+
+	alice := bearerUser("alice@example.com")
+	// Burst of 10 distinct submits should all pass when cap is 0.
+	for i := range 10 {
+		w := env.post(t, "/api/v1/requests",
+			map[string]string{"module": "rules_z", "version": "1." + itoa(int64(i))},
+			alice)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("attempt %d: status=%d, want 201 (cap disabled)", i, w.Code)
+		}
+	}
+}
+
+func TestSubmitRequest_MaxPendingPerUser_PerUserIndependent(t *testing.T) {
+	p := openPolicy(t)
+	p.Auth.MaxPendingPerUser = 1
+	env := newRequestTestEnvRateLimited(t, p)
+
+	alice := bearerUser("alice@example.com")
+	bob := bearerUser("bob@example.com")
+
+	if w := env.post(t, "/api/v1/requests",
+		map[string]string{"module": "m1", "version": "1.0"}, alice); w.Code != http.StatusCreated {
+		t.Fatalf("alice first: status=%d, want 201", w.Code)
+	}
+	if w := env.post(t, "/api/v1/requests",
+		map[string]string{"module": "m2", "version": "1.0"}, alice); w.Code != http.StatusTooManyRequests {
+		t.Fatalf("alice second: status=%d, want 429", w.Code)
+	}
+	// Bob's pool is independent.
+	if w := env.post(t, "/api/v1/requests",
+		map[string]string{"module": "m3", "version": "1.0"}, bob); w.Code != http.StatusCreated {
+		t.Fatalf("bob first: status=%d, want 201 (independent pool)", w.Code)
+	}
+}
+
+// TestSubmitRequest_MaxPendingPerUser_TerminalDoesNotCount asserts
+// that requests in terminal states (indexed, denied) don't count toward
+// the cap — only OPEN requests do.
+func TestSubmitRequest_MaxPendingPerUser_TerminalDoesNotCount(t *testing.T) {
+	p := openPolicy(t)
+	p.Auth.MaxPendingPerUser = 2
+	env := newRequestTestEnvRateLimited(t, p)
+
+	alice := bearerUser("alice@example.com")
+	ctx := context.Background()
+
+	// Create 2 requests; deny one (terminal).
+	for i := range 2 {
+		w := env.post(t, "/api/v1/requests",
+			map[string]string{"module": "rules_t", "version": "1." + itoa(int64(i))},
+			alice)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("setup attempt %d: status=%d, want 201", i, w.Code)
+		}
+	}
+	// Deny request id=1 to take it terminal. Drive through the
+	// preflight→needs_review path to reach a state denial is legal from.
+	for _, step := range []struct{ from, to store.RequestState }{
+		{store.RequestStatePending, store.RequestStateDenied},
+	} {
+		if err := env.store.TransitionRequest(ctx, 1, step.from, step.to,
+			&store.RequestFields{DenialReason: "test denial"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Alice now has 1 open + 1 denied → 1 open, room for 1 more.
+	w := env.post(t, "/api/v1/requests",
+		map[string]string{"module": "rules_t", "version": "1.99"},
+		alice)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("3rd submit after deny: status=%d, want 201 (denied row should not count)", w.Code)
+	}
+}
+
 // itoa avoids importing strconv just for the test path-building.
 func itoa(n int64) string {
 	if n == 0 {

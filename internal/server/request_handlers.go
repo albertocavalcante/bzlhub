@@ -46,6 +46,7 @@ type requestStore interface {
 	FindOpenRequest(ctx context.Context, module, version string) (*store.Request, error)
 	TransitionRequest(ctx context.Context, id int64, from, to store.RequestState, fields *store.RequestFields) error
 	RecordAudit(ctx context.Context, ev store.AuditEvent) error
+	CountOpenRequestsForUser(ctx context.Context, submitterSub string) (int, error)
 
 	// Maintainer management (slice 1D — Plan 73 §10).
 	AddMaintainer(ctx context.Context, module, userEmail, grantedBy string) error
@@ -93,6 +94,12 @@ func (h *requestHandlers) apiSubmitRequest(w http.ResponseWriter, r *http.Reques
 			"state": existing.State,
 			"dedup": true,
 		})
+		return
+	}
+	// Pool cap (Plan 76 §2.5). Runs AFTER dedup so a re-submit of an
+	// already-open (module, version) doesn't get counted as a new
+	// pending slot — dedup already returned the existing row above.
+	if !h.checkPendingCap(w, r, pol, id) {
 		return
 	}
 	newID, err := h.store.CreateRequest(ctx, newRequestFromBody(id, body))
@@ -218,6 +225,46 @@ func (h *requestHandlers) checkUserRate(w http.ResponseWriter, r *http.Request, 
 		"path", r.URL.Path,
 		"rate", pol.Auth.PerUserRateLimit,
 		"retry_after_s", seconds)
+	return false
+}
+
+// checkPendingCap enforces policy.Auth.MaxPendingPerUser — the
+// per-user open-request POOL cap (Plan 76 §2.5).
+//
+// Distinct from checkUserRate: rate-limit bounds submits per time
+// window; pool cap bounds simultaneously-open requests. A user can
+// be well under the rate limit but pile up pending work; the cap
+// gates that.
+//
+// 0 / negative MaxPendingPerUser disables the gate. Count failures
+// fail OPEN — a transient SQL hiccup shouldn't block submit; the
+// dedup path + rate limit still protect from runaway behaviour.
+//
+// Returns true to proceed; false when 429 was written.
+func (h *requestHandlers) checkPendingCap(w http.ResponseWriter, r *http.Request, pol *policy.Policy, id auth.Identity) bool {
+	cap := pol.Auth.MaxPendingPerUser
+	if cap <= 0 {
+		return true
+	}
+	user := submitterSub(id)
+	count, err := h.store.CountOpenRequestsForUser(r.Context(), user)
+	if err != nil {
+		h.log.Warn("checkPendingCap: count failed; allowing submit (fail-open)",
+			"err", err, "user", user)
+		return true
+	}
+	if count < cap {
+		return true
+	}
+	// 60s is a hint, not a guarantee — actual drain depends on the
+	// admit pipeline + reviewer throughput. Operators wanting a
+	// stricter signal can post-process the message in their client.
+	w.Header().Set("Retry-After", "60")
+	http.Error(w,
+		fmt.Sprintf("max pending requests exceeded (%d/%d open); wait for some to resolve before submitting more", count, cap),
+		http.StatusTooManyRequests)
+	h.log.Info("max_pending_per_user cap hit",
+		"user", user, "open", count, "cap", cap)
 	return false
 }
 
