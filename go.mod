@@ -8,10 +8,10 @@ require (
 	github.com/albertocavalcante/farol v0.0.0-20260521100058-45d811180afb
 	github.com/albertocavalcante/go-bcr-bundle v0.3.0
 	github.com/albertocavalcante/go-bcr-httpstore v0.3.0
-	github.com/albertocavalcante/go-bcr-mirror v0.0.0-00010101000000-000000000000
+	github.com/albertocavalcante/go-bcr-mirror v0.1.4
 	github.com/albertocavalcante/go-bzlmod v0.0.0-20260531025253-fc2e39f161aa
 	github.com/albertocavalcante/go-bzlmod-ast v0.0.0-20260531042442-dd6779bf1a31
-	github.com/albertocavalcante/go-cdn-purge v0.0.0-00010101000000-000000000000
+	github.com/albertocavalcante/go-cdn-purge v0.1.1
 	github.com/albertocavalcante/scip-bazel v0.2.0
 	github.com/albertocavalcante/stardoc-go v0.0.0-00010101000000-000000000000
 	github.com/albertocavalcante/starlark-doc-go v0.0.0
@@ -121,11 +121,3 @@ replace github.com/albertocavalcante/bazel-doc-go => ../bazel-doc-go
 replace github.com/albertocavalcante/farol => ../farol
 
 replace github.com/albertocavalcante/bigorna => ../bigorna
-
-replace github.com/albertocavalcante/go-bcr-mirror => ../go-bcr-mirror
-
-replace github.com/albertocavalcante/go-bcr-httpstore => ../go-bcr-httpstore
-
-replace github.com/albertocavalcante/go-cdn-purge => ../go-cdn-purge
-
-replace github.com/albertocavalcante/go-bcr-artifactory => ../go-bcr-artifactory
