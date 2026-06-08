@@ -110,6 +110,40 @@ func (s *Store) AllVersionsWithDrift(ctx context.Context) iter.Seq2[ModuleVersio
 	}
 }
 
+// UpsertSeedVersion inserts a bare (module, version) row into the
+// modules + versions tables so /modules surfaces it immediately.
+// Demo-only — used by `bzlhub seed --auto-approve` to populate a
+// fresh deployment without going through the full ingest pipeline
+// (which would require downloading + parsing real source archives).
+//
+// Idempotent: re-running with the same (module, version) is a no-op.
+// All ingest-derived columns (rules, providers, hermeticity, drift,
+// tarball_size, has_source_index) stay at their schema defaults.
+//
+// Not for production. Callers MUST gate behind a demo mode check;
+// see cmd/bzlhub/seed.go's --auto-approve plumbing.
+func (s *Store) UpsertSeedVersion(ctx context.Context, name, version string) error {
+	if name == "" || version == "" {
+		return errors.New("UpsertSeedVersion: module + version required")
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx,
+		`INSERT OR IGNORE INTO modules(name) VALUES(?)`, name); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT OR IGNORE INTO versions(module_name, version, compatibility_level, bazel_compatibility, hermeticity_json, report_json)
+		 VALUES(?, ?, 0, '{}', '{}', '{}')`,
+		name, version); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // SetTarballSize persists the compressed-tarball size for an
 // already-ingested (module, version). Idempotent. No-op when the
 // row doesn't exist (caller violated invariant; not our problem).

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -40,8 +41,15 @@ var defaultSeedSet = []seedEntry{
 // seedRequests so the CLI can print a one-line summary and the
 // tests can assert on counts.
 type seedResult struct {
-	Inserted int
-	Skipped  int
+	Inserted        int
+	Skipped         int
+	IndexedDirectly int // populated only when AutoApprove=true
+}
+
+// seedOptions configures a seedRequests run.
+type seedOptions struct {
+	Submitter   string
+	AutoApprove bool // also UpsertSeedVersion → /modules surface immediately
 }
 
 // newSeedCmd registers `bzlhub seed` — populate the procurement
@@ -52,28 +60,42 @@ type seedResult struct {
 // regardless of state.
 func newSeedCmd() *cobra.Command {
 	var (
-		dbPath    string
-		submitter string
-		modules   []string
+		dbPath      string
+		submitter   string
+		modules     []string
+		autoApprove bool
 	)
 	cmd := &cobra.Command{
 		Use:   "seed",
 		Short: "Seed procurement requests for a fresh deployment",
 		Long: "Inserts a canonical set of `pending` procurement requests so a fresh " +
 			"corp.bzlhub.com demo has visible content. Idempotent — re-runs skip " +
-			"any (module, version) already present in the requests table.",
+			"any (module, version) already present in the requests table.\n\n" +
+			"Use --auto-approve (demo-only — requires BZLHUB_DEMO_MODE=true) to ALSO " +
+			"populate the modules + versions index tables so /modules surfaces the " +
+			"seeded rows immediately, bypassing the procurement state machine. Plan " +
+			"76 §2.7's first-impression demo fix.",
 		Example: `  # Default 12-rule set with seed-bot as submitter
   bzlhub seed --db=/var/bzlhub/bzlhub.db --submitter=seed-bot@example.com
 
   # Custom module list
   bzlhub seed --db=/var/bzlhub/bzlhub.db --submitter=seed-bot@example.com \
-              --module=rules_go@0.60.0 --module=rules_python@1.5.0`,
+              --module=rules_go@0.60.0 --module=rules_python@1.5.0
+
+  # Demo: also publish to /modules immediately
+  BZLHUB_DEMO_MODE=true bzlhub seed --db=/var/bzlhub/bzlhub.db \
+              --submitter=seed-bot@example.com --auto-approve`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if dbPath == "" {
 				return errors.New("--db is required (path to bzlhub.db)")
 			}
 			if submitter == "" {
 				return errors.New("--submitter is required (email recorded as the request submitter)")
+			}
+			if autoApprove && os.Getenv("BZLHUB_DEMO_MODE") != "true" {
+				return errors.New(
+					"--auto-approve requires BZLHUB_DEMO_MODE=true " +
+						"(demo flag, not for production)")
 			}
 
 			entries := defaultSeedSet
@@ -94,13 +116,14 @@ func newSeedCmd() *cobra.Command {
 			}
 			defer s.Close()
 
-			res, err := seedRequests(cmd.Context(), s, entries, submitter)
+			res, err := seedRequestsWithOptions(cmd.Context(), s, entries,
+				seedOptions{Submitter: submitter, AutoApprove: autoApprove})
 			if err != nil {
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(),
-				"seed: inserted=%d skipped=%d total=%d\n",
-				res.Inserted, res.Skipped, len(entries))
+				"seed: inserted=%d skipped=%d indexed_directly=%d total=%d\n",
+				res.Inserted, res.Skipped, res.IndexedDirectly, len(entries))
 			return nil
 		},
 	}
@@ -109,13 +132,25 @@ func newSeedCmd() *cobra.Command {
 		"email recorded as submitter_sub + submitter_email (e.g. seed-bot@example.com)")
 	cmd.Flags().StringArrayVar(&modules, "module", nil,
 		"override the canonical set with one or more `module@version` entries (repeatable)")
+	cmd.Flags().BoolVar(&autoApprove, "auto-approve", false,
+		"ALSO insert directly into the modules+versions index so /modules shows entries "+
+			"immediately. Demo-only — requires BZLHUB_DEMO_MODE=true. "+
+			"Bypasses the procurement state machine; do not use in production.")
 	return cmd
 }
 
-// seedRequests inserts every entry into the store unless a row for
-// that (module, version) already exists. Reports counts via
-// seedResult; the caller surfaces them however it likes.
+// seedRequests is the simple-API wrapper for the default no-flags
+// path. Kept for callers that don't need the auto-approve gate.
 func seedRequests(ctx context.Context, s *store.Store, entries []seedEntry, submitter string) (seedResult, error) {
+	return seedRequestsWithOptions(ctx, s, entries, seedOptions{Submitter: submitter})
+}
+
+// seedRequestsWithOptions inserts every entry into the store unless a
+// row for that (module, version) already exists. When opts.AutoApprove
+// is true, additionally calls Store.UpsertSeedVersion so the entry
+// appears in /modules immediately (Plan 76 §2.7 demo fix). Reports
+// counts via seedResult; the caller surfaces them however it likes.
+func seedRequestsWithOptions(ctx context.Context, s *store.Store, entries []seedEntry, opts seedOptions) (seedResult, error) {
 	var res seedResult
 	for _, e := range entries {
 		exists, err := s.AnyRequestFor(ctx, e.Module, e.Version)
@@ -124,19 +159,25 @@ func seedRequests(ctx context.Context, s *store.Store, entries []seedEntry, subm
 		}
 		if exists {
 			res.Skipped++
-			continue
+		} else {
+			if _, err := s.CreateRequest(ctx, store.Request{
+				SubmitterSub:   opts.Submitter,
+				SubmitterEmail: opts.Submitter,
+				AuthMethod:     "seed",
+				Module:         e.Module,
+				Version:        e.Version,
+				SubmitterNotes: "seeded by `bzlhub seed`",
+			}); err != nil {
+				return res, fmt.Errorf("create %s@%s: %w", e.Module, e.Version, err)
+			}
+			res.Inserted++
 		}
-		if _, err := s.CreateRequest(ctx, store.Request{
-			SubmitterSub:   submitter,
-			SubmitterEmail: submitter,
-			AuthMethod:     "seed",
-			Module:         e.Module,
-			Version:        e.Version,
-			SubmitterNotes: "seeded by `bzlhub seed`",
-		}); err != nil {
-			return res, fmt.Errorf("create %s@%s: %w", e.Module, e.Version, err)
+		if opts.AutoApprove {
+			if err := s.UpsertSeedVersion(ctx, e.Module, e.Version); err != nil {
+				return res, fmt.Errorf("upsert seed version %s@%s: %w", e.Module, e.Version, err)
+			}
+			res.IndexedDirectly++
 		}
-		res.Inserted++
 	}
 	return res, nil
 }
