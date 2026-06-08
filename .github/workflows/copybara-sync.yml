@@ -100,3 +100,31 @@ jobs:
           git-token: ${{ steps.eukia.outputs.token }}
           git-user-name: "Eukia[bot]"
           git-user-email: "eukia[bot]@users.noreply.github.com"
+
+      # Failure alerting — fires only on workflow failure. Matches the
+      # 4-layer alerting pattern from gosumdb / sovereign-probe (per
+      # memory project_go_module_supply_chain.md). Closes the
+      # "auto-Copybara might fail silently" risk surfaced in the
+      # 2026-06-08 retrospective.
+      #
+      # Topic: ntfy.alberto.engineer/copybara-alerts — operator
+      # subscribes via ntfy app or curl --get; on-fail message is
+      # high-priority with a direct link to the failed run.
+      - name: Notify on failure
+        if: ${{ failure() }}
+        run: |
+          MESSAGE="Copybara sync FAILED on canopy@${SHA:0:7} (${REF})
+          Run: ${RUN_URL}
+          Trigger: ${EVENT}"
+          curl -sS --fail \
+            -H "Title: Copybara sync failed" \
+            -H "Priority: high" \
+            -H "Tags: warning,gear,copybara" \
+            -d "$MESSAGE" \
+            https://ntfy.alberto.engineer/copybara-alerts \
+            || echo "ntfy POST failed (alert lost; see workflow log)"
+        env:
+          SHA: ${{ github.sha }}
+          REF: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
