@@ -6,11 +6,12 @@ import (
 	"sort"
 	"time"
 
+	"go.starlark.net/starlark"
+
 	bazelctx "github.com/albertocavalcante/starlark-go-bazel/ctx"
 	"github.com/albertocavalcante/starlark-go-bazel/taint"
 	"github.com/albertocavalcante/starlark-go-bazel/types"
 	"github.com/albertocavalcante/starlark-go-bazel/version"
-	"go.starlark.net/starlark"
 )
 
 const (

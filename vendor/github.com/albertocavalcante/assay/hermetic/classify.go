@@ -51,9 +51,9 @@ import (
 	"go.starlark.net/syntax"
 
 	"github.com/albertocavalcante/assay/dialect"
-	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/internal/walkparse"
 	"github.com/albertocavalcante/assay/report"
+	syntaxutil "github.com/albertocavalcante/go-starlark-syntaxutil"
 )
 
 // Classify walks rootDir's tree and records hermeticity findings.
@@ -175,7 +175,7 @@ func (c *classifier) scan(f *syntax.File, relPath string, isBuild bool) {
 				Symbol:     name,
 				Reason:     "BUILD file invokes " + name + " — compiles source at consumer build time",
 				Confidence: report.ConfidenceHeuristic,
-				Provenance: syntaxutil.ProvenanceFrom(relPath, call),
+				Provenance: report.ProvenanceFromNode(relPath, call),
 			})
 		}
 		if c.dialect.IsNetworkFetchAPI(name) {
@@ -197,7 +197,7 @@ func (c *classifier) scan(f *syntax.File, relPath string, isBuild bool) {
 				Symbol:     name,
 				Reason:     reason,
 				Confidence: confidence,
-				Provenance: syntaxutil.ProvenanceFrom(relPath, call),
+				Provenance: report.ProvenanceFromNode(relPath, call),
 			})
 			if pinned && syntaxutil.BoolKeywordArg(call, "executable") {
 				// Definitive: both signals are literal AST shapes.
@@ -206,7 +206,7 @@ func (c *classifier) scan(f *syntax.File, relPath string, isBuild bool) {
 					Symbol:     name,
 					Reason:     "calls " + name + " with executable=True and pinned integrity hash",
 					Confidence: report.ConfidenceDefinitive,
-					Provenance: syntaxutil.ProvenanceFrom(relPath, call),
+					Provenance: report.ProvenanceFromNode(relPath, call),
 				})
 			}
 		}
@@ -221,7 +221,7 @@ func (c *classifier) scan(f *syntax.File, relPath string, isBuild bool) {
 				Symbol:     name,
 				Reason:     "calls " + name + " — runs arbitrary commands",
 				Confidence: report.ConfidenceHeuristic,
-				Provenance: syntaxutil.ProvenanceFrom(relPath, call),
+				Provenance: report.ProvenanceFromNode(relPath, call),
 			})
 		}
 		return true

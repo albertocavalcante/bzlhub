@@ -19,13 +19,13 @@ import (
 	scipproto "github.com/scip-code/scip/bindings/go/scip"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/api/paths"
-	"github.com/albertocavalcante/canopy/internal/backend"
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/featureflags"
-	"github.com/albertocavalcante/canopy/internal/server"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/backend"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/featureflags"
+	"github.com/albertocavalcante/bzlhub/internal/server"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // TestMirrorServeRouting builds a content-addressed mirror in a temp dir,
@@ -235,7 +235,7 @@ func TestSPA_APIPath_Returns404JSON(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + "/api/this-route-does-not-exist")
@@ -263,7 +263,7 @@ func TestSearch_EmptyResult_ReturnsEmptyArray(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.Search() + "?q=zzznomatchzzz")
@@ -299,7 +299,7 @@ func TestXRefs_NoSymbol_Returns400(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.XRefs())
@@ -331,7 +331,7 @@ func TestXRefs_EmptyStore_ReturnsEmptyGroups(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.XRefs() + "?symbol=bzlmod+foo%401.0+a.bzl%23x")
@@ -366,7 +366,7 @@ func TestListModules_EmptyStore_ReturnsEmptyArray(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.ModulesIndex())
@@ -413,7 +413,7 @@ func TestListModules_GroupsAndCountsVersions(t *testing.T) {
 		}
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.ModulesIndex())
@@ -473,7 +473,7 @@ func TestListModules_FilterByQueryParams(t *testing.T) {
 		}
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	cases := []struct {
@@ -548,7 +548,7 @@ func TestCodeNavLatest_RedirectsToLatestVersion(t *testing.T) {
 		}
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	// Use a non-following client so we can assert the 302 location.
@@ -597,7 +597,7 @@ func TestCodeNavLatest_UnknownModuleRendersFriendlyPage(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + "/modules/never_indexed/code-nav")
@@ -647,7 +647,7 @@ func TestListModules_HasSourceIndexReflectsScipDocCount(t *testing.T) {
 	}
 	// beta: no blob written. Service handles the missing case as false.
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.ModulesIndex())
@@ -723,7 +723,7 @@ func TestApiFeatures_PublicSnapshot(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.NewWithOptions(nil, canopy.New(s), nil, server.Options{
+	ts := httptest.NewServer(server.NewWithOptions(nil, bzlhub.New(s), nil, server.Options{
 		Flags: featureflags.Flags{
 			IngestWriteEnabled: true,
 			RegistryURL:        "https://internal-only.example",
@@ -779,7 +779,7 @@ func TestApiIngest_Disabled_Returns503(t *testing.T) {
 
 	// IngestWriteEnabled defaults to false — explicit zero value here
 	// to make the intent obvious.
-	ts := httptest.NewServer(server.NewWithOptions(nil, canopy.New(s), nil, server.Options{
+	ts := httptest.NewServer(server.NewWithOptions(nil, bzlhub.New(s), nil, server.Options{
 		Flags: featureflags.Flags{IngestWriteEnabled: false},
 	}))
 	t.Cleanup(ts.Close)
@@ -807,7 +807,7 @@ func TestApiIngest_RateLimit_Returns429(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.NewWithOptions(nil, canopy.New(s), nil, server.Options{
+	ts := httptest.NewServer(server.NewWithOptions(nil, bzlhub.New(s), nil, server.Options{
 		Flags: featureflags.Flags{
 			IngestWriteEnabled:    true,
 			IngestRateLimitPerMin: 1,
@@ -857,7 +857,7 @@ func TestApiBCRProbe_Required(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.NewWithOptions(nil, canopy.New(s), nil, server.Options{}))
+	ts := httptest.NewServer(server.NewWithOptions(nil, bzlhub.New(s), nil, server.Options{}))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.SystemBCRProbe() + "?module=foo")
@@ -897,7 +897,7 @@ func TestApiBCRProbe_HitsUpstream(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.NewWithOptions(nil, canopy.New(s), nil, server.Options{
+	ts := httptest.NewServer(server.NewWithOptions(nil, bzlhub.New(s), nil, server.Options{
 		Flags: featureflags.Flags{RegistryURL: upstream.URL},
 	}))
 	t.Cleanup(ts.Close)

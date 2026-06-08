@@ -1,6 +1,7 @@
 package bcrmirror
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -46,11 +47,10 @@ func (m *Mirror) Clone(ctx context.Context, opts CloneOptions) (CloneReceipt, er
 		return receipt, fmt.Errorf("bcrmirror.Clone: empty Remote")
 	}
 
-	// Idempotent check: if Path is already a valid clone of Remote,
-	// attach the Mirror to it and return ErrAlreadyCloned. The
-	// Mirror is left in the same usable state as a fresh clone or
-	// an explicit Open call, so callers can immediately use read
-	// methods without an extra Open() round-trip.
+	// Idempotent check FIRST (no lock — pure read of disk state).
+	// Otherwise the second of two overlapping bootstraps would
+	// touch <mirror>/.git just to create the lock file, mutating
+	// state we promised to leave untouched on the idempotent path.
 	existingRepo, existingSHA, detectErr := m.detectExistingClone()
 	if detectErr != nil {
 		return receipt, detectErr
@@ -64,17 +64,19 @@ func (m *Mirror) Clone(ctx context.Context, opts CloneOptions) (CloneReceipt, er
 		return receipt, fmt.Errorf("%w: HEAD %s", ErrAlreadyCloned, existingSHA)
 	}
 
-	timeout := opts.Timeout
-	if timeout == 0 {
-		timeout = defaultCloneTimeout
+	// Past the idempotent fast-path — actually writing. Take the
+	// lock so two concurrent first-time clones don't corrupt each
+	// other's git state.
+	release, lockErr := acquireMirrorLock(m.Path)
+	if lockErr != nil {
+		return receipt, lockErr
 	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer release()
+
+	ctx, cancel := context.WithTimeout(ctx, cmp.Or(opts.Timeout, defaultCloneTimeout))
 	defer cancel()
 
-	branch := opts.Branch
-	if branch == "" {
-		branch = defaultBranch
-	}
+	branch := cmp.Or(opts.Branch, defaultBranch)
 
 	cloneOpts := &git.CloneOptions{
 		URL:           m.Remote,
@@ -107,11 +109,13 @@ func (m *Mirror) Clone(ctx context.Context, opts CloneOptions) (CloneReceipt, er
 	receipt.Duration = time.Since(start)
 	receipt.Sparse = len(opts.Sparse) > 0
 
+	now := time.Now().UTC()
 	m.stateMu.Lock()
 	m.repo = repo
-	m.lastSync = time.Now().UTC()
+	m.lastSync = now
 	m.lastSHA = headSHA
 	m.stateMu.Unlock()
+	writeLastSyncFile(m.Path, headSHA, now)
 
 	return receipt, nil
 }
@@ -136,17 +140,19 @@ func (m *Mirror) Sync(ctx context.Context, opts SyncOptions) (SyncReceipt, error
 		return receipt, err
 	}
 
+	release, lockErr := acquireMirrorLock(m.Path)
+	if lockErr != nil {
+		return receipt, lockErr
+	}
+	defer release()
+
 	fromSHA, err := readHEAD(repo)
 	if err != nil {
 		return receipt, fmt.Errorf("bcrmirror.Sync: read HEAD pre-sync: %w", err)
 	}
 	receipt.FromSHA = fromSHA
 
-	timeout := opts.Timeout
-	if timeout == 0 {
-		timeout = defaultSyncTimeout
-	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(ctx, cmp.Or(opts.Timeout, defaultSyncTimeout))
 	defer cancel()
 
 	wt, err := repo.Worktree()
@@ -164,17 +170,16 @@ func (m *Mirror) Sync(ctx context.Context, opts SyncOptions) (SyncReceipt, error
 	case pullErr == nil:
 		// Pull succeeded with new commits.
 	case errors.Is(pullErr, git.NoErrAlreadyUpToDate):
-		// Nothing to fetch. Still update lastSync: an up-to-date
-		// probe IS evidence the operator confirmed upstream — the
-		// staleness signal LastSync drives must reflect "when did
-		// we last contact the remote", not "when did we last
-		// advance HEAD."
+		// Up-to-date probe still bumps lastSync — confirming the
+		// remote hasn't moved counts as upstream contact.
 		receipt.ToSHA = fromSHA
 		receipt.UpToDate = true
 		receipt.Duration = time.Since(start)
+		now := time.Now().UTC()
 		m.stateMu.Lock()
-		m.lastSync = time.Now().UTC()
+		m.lastSync = now
 		m.stateMu.Unlock()
+		writeLastSyncFile(m.Path, fromSHA, now)
 		return receipt, nil
 	case errors.Is(pullErr, git.ErrNonFastForwardUpdate):
 		// go-git's PullOptions.Force only forces the fetch refspec
@@ -208,10 +213,12 @@ func (m *Mirror) Sync(ctx context.Context, opts SyncOptions) (SyncReceipt, error
 	receipt.Commits = commits
 	receipt.Duration = time.Since(start)
 
+	now := time.Now().UTC()
 	m.stateMu.Lock()
-	m.lastSync = time.Now().UTC()
+	m.lastSync = now
 	m.lastSHA = toSHA
 	m.stateMu.Unlock()
+	writeLastSyncFile(m.Path, toSHA, now)
 
 	return receipt, nil
 }

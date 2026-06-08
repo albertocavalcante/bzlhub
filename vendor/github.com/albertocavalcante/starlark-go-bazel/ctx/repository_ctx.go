@@ -3,9 +3,10 @@ package ctx
 import (
 	"fmt"
 
+	"go.starlark.net/starlark"
+
 	"github.com/albertocavalcante/starlark-go-bazel/taint"
 	"github.com/albertocavalcante/starlark-go-bazel/version"
-	"go.starlark.net/starlark"
 )
 
 // RepositoryCtx is the synthetic ctx passed to a repository_rule's
@@ -100,7 +101,7 @@ func (c *RepositoryCtx) Hash() (uint32, error) { return 0, fmt.Errorf("unhashabl
 func (c *RepositoryCtx) Attr(name string) (starlark.Value, error) {
 	switch name {
 	// Repository-ctx-specific attributes / methods.
-	case "name":
+	case attrName:
 		return starlark.String(c.name), nil
 	case "original_name":
 		if c.originalName != "" {
@@ -109,7 +110,7 @@ func (c *RepositoryCtx) Attr(name string) (starlark.Value, error) {
 		return starlark.String(c.name), nil
 	case "workspace_root":
 		return starlark.String(c.workspaceRoot), nil
-	case "attr":
+	case attrAttr:
 		if c.cachedAttr == nil {
 			c.cachedAttr = &RepositoryAttr{values: c.attrs}
 		}
@@ -125,7 +126,7 @@ func (c *RepositoryCtx) Attr(name string) (starlark.Value, error) {
 		return starlark.NewBuiltin("ctx.watch_tree", noopNone), nil
 	case "repo_metadata":
 		// Bazel 9+ only.
-		if c.ver >= version.V9 || c.ver == version.VLatest {
+		if c.ver >= version.V9 {
 			return starlark.NewBuiltin("ctx.repo_metadata", c.repoMetadataMethod), nil
 		}
 		return nil, nil
@@ -142,17 +143,17 @@ func (c *RepositoryCtx) Attr(name string) (starlark.Value, error) {
 		return starlark.NewBuiltin("ctx.which", c.whichMethod), nil
 	case "getenv":
 		// Bazel 8+ method.
-		if c.ver >= version.V8 || c.ver == version.VLatest {
+		if c.ver >= version.V8 {
 			return starlark.NewBuiltin("ctx.getenv", c.getenvMethod), nil
 		}
 		return nil, nil
 	case "watch":
 		// Bazel 8+ method.
-		if c.ver >= version.V8 || c.ver == version.VLatest {
+		if c.ver >= version.V8 {
 			return starlark.NewBuiltin("ctx.watch", noopNone), nil
 		}
 		return nil, nil
-	case "path":
+	case attrPath:
 		return starlark.NewBuiltin("ctx.path", passThroughFirst), nil
 	case "report_progress":
 		return starlark.NewBuiltin("ctx.report_progress", noopNone), nil
@@ -167,13 +168,13 @@ func (c *RepositoryCtx) AttrNames() []string {
 		"which", "path", "report_progress",
 		"symlink", "template", "delete", "rename", "patch", "extract", "file",
 	}
-	if c.ver >= version.V8 || c.ver == version.VLatest {
+	if c.ver >= version.V8 {
 		names = append(names, "getenv", "watch")
 	}
-	if c.ver >= version.V8 || c.ver == version.VLatest {
+	if c.ver >= version.V8 {
 		names = append(names, "watch_tree")
 	}
-	if c.ver >= version.V9 || c.ver == version.VLatest {
+	if c.ver >= version.V9 {
 		names = append(names, "repo_metadata")
 	}
 	return names
@@ -298,7 +299,7 @@ func (o *RepositoryOs) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable
 
 func (o *RepositoryOs) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "name":
+	case attrName:
 		return starlark.String(o.name), nil
 	case "arch":
 		return starlark.String(o.arch), nil

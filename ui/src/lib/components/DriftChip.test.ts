@@ -109,6 +109,67 @@ describe('hoverTitle', () => {
     expect(t).toBe('Not present upstream (local-only module)');
   });
 
+  test('behind: shows synced affix when synced_at differs meaningfully from computed_at', () => {
+    // synced 3 days ago, computed 1m ago — operator should run sync run
+    const t = hoverTitle(
+      {
+        status: 'behind',
+        behind: 2,
+        latest_upstream: '1.2.0',
+        computed_at: new Date(NOW - 60 * 1000).toISOString(),
+        synced_at: new Date(NOW - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      'behind',
+      NOW,
+    );
+    expect(t).toContain('computed');
+    expect(t).toContain('synced 3d ago');
+  });
+
+  test('behind: suppresses synced affix when synced_at is close to computed_at', () => {
+    // computed + synced within 60s — sync run that produced both
+    // shouldn't double the affix.
+    const t = hoverTitle(
+      {
+        status: 'behind',
+        behind: 2,
+        computed_at: new Date(NOW - 4 * 60 * 60 * 1000).toISOString(),
+        synced_at: new Date(NOW - 4 * 60 * 60 * 1000 - 10 * 1000).toISOString(),
+      },
+      'behind',
+      NOW,
+    );
+    expect(t).toContain('computed 4h ago');
+    expect(t).not.toContain('synced');
+  });
+
+  test('yanked-upstream: shows synced affix when it differs from computed', () => {
+    const t = hoverTitle(
+      {
+        status: 'yanked-upstream',
+        computed_at: new Date(NOW - 60 * 1000).toISOString(),
+        synced_at: new Date(NOW - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      'yanked-upstream',
+      NOW,
+    );
+    expect(t).toContain('yanked this version');
+    expect(t).toContain('synced 2d ago');
+  });
+
+  test('behind: omits synced when synced_at is absent', () => {
+    const t = hoverTitle(
+      {
+        status: 'behind',
+        behind: 1,
+        computed_at: new Date(NOW - 60 * 60 * 1000).toISOString(),
+      },
+      'behind',
+      NOW,
+    );
+    expect(t).not.toContain('synced');
+  });
+
   test('returns empty string for silent states', () => {
     expect(hoverTitle({}, 'unknown', NOW)).toBe('');
     expect(hoverTitle({ status: 'in-sync' }, 'in-sync', NOW)).toBe('');

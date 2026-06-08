@@ -55,7 +55,7 @@
   <!--
     Tab nav lives at the layout level so child routes inherit the
     same chrome. Underline-on-active styling matches the rest of
-    canopy's tab patterns (drift dashboard, etc.).
+    bzlhub's tab patterns (drift dashboard, etc.).
   -->
   <nav
     class="border-b border-line flex items-center gap-1 text-[13px]"
@@ -76,7 +76,7 @@
     <a
       href={`${overviewBase}/code-nav/`}
       class="px-3 py-2 border-b-2 border-transparent text-fg-mute hover:text-fg transition-colors"
-      title="Browse source — leaves the SPA, served by canopy's Go handler"
+      title="Browse source — leaves the SPA, served by bzlhub's Go handler"
     >
       Code
     </a>

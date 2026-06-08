@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/albertocavalcante/canopy/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api"
 )
 
 // apiDrift compares the mirror against an upstream BCR-shape registry.

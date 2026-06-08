@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api"
 )
 
 func TestFilterModuleList(t *testing.T) {

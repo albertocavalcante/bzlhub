@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/backend"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/backend"
 )
 
 // collisionReader is the slice of the Canopy contract that the
@@ -23,7 +23,7 @@ type collisionReader interface {
 // primary kind + per-upstream reachability snapshot (Plan 16 F3).
 //
 // When canopy serves a non-federated config (no --upstream flag /
-// CANOPY_UPSTREAMS env), Upstreams is the empty array; clients can
+// BZLHUB_UPSTREAMS env), Upstreams is the empty array; clients can
 // treat that as "federation disabled."
 //
 // Introspection is via interface assertion against the backend:

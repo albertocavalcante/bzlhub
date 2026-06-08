@@ -1,0 +1,78 @@
+## golangci-lint v2 configuration.
+##
+## Small, outcome-oriented linter set. Noisy linters (gocognit,
+## funlen, gocritic's hugeParam) are off by default; enable per
+## package if a specific quality problem motivates it.
+
+version = "2"
+
+[run]
+timeout = "5m"
+tests = true
+modules-download-mode = "readonly"
+
+[issues]
+exclude-dirs = ["vendor"]
+
+[linters]
+default = "standard"
+enable = [
+  "errcheck",
+  "govet",
+  "staticcheck",
+  "unused",
+  "ineffassign",
+  "misspell",
+  "unconvert",
+  "unparam",
+  "whitespace",
+  "copyloopvar",
+  "intrange",
+  "gosec",
+]
+
+# Linters we deliberately don't run:
+#   - wrapcheck: error-wrapping policy is per-package, not global.
+#   - exhaustruct: many structs use optional fields with omitempty.
+#   - varnamelen: short receiver names and short locals in tight
+#     AST-walk loops are deliberate.
+#   - gocognit / funlen / gocyclo: AST visitor methods are
+#     unavoidably long; splitting just to satisfy the linter hurts
+#     readability.
+disable = [
+  "wrapcheck",
+  "exhaustruct",
+  "varnamelen",
+  "gocognit",
+  "funlen",
+  "gocyclo",
+]
+
+[linters.settings.errcheck]
+check-type-assertions = false
+check-blank = false
+
+[linters.settings.govet]
+enable-all = true
+# Field grouping favors readability over byte packing.
+disable = ["fieldalignment"]
+
+[linters.settings.misspell]
+locale = "US"
+
+[linters.settings.staticcheck]
+# SA1019 (deprecated API) is also raised by go vet's checks; suppress
+# the duplicate here.
+checks = ["all", "-SA1019"]
+
+[linters.settings.gosec]
+# G104 (errcheck duplicate), G115 (int conversion overflow — false
+# positives on AST col/row int64 math).
+excludes = ["G104", "G115"]
+
+[linters.exclusions]
+generated = "lax"
+
+[[linters.exclusions.rules]]
+path = "_test\\.go"
+linters = ["gosec", "errcheck"]

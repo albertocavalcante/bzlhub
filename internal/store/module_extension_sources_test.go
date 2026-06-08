@@ -6,7 +6,7 @@ import (
 
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // Producer rulesets need their extension-bearing .bzl source available

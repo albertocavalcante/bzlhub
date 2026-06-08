@@ -39,7 +39,7 @@ func (s *SelectorValue) String() string {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(fmt.Sprintf("%q: ", k))
+		fmt.Fprintf(&sb, "%q: ", k)
 		sb.WriteString(s.conditions[k].String())
 	}
 	sb.WriteString("})")

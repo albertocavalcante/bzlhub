@@ -15,7 +15,7 @@
   import { base } from '$app/paths';
   import { codeNavFileHref } from '$lib/links';
 
-  // Shiki is heavy (~500KB) but already bundled for other canopy
+  // Shiki is heavy (~500KB) but already bundled for other bzlhub
   // surfaces. Lazy-import here so the homepage bundle stays untouched
   // — readers who never open an example pay nothing.
   type Highlighter = (code: string, opts: { lang: string; theme: string }) => Promise<string>;

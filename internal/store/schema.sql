@@ -321,3 +321,59 @@ CREATE INDEX IF NOT EXISTS idx_module_sources_collisions
     WHERE source_kind = 'collision-shadowed';
 CREATE INDEX IF NOT EXISTS idx_module_sources_seen
     ON module_sources(seen_at DESC);
+
+-- requests: Plan 67 procurement state machine. One row per
+-- module-version someone wants admitted to the registry. State
+-- transitions are checked at the application layer
+-- (RequestState.CanTransitionTo) and enforced atomically via the
+-- UPDATE ... WHERE state=? optimistic-concurrency pattern in
+-- TransitionRequest.
+--
+-- No UNIQUE constraint on (module, version, state) — concurrent
+-- submissions for the same module collapse via application-level
+-- dedup so the operator sees one request thread per (module,
+-- version) rather than the DB rejecting later submitters with an
+-- opaque integrity error.
+CREATE TABLE IF NOT EXISTS requests (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    submitter_sub     TEXT NOT NULL,
+    submitter_email   TEXT,
+    auth_method       TEXT NOT NULL,            -- bearer | header | anonymous
+    module            TEXT NOT NULL,
+    version           TEXT NOT NULL,
+    source_url        TEXT,
+    submitter_notes   TEXT,
+    state             TEXT NOT NULL,            -- see RequestState* in requests.go
+    state_changed_at  TEXT NOT NULL,            -- RFC3339Nano UTC
+    created_at        TEXT NOT NULL,            -- RFC3339Nano UTC
+    preflight_json    TEXT,                     -- JSON; nullable
+    denial_reason     TEXT,
+    fetched_sha       TEXT,                     -- archive SHA-256 after fetch
+    committed_sha     TEXT,                     -- forgejo commit sha after write
+    retry_count       INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_requests_state     ON requests(state);
+CREATE INDEX IF NOT EXISTS idx_requests_submitter ON requests(submitter_sub);
+CREATE INDEX IF NOT EXISTS idx_requests_created   ON requests(created_at DESC);
+
+-- module_maintainers: per-module ownership grants. Powers the
+-- `maintainer` gate in policy.yml (Plan 70 §Maintainers, Plan 71).
+-- Composite PK so re-granting is a natural no-op via INSERT OR
+-- IGNORE — the application layer doesn't need a separate Exists
+-- probe.
+--
+-- granted_by records the identity that issued the grant for audit;
+-- granted_at is set server-side at INSERT time. Both fields stay
+-- frozen on re-grant (the IGNORE path) so the original audit story
+-- is preserved.
+CREATE TABLE IF NOT EXISTS module_maintainers (
+    module      TEXT NOT NULL,
+    user_email  TEXT NOT NULL,
+    granted_at  TEXT NOT NULL,
+    granted_by  TEXT NOT NULL,
+    PRIMARY KEY (module, user_email)
+);
+
+CREATE INDEX IF NOT EXISTS idx_maintainers_module ON module_maintainers(module);
+CREATE INDEX IF NOT EXISTS idx_maintainers_user   ON module_maintainers(user_email);

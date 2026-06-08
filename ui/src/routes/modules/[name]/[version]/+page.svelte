@@ -184,7 +184,7 @@
   });
 
   // Transitive node list excludes the root itself + sorts for
-  // scannability. External nodes (deps not indexed in this canopy)
+  // scannability. External nodes (deps not indexed in this bzlhub)
   // surface at the end with a dim style.
   const transitiveDeps = $derived.by(() => {
     if (!closureGraph) return [] as ClosureGraphResponse['nodes'];
@@ -222,7 +222,7 @@
 </script>
 
 <svelte:head>
-  <title>{report ? `${report.name}@${report.version}` : 'module'} — canopy</title>
+  <title>{report ? `${report.name}@${report.version}` : 'module'} — bzlhub</title>
 </svelte:head>
 
 {#if loading}
@@ -259,7 +259,7 @@
       class="text-[11px] text-fg-dim font-mono flex items-center gap-1.5"
       aria-label="breadcrumb"
     >
-      <a href="/" class="hover:text-fg transition-colors">canopy</a>
+      <a href="/" class="hover:text-fg transition-colors">bzlhub</a>
       <span class="text-fg-dim/60">/</span>
       <span class="text-fg-mute">modules</span>
       <span class="text-fg-dim/60">/</span>
@@ -712,7 +712,7 @@
                     {#if n.external}
                       <span
                         class="text-[10px] uppercase tracking-wide text-fg-dim/70"
-                        title="not indexed in this canopy"
+                        title="not indexed in this bzlhub"
                       >ext</span>
                     {/if}
                   {/if}

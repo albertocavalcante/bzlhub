@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/albertocavalcante/canopy/internal/githubmeta"
+	"github.com/albertocavalcante/bzlhub/internal/githubmeta"
 )
 
 // GitHubMetaRow is the persisted form of githubmeta.Meta plus refresh

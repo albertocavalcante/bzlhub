@@ -5,7 +5,7 @@ import (
 	"image/png"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/ogimg"
+	"github.com/albertocavalcante/bzlhub/internal/ogimg"
 )
 
 func TestRender_Dimensions(t *testing.T) {

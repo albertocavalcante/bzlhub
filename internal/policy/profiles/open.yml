@@ -1,0 +1,43 @@
+# open profile — Plan 71.
+#
+# Anonymous everything with anti-abuse. The shape of bzlhub.com
+# pre-procurement (public OSS browse + anyone can request, with
+# turnstile + first-time-holdback to keep abuse manageable).
+version: 1
+profile: open
+
+auth:
+  actions:
+    view_modules:        any
+    view_module_report:  any
+    view_requests:       any
+    view_audit:          any
+    view_maintainers:    any
+    view_user_profile:   any
+    submit_request:      any
+    approve_request:     group:approver
+    deny_request:        group:approver
+    maintain_module:     maintainer
+    grant_maintainer:    group:approver
+    use_mcp_read:        any
+    use_mcp_write:       authenticated
+
+admission:
+  license:
+    require_license:  true
+    unknown_verdict:  review
+  hermeticity:
+    pure-starlark:                 pass
+    prebuilt-binaries-pinned:      pass
+    build-from-source:             pass
+    network-fetch-pinned:          pass
+    network-fetch-unpinned:        review
+    requires-system-tools:         review
+    repository-rule-arbitrary-code: review
+  review:
+    timeout_days: 14
+    auto_pass_on_already_in_upstream: true
+
+mcp:
+  http_enabled:        false
+  write_tools_enabled: false

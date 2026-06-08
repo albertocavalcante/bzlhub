@@ -12,7 +12,7 @@ import (
 // It's used to accumulate data across a transitive dependency graph.
 //
 // Depsets have an "order" that determines the traversal order:
-//   - "default" (or "stable"): unspecified stable order
+//   - depsetOrderDefault (or "stable"): unspecified stable order
 //   - "postorder": children before parents (good for linking)
 //   - "preorder": parents before children
 //   - "topological": dependencies before dependents
@@ -31,7 +31,7 @@ var (
 )
 
 // ValidDepsetOrders lists the valid order strings for depsets.
-var ValidDepsetOrders = []string{"default", "postorder", "preorder", "topological"}
+var ValidDepsetOrders = []string{depsetOrderDefault, "postorder", "preorder", "topological"}
 
 // String returns the Starlark representation.
 func (d *Depset) String() string {
@@ -47,8 +47,8 @@ func (d *Depset) String() string {
 	}
 	sb.WriteString("]")
 
-	if d.order != "default" {
-		sb.WriteString(fmt.Sprintf(", order = %q", d.order))
+	if d.order != depsetOrderDefault {
+		fmt.Fprintf(&sb, ", order = %q", d.order)
 	}
 	sb.WriteString(")")
 	return sb.String()
@@ -102,7 +102,7 @@ func (d *Depset) ToList() []starlark.Value {
 		d.collectPreorder(seen, &result)
 	case "topological":
 		d.collectTopological(seen, &result)
-	default: // "default" order
+	default: // depsetOrderDefault order
 		d.collectDefault(seen, &result)
 	}
 
@@ -185,6 +185,10 @@ type depsetIterator struct {
 	i        int
 }
 
+// Next implements starlark.Iterator; the pointer parameter is part
+// of the interface contract and cannot be changed.
+//
+//nolint:gocritic // ptrToRefParam: interface-required signature.
 func (it *depsetIterator) Next(p *starlark.Value) bool {
 	if it.i >= len(it.elements) {
 		return false
@@ -200,21 +204,21 @@ func (it *depsetIterator) Done() {}
 //
 // Signature:
 //
-//	depset(direct = None, order = "default", transitive = None)
+//	depset(direct = None, order = depsetOrderDefault, transitive = None)
 //
 // Creates a new depset. If called with a positional argument, that argument
 // becomes the direct elements.
 //
 // Parameters:
 //   - direct: A list of elements to include directly in the depset
-//   - order: Traversal order ("default", "postorder", "preorder", "topological")
+//   - order: Traversal order (depsetOrderDefault, "postorder", "preorder", "topological")
 //   - transitive: A list of depsets whose elements will be included transitively
 //
 // Reference: bazel/src/main/java/com/google/devtools/build/lib/collect/nestedset/Depset.java
 func DepsetBuiltin(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		direct     starlark.Value = starlark.None
-		order      string         = "default"
+		order                     = depsetOrderDefault
 		transitive starlark.Value = starlark.None
 	)
 
@@ -297,7 +301,7 @@ func DepsetBuiltin(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple,
 					return nil, fmt.Errorf("depset: transitive elements must be depsets, got %s", x.Type())
 				}
 				// Check order compatibility
-				if d.order != order && d.order != "default" && order != "default" {
+				if d.order != order && d.order != depsetOrderDefault && order != depsetOrderDefault {
 					return nil, fmt.Errorf("depset: cannot merge depset with order %q into depset with order %q", d.order, order)
 				}
 				transitiveList = append(transitiveList, d)

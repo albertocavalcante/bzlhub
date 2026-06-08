@@ -1,8 +1,8 @@
 // Package verify performs integrity + consistency checks over a local
 // canopy mirror.
 //
-// While `canopy drift` answers "is my mirror in sync with upstream?",
-// `canopy verify` answers "is my mirror's own state self-consistent?".
+// While `bzlhub drift` answers "is my mirror in sync with upstream?",
+// `bzlhub verify` answers "is my mirror's own state self-consistent?".
 // A corrupted tarball, an out-of-sync SQLite index, an orphan blob —
 // these are all things an operator wants to know about *before* a Bazel
 // build trips over them at the worst possible moment.
@@ -21,7 +21,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // Severity tiers the findings: Errors block, Warnings need eyeballs,
@@ -108,7 +108,7 @@ func Verify(ctx context.Context, opts Options) (*Report, error) {
 
 	// Optional DB: a mirror without an index is still verifiable for the
 	// integrity/schema/module_bazel/orphan checks; only index_mirror
-	// agreement degrades. Keeping the DB optional lets `canopy verify`
+	// agreement degrades. Keeping the DB optional lets `bzlhub verify`
 	// be useful against a freshly-rsync'd mirror that doesn't carry the
 	// index file along with it.
 	var st *store.Store

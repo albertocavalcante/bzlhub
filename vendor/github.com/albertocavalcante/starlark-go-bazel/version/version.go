@@ -13,11 +13,19 @@ package version
 
 // Version names a Bazel LTS major. See the LTS support matrix at
 // https://bazel.build/release for end-of-support dates per major.
+//
+// Numeric order matches the Bazel major: V7 < V8 < V9, so callers
+// can write `if v >= V8 { ... }` and have it mean what a Bazel
+// engineer would expect. VLatest is an alias for the active LTS
+// (currently V9) so `v >= V8` includes VLatest without needing
+// `|| v == VLatest`.
 type Version int
 
 const (
-	// VLatest is the active LTS — currently Bazel 9.
-	VLatest Version = iota
+	// _ leaves iota=0 unallocated so the zero value of Version is
+	// neither V7 nor an LTS marker; callers who care can use
+	// Resolved() to turn an unset value into Latest().
+	_ Version = iota
 
 	// V7 targets the Bazel 7.x series (maintenance through Dec 2026).
 	// Latest patch: 7.7.1.
@@ -33,15 +41,23 @@ const (
 	V9
 )
 
+// VLatest is an alias for the active LTS version. Bumped as new
+// Bazel LTS majors stabilize. Aliased so `v >= V8` includes VLatest
+// without a disjunction.
+const VLatest = V9
+
 // Latest returns the active LTS version. Currently V9. Bumped as new
-// Bazel LTS majors stabilize.
+// Bazel LTS majors stabilize. Identical to the VLatest constant;
+// retained as a function for the rare caller that needs the value at
+// runtime rather than as a constant expression.
 func Latest() Version { return V9 }
 
-// String returns the human-readable name of the version.
+// String returns the human-readable name of the version. VLatest
+// is an alias for the active LTS so it prints as that LTS's name
+// ("v9" today); use Resolved() before stringifying if you want
+// the canonical name.
 func (v Version) String() string {
 	switch v {
-	case VLatest:
-		return "latest"
 	case V7:
 		return "v7"
 	case V8:
@@ -52,11 +68,12 @@ func (v Version) String() string {
 	return "unknown"
 }
 
-// Resolved returns the concrete LTS version, replacing VLatest with
-// the actual most-recent stable. Callers that compare versions should
-// resolve first.
+// Resolved returns the concrete LTS version. With VLatest aliased
+// to the active LTS, Resolved is now a no-op for all non-zero
+// values — kept for API compatibility with consumers that defensively
+// resolve before comparing.
 func (v Version) Resolved() Version {
-	if v == VLatest {
+	if v == 0 {
 		return Latest()
 	}
 	return v

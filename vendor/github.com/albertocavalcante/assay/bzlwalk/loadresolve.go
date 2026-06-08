@@ -10,8 +10,8 @@ package bzlwalk
 // guessing.
 
 import (
-	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/internal/walkparse"
+	syntaxutil "github.com/albertocavalcante/go-starlark-syntaxutil"
 )
 
 // fileLoads aliases [syntaxutil.ImportedSymbol] maps so legacy bzlwalk

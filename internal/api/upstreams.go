@@ -13,7 +13,7 @@ import "time"
 // follow-ups).
 //
 // When canopy serves a non-federated configuration (no --upstream
-// flag / CANOPY_UPSTREAMS env), Upstreams is the empty array and
+// flag / BZLHUB_UPSTREAMS env), Upstreams is the empty array and
 // Primary reports the local backend kind. Clients can treat empty
 // Upstreams as "federation disabled" without parsing the Primary
 // kind explicitly.
@@ -22,7 +22,7 @@ type UpstreamsResponse struct {
 	Upstreams  []UpstreamInfo `json:"upstreams"`
 	// CacheStats reflects the federation response cache (Plan 16
 	// Layer C). Zero values when the cache is disabled (operators
-	// running with `CANOPY_UPSTREAM_CACHE_SIZE` ≤ 0) or when no
+	// running with `BZLHUB_UPSTREAM_CACHE_SIZE` ≤ 0) or when no
 	// federation upstream has been queried yet.
 	CacheStats CacheStatsInfo `json:"cache_stats"`
 	// CollisionsCount is the number of distinct (module, version)

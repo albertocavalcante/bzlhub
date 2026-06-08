@@ -3,7 +3,7 @@ package external
 import (
 	"fmt"
 
-	"github.com/albertocavalcante/go-bzlmod/ast"
+	ast "github.com/albertocavalcante/go-bzlmod-ast"
 )
 
 // UseExtensionSite is one `use_extension(...)` call site in a
@@ -53,12 +53,9 @@ type UseExtensionTag struct {
 // every use_extension declaration plus the tag-class invocations
 // attached to it.
 //
-// Walks `result.File.Statements` directly rather than `ast.Walk`
-// because go-bzlmod's parser emits `*ast.ExtensionTagCall` as
-// separate top-level statements (not nested in `UseExtension.Tags`).
-// We link each ExtensionTagCall to its UseExtension by matching
-// ExtensionTagCall.Extension (the LHS variable in the source) to
-// UseExtension.Variable (added upstream specifically for this).
+// go-bzlmod-ast pre-links each ExtensionTagCall into its parent
+// UseExtension.Tags as part of ParseContent — we just walk the
+// top-level UseExtension statements and shape the result.
 //
 // Returns an empty slice (not nil) when the MODULE.bazel has no
 // extensions. Parse errors propagate; the caller decides whether
@@ -72,42 +69,25 @@ func ScanUseExtensions(moduleBazel []byte) ([]UseExtensionSite, error) {
 		return []UseExtensionSite{}, nil
 	}
 
-	var sites []UseExtensionSite
-	// indexByVar maps the LHS variable name → index into sites, so
-	// ExtensionTagCall.Extension lookups are O(1).
-	indexByVar := map[string]int{}
-
+	sites := make([]UseExtensionSite, 0)
 	for _, stmt := range result.File.Statements {
-		switch s := stmt.(type) {
-		case *ast.UseExtension:
-			sites = append(sites, UseExtensionSite{
-				ExtensionFile: s.ExtensionFile.String(),
-				ExtensionName: s.ExtensionName.String(),
-				DevDependency: s.DevDependency,
-				Isolate:       s.Isolate,
-			})
-			if s.Variable != "" {
-				indexByVar[s.Variable] = len(sites) - 1
-			}
-
-		case *ast.ExtensionTagCall:
-			idx, ok := indexByVar[s.Extension]
-			if !ok {
-				// Tag call references an unknown extension variable —
-				// usually means the MODULE.bazel is malformed or
-				// references a use_extension declared in another
-				// MODULE block. Skip silently; bookkeeping not the
-				// caller's concern.
-				continue
-			}
-			sites[idx].Tags = append(sites[idx].Tags, UseExtensionTag{
-				Name:  s.TagName,
-				Attrs: s.Attributes,
+		ue, ok := stmt.(*ast.UseExtension)
+		if !ok {
+			continue
+		}
+		site := UseExtensionSite{
+			ExtensionFile: ue.ExtensionFile.String(),
+			ExtensionName: ue.ExtensionName.String(),
+			DevDependency: ue.DevDependency,
+			Isolate:       ue.Isolate,
+		}
+		for _, tag := range ue.Tags {
+			site.Tags = append(site.Tags, UseExtensionTag{
+				Name:  tag.Name,
+				Attrs: tag.Attributes,
 			})
 		}
-	}
-	if sites == nil {
-		return []UseExtensionSite{}, nil
+		sites = append(sites, site)
 	}
 	return sites, nil
 }

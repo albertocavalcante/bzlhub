@@ -45,19 +45,19 @@
 </script>
 
 <svelte:head>
-  <title>{page.params.name} — canopy</title>
+  <title>{page.params.name} — bzlhub</title>
 </svelte:head>
 
 <div class="flex flex-col gap-6">
   <nav class="text-[12px] font-mono text-fg-dim">
-    <a href="/" class="hover:text-accent">canopy</a> /
+    <a href="/" class="hover:text-accent">bzlhub</a> /
     <span class="text-fg-mute">modules</span> /
     <span class="text-fg">{page.params.name}</span>
   </nav>
 
   <header class="flex flex-col gap-2 pb-3 border-b border-line">
     <h1 class="font-mono text-2xl text-fg tracking-tight">{page.params.name}</h1>
-    <p class="text-[12px] text-fg-mute">indexed versions in this canopy</p>
+    <p class="text-[12px] text-fg-mute">indexed versions in this bzlhub</p>
   </header>
 
   {#if loading}
@@ -76,7 +76,7 @@
       <p class="mt-2">no versions of this module are indexed.</p>
       <p class="text-[12px] mt-4">
         try <a href="/?q={encodeURIComponent(page.params.name ?? '')}" class="text-accent hover:underline">searching</a>
-        for a different name, or ingest a version via the canopy CLI / <code>/api/v1/actions/bump</code>.
+        for a different name, or ingest a version via the bzlhub CLI / <code>/api/v1/actions/bump</code>.
       </p>
     </div>
   {:else}
@@ -96,9 +96,9 @@
             <!--
               Cadence superscript — gap vs the next-older row's
               ingest timestamp. Useful for "how often does this
-              module ship?" Tooltip clarifies that this is canopy's
+              module ship?" Tooltip clarifies that this is bzlhub's
               ingest cadence, not upstream publish cadence (those
-              can diverge if canopy is behind upstream).
+              can diverge if bzlhub is behind upstream).
             -->
             <sup
               class="text-[10px] text-fg-dim font-mono"

@@ -1,7 +1,7 @@
-# Building canopy from source
+# Building bzlhub from source
 
 > **Status**: stable.
-> **Audience**: operators who build the canopy container image
+> **Audience**: operators who build the bzlhub container image
 > themselves rather than pulling a pre-built one.
 
 For many enterprise deployments, build-from-source + push-to-your-own-
@@ -13,9 +13,9 @@ registry is the default path, not a fallback. Reasons:
 - Local development against unmerged patches.
 - Reproducibility verification (build it yourself, compare digests).
 
-This doc walks through the build, push, and consume cycle for canopy.
-The chart at `deploy/helm/canopy/` is designed to consume any
-canopy-compatible image regardless of where it came from — see
+This doc walks through the build, push, and consume cycle for bzlhub.
+The chart at `deploy/helm/bzlhub/` is designed to consume any
+bzlhub-compatible image regardless of where it came from — see
 [`k8s-parity.md`](./k8s-parity.md) §2 for the contract.
 
 ---
@@ -38,19 +38,19 @@ servers are Ampere Altra). For other architectures, see §3.
 
 ## 2. Vendor dependencies (required before any image build)
 
-canopy intentionally builds with `-mod=vendor` so the image build has
+bzlhub intentionally builds with `-mod=vendor` so the image build has
 no network or auth requirements at Go compile time. The source tree
 MUST have a populated `vendor/` directory before `docker build`.
 
 ```bash
-cd ~/path/to/canopy
+cd ~/path/to/bzlhub
 go mod vendor
 ```
 
 The Dockerfile fails fast if `vendor/` is missing:
 
 ```
-ERROR: canopy/vendor/ missing — run 'go mod vendor' first
+ERROR: bzlhub/vendor/ missing — run 'go mod vendor' first
 ```
 
 If your network policy doesn't allow `go mod vendor` from the build
@@ -67,7 +67,7 @@ proxy works for `go mod`).
 
 ```bash
 docker build \
-  --tag myregistry.corp/canopy:v0.1.0 \
+  --tag myregistry.corp/bzlhub:v0.1.0 \
   --build-arg VERSION=v0.1.0 \
   --build-arg COMMIT=$(git rev-parse --short HEAD) \
   --build-arg BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
@@ -85,7 +85,7 @@ For both architectures in one push:
 ```bash
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  --tag myregistry.corp/canopy:v0.1.0 \
+  --tag myregistry.corp/bzlhub:v0.1.0 \
   --push \
   .
 ```
@@ -100,7 +100,7 @@ and SBOM generation:
 dagger -m github.com/albertocavalcante/daggerverse/docker-multistage \
   call build \
   --source=. \
-  --tag=myregistry.corp/canopy:v0.1.0 \
+  --tag=myregistry.corp/bzlhub:v0.1.0 \
   --build-args VERSION=v0.1.0,COMMIT=$(git rev-parse --short HEAD)
 ```
 
@@ -120,11 +120,11 @@ cp -R ui/build/* internal/embed/ui/
 go build \
   -trimpath -mod=vendor \
   -ldflags="-s -w \
-    -X github.com/albertocavalcante/canopy/internal/version.Version=v0.1.0 \
-    -X github.com/albertocavalcante/canopy/internal/version.Commit=$(git rev-parse --short HEAD) \
-    -X github.com/albertocavalcante/canopy/internal/version.BuiltAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  -o ./canopy \
-  ./cmd/canopy
+    -X github.com/albertocavalcante/bzlhub/internal/version.Version=v0.1.0 \
+    -X github.com/albertocavalcante/bzlhub/internal/version.Commit=$(git rev-parse --short HEAD) \
+    -X github.com/albertocavalcante/bzlhub/internal/version.BuiltAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  -o ./bzlhub \
+  ./cmd/bzlhub
 ```
 
 Without the UI overlay, the binary serves a "UI not built" stub from
@@ -135,7 +135,7 @@ the embedded fallback.
 ## 4. Push to your registry
 
 ```bash
-docker push myregistry.corp/canopy:v0.1.0
+docker push myregistry.corp/bzlhub:v0.1.0
 ```
 
 Common registry-specific auth:
@@ -165,8 +165,8 @@ your container engine's per-registry CA bundle before pushing:
 Override the chart's default image to point at your build:
 
 ```bash
-helm install bzlhub ./deploy/helm/canopy \
-  --set image.repository=myregistry.corp/canopy \
+helm install bzlhub ./deploy/helm/bzlhub \
+  --set image.repository=myregistry.corp/bzlhub \
   --set image.tag=v0.1.0 \
   --set image.pullPolicy=IfNotPresent
 ```
@@ -183,9 +183,9 @@ kubectl create secret docker-registry myreg-creds \
   --namespace=bzlhub
 
 # Install, referencing the secret.
-helm install bzlhub ./deploy/helm/canopy \
+helm install bzlhub ./deploy/helm/bzlhub \
   --namespace=bzlhub \
-  --set image.repository=myregistry.corp/canopy \
+  --set image.repository=myregistry.corp/bzlhub \
   --set image.tag=v0.1.0 \
   --set image.pullSecrets[0].name=myreg-creds
 ```
@@ -194,7 +194,7 @@ For per-namespace pull config (avoids repeating `pullSecrets` in
 every chart):
 
 ```bash
-kubectl patch serviceaccount canopy \
+kubectl patch serviceaccount bzlhub \
   --patch '{"imagePullSecrets": [{"name": "myreg-creds"}]}' \
   -n bzlhub
 ```
@@ -217,24 +217,24 @@ into the cluster:
 
 ```bash
 # kind
-docker build -t canopy:dev .
-kind load docker-image canopy:dev
+docker build -t bzlhub:dev .
+kind load docker-image bzlhub:dev
 
 # k3d
-docker build -t canopy:dev .
-k3d image import canopy:dev
+docker build -t bzlhub:dev .
+k3d image import bzlhub:dev
 
 # minikube
-docker build -t canopy:dev .
-minikube image load canopy:dev
+docker build -t bzlhub:dev .
+minikube image load bzlhub:dev
 ```
 
 Install with `pullPolicy: Never` so K8s doesn't try to fetch from a
 registry:
 
 ```bash
-helm install bzlhub ./deploy/helm/canopy \
-  --set image.repository=canopy \
+helm install bzlhub ./deploy/helm/bzlhub \
+  --set image.repository=bzlhub \
   --set image.tag=dev \
   --set image.pullPolicy=Never
 ```
@@ -249,20 +249,20 @@ development.
 A common enterprise pattern: Harbor (or similar) acts as a
 pull-through proxy for public registries. Instead of pulling from
 `ghcr.io` directly, the cluster pulls from
-`harbor.corp/proxy-ghcr/albertocavalcante/canopy` and Harbor caches
+`harbor.corp/proxy-ghcr/albertocavalcante/bzlhub` and Harbor caches
 transparently.
 
-This requires zero canopy-side changes — just override
+This requires zero bzlhub-side changes — just override
 `image.repository`:
 
 ```bash
-helm install bzlhub ./deploy/helm/canopy \
-  --set image.repository=harbor.corp/proxy-ghcr/albertocavalcante/canopy
+helm install bzlhub ./deploy/helm/bzlhub \
+  --set image.repository=harbor.corp/proxy-ghcr/albertocavalcante/bzlhub
 ```
 
 If Harbor needs explicit project creation to start caching a given
 public image, that's a Harbor admin task (the "project as proxy
-cache" feature in Harbor's UI/API). Outside canopy's scope.
+cache" feature in Harbor's UI/API). Outside bzlhub's scope.
 
 ---
 
@@ -282,14 +282,14 @@ For supply-chain attestation:
 
 ```bash
 # Generate an SBOM
-syft myregistry.corp/canopy:v0.1.0 -o spdx-json > canopy-v0.1.0.sbom.json
+syft myregistry.corp/bzlhub:v0.1.0 -o spdx-json > bzlhub-v0.1.0.sbom.json
 
 # Sign the image with cosign (keyless OIDC)
-cosign sign myregistry.corp/canopy:v0.1.0
+cosign sign myregistry.corp/bzlhub:v0.1.0
 
 # Verify a signed image before deploy
-cosign verify myregistry.corp/canopy:v0.1.0 \
-  --certificate-identity-regexp=https://github.com/.*/canopy/ \
+cosign verify myregistry.corp/bzlhub:v0.1.0 \
+  --certificate-identity-regexp=https://github.com/.*/bzlhub/ \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com
 ```
 
@@ -304,17 +304,17 @@ After build + push + helm install:
 
 ```bash
 # Version check from a one-shot pod
-kubectl run canopy-version --rm -it --image=myregistry.corp/canopy:v0.1.0 \
-  --restart=Never -- /usr/local/bin/canopy --version
+kubectl run bzlhub-version --rm -it --image=myregistry.corp/bzlhub:v0.1.0 \
+  --restart=Never -- /usr/local/bin/bzlhub --version
 
 # Version check inside the running StatefulSet pod
-kubectl exec -n bzlhub canopy-0 -- /usr/local/bin/canopy --version
+kubectl exec -n bzlhub bzlhub-0 -- /usr/local/bin/bzlhub --version
 
 # Healthz from inside the pod
-kubectl exec -n bzlhub canopy-0 -- wget -q -O- http://127.0.0.1:8090/healthz
+kubectl exec -n bzlhub bzlhub-0 -- wget -q -O- http://127.0.0.1:8090/healthz
 
 # Healthz from outside via Service port-forward
-kubectl port-forward -n bzlhub svc/canopy 8090:80
+kubectl port-forward -n bzlhub svc/bzlhub 8090:80
 curl http://localhost:8090/healthz
 ```
 
@@ -339,7 +339,7 @@ If your build environment is itself air-gapped:
 2. **Pin the alpine base** via SHA digest to whatever's in your
    approved-images registry.
 3. **Layer the dependency mirror config** into a "builder base" image
-   that the canopy Dockerfile's `FROM` lines reference.
+   that the bzlhub Dockerfile's `FROM` lines reference.
 4. **Build inside the air-gap** using the builder base.
 5. **Push** to your internal registry.
 6. **Reference from the chart** with `image.repository` pointing
@@ -350,7 +350,7 @@ here; the principle is "all `FROM` and `RUN apk add` operations
 resolve from internal mirrors only".
 
 See [`docs/plans/17-upstream-proxy.md`](../plans/17-upstream-proxy.md)
-for the related runtime concern: outbound fetches from canopy at run
+for the related runtime concern: outbound fetches from bzlhub at run
 time may also need to go through your corporate proxy (potentially
 with Kerberos auth).
 
@@ -360,11 +360,11 @@ with Kerberos auth).
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `ERROR: canopy/vendor/ missing` during build | `go mod vendor` wasn't run | Run `go mod vendor` in the source tree before `docker build` |
+| `ERROR: bzlhub/vendor/ missing` during build | `go mod vendor` wasn't run | Run `go mod vendor` in the source tree before `docker build` |
 | `ERROR: internal/embed/ui/index.html missing` during build | ui-builder stage failed silently OR vendored a stub | Check pnpm output in the ui-builder stage; the build fails fast on this |
 | `exec format error` when the pod starts | Image was built for arm64, cluster is amd64 (or vice versa) | Rebuild with `--platform linux/amd64` or use buildx multi-arch |
 | `unauthorized: authentication required` on `docker push` | Registry login expired or wrong | Re-run the registry-specific login from §4 |
-| `ImagePullBackOff` in cluster | `image.pullSecrets` not configured, or secret in wrong namespace | Check `kubectl describe pod canopy-0` for the exact error; create the secret in the StatefulSet's namespace |
+| `ImagePullBackOff` in cluster | `image.pullSecrets` not configured, or secret in wrong namespace | Check `kubectl describe pod bzlhub-0` for the exact error; create the secret in the StatefulSet's namespace |
 | `x509: certificate signed by unknown authority` on pull | Cluster node doesn't trust the registry's CA | Add the registry CA to the node's container runtime trust store (containerd `certs.d`, Docker `certs.d`) |
 | `manifest unknown` on pull | Tag doesn't exist at the registry, or wrong repository name | `docker pull` from a workstation to reproduce |
 | Pod runs as UID 0 unexpectedly | `securityContext` override removed `runAsUser` | Re-apply the chart defaults; do not unset `securityContext.runAsUser` |
@@ -377,7 +377,7 @@ with Kerberos auth).
   [`docs/plans/17-upstream-proxy.md`](../plans/17-upstream-proxy.md)
 - **K8s parity contract** the built image must honour:
   [`k8s-parity.md`](./k8s-parity.md)
-- **bzlhub.com-specific deployment**: `self-hosted/canopy/DEPLOY-BZLHUB.md`
+- **bzlhub.com-specific deployment**: `self-hosted/bzlhub/DEPLOY-BZLHUB.md`
   (internal; not in this repo's public sync)
 
 ---

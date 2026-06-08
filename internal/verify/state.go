@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/albertocavalcante/canopy/internal/fetch"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // state is the shared input snapshot all checks read from. It is built

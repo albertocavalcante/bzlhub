@@ -3,6 +3,15 @@
 *.test
 *.exe
 
+# Dev/CI tool binaries built from tools.go.mod (golangci-lint,
+# gotestsum, etc.). Built into ./bin/ by `just sync-tools` because
+# the standard `go tool -modfile=tools.go.mod` invocation clashes
+# with assay's committed vendor/ (Go enables vendor mode and the
+# tool deps don't appear in vendor/modules.txt). Pre-building into
+# bin/ sidesteps the clash; pin-by-tools.go.mod keeps versions
+# reproducible.
+/bin/
+
 # Test artifacts.
 /coverage.out
 /profile.out

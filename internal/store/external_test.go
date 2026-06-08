@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/albertocavalcante/assay/report"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // seedVersion writes a minimal ModuleReport so external_refs's FK

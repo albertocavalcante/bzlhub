@@ -1,7 +1,7 @@
 <!--
   StardocBody — renders a presentation-ready ParsedDoc.
 
-  The backend (canopy's internal/docview package) ships:
+  The backend (bzlhub's internal/docview package) ships:
    - the section structure (Summary / Description / Args / Returns / ...)
    - per-Ref resolved Hrefs (already filtered for splice-safety)
    - a deduplicated Chips list

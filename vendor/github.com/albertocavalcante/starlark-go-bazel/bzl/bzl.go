@@ -4,11 +4,12 @@ package bzl
 import (
 	"strings"
 
+	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
+
 	"github.com/albertocavalcante/starlark-go-bazel/eval"
 	"github.com/albertocavalcante/starlark-go-bazel/loader"
 	"github.com/albertocavalcante/starlark-go-bazel/types"
-	"go.starlark.net/starlark"
-	"go.starlark.net/syntax"
 )
 
 // Interpreter is the main entry point for evaluating Bazel Starlark.

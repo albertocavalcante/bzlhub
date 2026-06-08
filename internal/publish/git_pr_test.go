@@ -67,10 +67,10 @@ func TestGitPR_RoundTrip(t *testing.T) {
 
 	pub, err := NewGitPR(GitPRConfig{
 		WorkTree:    workTree,
-		BotIdentity: Identity{Name: "canopy-bot", Email: "canopy@example.com"},
+		BotIdentity: Identity{Name: "bzlhub-bot", Email: "bzlhub@example.com"},
 		Repo:        bigorna.Repo{Owner: "o", Name: "r"},
 		Forge:       ff,
-		Labels:      []string{"canopy/auto"},
+		Labels:      []string{"bzlhub/auto"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -112,7 +112,7 @@ func TestGitPR_RoundTrip(t *testing.T) {
 		t.Fatalf("OpenPR calls: %d", len(ff.opened))
 	}
 	got := ff.opened[0]
-	wantBranch := "canopy/add-foo-1.0.0"
+	wantBranch := "bzlhub/add-foo-1.0.0"
 	if got.HeadBranch != wantBranch {
 		t.Fatalf("HeadBranch: %q, want %q", got.HeadBranch, wantBranch)
 	}
@@ -128,7 +128,7 @@ func TestGitPR_RoundTrip(t *testing.T) {
 	if !strings.Contains(got.Body, "Alberto Cavalcante") || !strings.Contains(got.Body, ref.Integrity) {
 		t.Fatalf("Body lacks requester or integrity:\n%s", got.Body)
 	}
-	if len(got.Labels) != 1 || got.Labels[0] != "canopy/auto" {
+	if len(got.Labels) != 1 || got.Labels[0] != "bzlhub/auto" {
 		t.Fatalf("Labels: %v", got.Labels)
 	}
 
@@ -275,7 +275,7 @@ func TestGitPR_ForgeOpenPRFails(t *testing.T) {
 		t.Fatalf("error doesn't surface forge cause: %v", err)
 	}
 	// Branch is still pushed (no auto-cleanup on partial failure).
-	cmd := exec.Command("git", "ls-remote", "--heads", bare, "canopy/add-foo-1.0.0")
+	cmd := exec.Command("git", "ls-remote", "--heads", bare, "bzlhub/add-foo-1.0.0")
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -290,10 +290,10 @@ func TestBranchName(t *testing.T) {
 	cases := []struct {
 		action, module, version, want string
 	}{
-		{"add", "foo", "1.0.0", "canopy/add-foo-1.0.0"},
-		{"yank", "bazel_skylib", "1.7.1", "canopy/yank-bazel_skylib-1.7.1"},
-		{"auto-bump", "rules_go", "0.48.0", "canopy/auto-bump-rules_go-0.48.0"},
-		{"add", "weird:name", "1.0 0", "canopy/add-weird-name-1.0-0"},
+		{"add", "foo", "1.0.0", "bzlhub/add-foo-1.0.0"},
+		{"yank", "bazel_skylib", "1.7.1", "bzlhub/yank-bazel_skylib-1.7.1"},
+		{"auto-bump", "rules_go", "0.48.0", "bzlhub/auto-bump-rules_go-0.48.0"},
+		{"add", "weird:name", "1.0 0", "bzlhub/add-weird-name-1.0-0"},
 	}
 	for _, tc := range cases {
 		got := BranchName(tc.action, tc.module, tc.version)

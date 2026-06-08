@@ -14,9 +14,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/fetch"
-	"github.com/albertocavalcante/canopy/internal/ingest"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/ingest"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // writeModuleDir creates a temp dir with a MODULE.bazel using the given

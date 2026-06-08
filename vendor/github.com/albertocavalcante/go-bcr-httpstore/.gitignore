@@ -1,0 +1,26 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+
+# Test binaries + coverage
+*.test
+*.out
+*.prof
+coverage.txt
+
+# Editor + OS junk
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.bak
+
+# Go module cache (when overlaid)
+vendor/
+
+# Build artifacts
+build/
+dist/

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { paths } from '$lib/api/paths';
   import { getFeatures, getUpstreams, type FeatureSnapshot, type UpstreamsResponse } from '$lib/api/client';
+  import AuthButton from '$components/AuthButton.svelte';
   import '../app.css';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -143,7 +144,7 @@
 
     if (e.key === '/' || (e.key === 'k' && (e.metaKey || e.ctrlKey))) {
       e.preventDefault();
-      window.dispatchEvent(new CustomEvent('canopy:focus-search'));
+      window.dispatchEvent(new CustomEvent('bzlhub:focus-search'));
       return;
     }
     if (e.key === '?') {
@@ -201,6 +202,11 @@
           class:text-fg={page.url.pathname === '/history'}>history</a
         >
         <a
+          href="/requests"
+          class="hover:text-fg transition-colors"
+          class:text-fg={page.url.pathname.startsWith('/requests') || page.url.pathname.startsWith('/admin/requests')}>requests</a
+        >
+        <a
           href="/mcp"
           class="hover:text-fg transition-colors"
           class:text-fg={page.url.pathname === '/mcp'}>mcp</a
@@ -221,6 +227,7 @@
           <kbd>?</kbd>
           <span>shortcuts</span>
         </button>
+        <AuthButton />
       </div>
     </div>
   </header>
@@ -350,7 +357,7 @@
             Federation reachability dot. Plan 16 F3 follow-up.
             Color encodes aggregate state; tooltip lists each
             upstream with reachable/down + latency + last error.
-            Hidden entirely when canopy is non-federated.
+            Hidden entirely when bzlhub is non-federated.
           -->
           <span
             class="inline-block w-2 h-2 rounded-full"

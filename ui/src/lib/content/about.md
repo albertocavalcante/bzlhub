@@ -34,10 +34,10 @@ count, hermeticity class, drift status against upstream, and a
 source-nav link into the indexed `.bzl` files.
 
 Example pages:
-- [rules_go@0.50.1](/modules/rules_go/0.50.1) — 47 rules, 12 deps,
-  classified `prebuilt-binaries-pinned`
-- [bazel_skylib@1.7.1](/modules/bazel_skylib/1.7.1) — classified
-  `pure-starlark`
+- [rules_go@0.50.1](/modules/rules_go/0.50.1) — 40 rules, 6 deps,
+  classified `pure-starlark`
+- [bazel_skylib@1.7.1](/modules/bazel_skylib/1.7.1) — 26 rules, 2 deps,
+  classified `pure-starlark`
 - [/drift](/drift) — modules where bzlhub's mirror is behind upstream
 
 ## Query from a coding agent
@@ -50,14 +50,14 @@ search the index, fetch per-module reports (rules, providers,
 hermeticity, deps), navigate source, and check drift directly from
 inside the session.
 
-The same tools are also available over stdio via `canopy mcp` for
+The same tools are also available over stdio via `bzlhub mcp` for
 local-process agents.
 
 ## What bzlhub is NOT
 
 - Not BCR. BCR is the source of truth; bzlhub mirrors it.
 - Not a write surface. The public bzlhub.com instance does not
-  accept module publishes. (Operators self-hosting canopy can
+  accept module publishes. (Operators self-hosting bzlhub can
   configure write endpoints; the public instance doesn't expose
   them.)
 - Not multi-tenant. One instance, one replica.
@@ -66,7 +66,7 @@ local-process agents.
 
 ## Run your own
 
-bzlhub is canopy running on a Hetzner VPS. Canopy is a single Go
+bzlhub is bzlhub running on a Hetzner VPS. Bzlhub is a single Go
 binary with a SQLite index and a filesystem mirror. No S3, no
 Postgres, no Kubernetes required. Build from source or pull a
 prebuilt image.
@@ -77,4 +77,4 @@ prebuilt image.
 
 ## License
 
-MIT. Built on [canopy](https://github.com/albertocavalcante/canopy).
+MIT. Built on [bzlhub](https://github.com/albertocavalcante/bzlhub).

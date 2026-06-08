@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/albertocavalcante/canopy/internal/ogimg"
+	"github.com/albertocavalcante/bzlhub/internal/ogimg"
 )
 
 // moduleNamePattern accepts BCR-style module names (lowercase letters,

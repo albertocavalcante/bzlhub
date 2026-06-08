@@ -12,11 +12,11 @@ import (
 	scipproto "github.com/scip-code/scip/bindings/go/scip"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/api/paths"
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/server"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/server"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // Plan 07 cross-corpus consumer endpoint. The pipeline:
@@ -68,7 +68,7 @@ func TestConsumers_EndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	t.Run("happy path filters self by default", func(t *testing.T) {

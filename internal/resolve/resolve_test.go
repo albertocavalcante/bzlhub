@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
 )
 
 // startFakeRegistry serves a single foo@1.0.0 module backed by a synthetic

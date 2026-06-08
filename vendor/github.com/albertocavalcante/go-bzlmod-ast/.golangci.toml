@@ -1,0 +1,92 @@
+## golangci-lint v2 configuration.
+##
+## Small, outcome-oriented linter set. Noisy linters (gocognit,
+## funlen, gocritic's hugeParam) are off by default; enable per
+## package if a specific quality problem motivates it.
+
+version = "2"
+
+[run]
+timeout = "5m"
+tests = true
+modules-download-mode = "readonly"
+
+# vendor/ and third_party/ are upstream code we don't lint.
+[issues]
+exclude-dirs = ["vendor", "third_party"]
+
+[linters]
+default = "standard"
+enable = [
+  "errcheck",
+  "govet",
+  "staticcheck",
+  "unused",
+  "ineffassign",
+  "misspell",
+  "unconvert",
+  "unparam",
+  "whitespace",
+  "copyloopvar",
+  "intrange",
+  "gosec",
+]
+
+# Linters we deliberately don't run:
+#   - wrapcheck: error-wrapping policy is per-package, not global.
+#   - exhaustruct: many structs use optional fields with omitempty.
+#   - varnamelen: short receiver names and short locals in tight
+#     AST-walk loops are deliberate.
+#   - gocognit / funlen / gocyclo: AST visitor methods are
+#     unavoidably long; splitting just to satisfy the linter hurts
+#     readability.
+disable = [
+  "wrapcheck",
+  "exhaustruct",
+  "varnamelen",
+  "gocognit",
+  "funlen",
+  "gocyclo",
+]
+
+[linters.settings.errcheck]
+check-type-assertions = false
+check-blank = false
+
+[linters.settings.govet]
+enable-all = true
+# Field grouping favors readability over byte packing.
+disable = ["fieldalignment"]
+
+[linters.settings.misspell]
+locale = "US"
+
+[linters.settings.staticcheck]
+# SA1019 (deprecated API) is also raised by go vet's checks; suppress
+# the duplicate here.
+checks = ["all", "-SA1019"]
+
+[linters.settings.gosec]
+# G104 (errcheck duplicate); G115 (int conversion overflow — false
+# positives on AST col/row int64 math).
+excludes = ["G104", "G115"]
+
+[linters.exclusions]
+generated = "lax"
+
+# Test files: fixtures, table-driven loops, and helper closures
+# legitimately repeat shapes that would trip stricter linters.
+[[linters.exclusions.rules]]
+path = "_test\\.go"
+linters = ["gosec", "errcheck"]
+
+# third_party/ is the vendored buildtools parser; not in scope.
+[[linters.exclusions.rules]]
+path = "third_party/"
+linters = ["errcheck", "gosec", "govet", "ineffassign", "intrange", "misspell", "staticcheck", "unparam", "unused", "whitespace", "copyloopvar"]
+
+# tools/ is maintainer CLI code; gosec's path/perm warnings are
+# expected and not on the library's hot path.
+[[linters.exclusions.rules]]
+path = "tools/"
+linters = ["gosec"]

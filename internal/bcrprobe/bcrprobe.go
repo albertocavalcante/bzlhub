@@ -26,7 +26,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/albertocavalcante/canopy/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
 )
 
 // Result is the wire shape returned by GET /api/bcr-probe. JSON tags

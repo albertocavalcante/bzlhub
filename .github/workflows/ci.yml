@@ -31,11 +31,33 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # internal/embed/embed.go expects internal/embed/ui/ populated.
+      - name: enable corepack
+        run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+      - name: build UI bundle for embed
+        run: |
+          cd ui
+          pnpm install --frozen-lockfile
+          pnpm run build
+          cd ..
+          mkdir -p internal/embed/ui
+          cp -R ui/build/. internal/embed/ui/
       - name: go vet
         run: go vet ./...
       - name: go build
         run: go build ./...
       - name: go test
+        # CI=1 is redundant on GitHub Actions (auto-set) but kept
+        # explicit to mirror the Forgejo workflow and document the
+        # contract for opt-in subprocess tests that gate on CI != ""
+        # (cmd/bzlhub/signal_shutdown_test.go, daemon lifecycle).
+        env:
+          CI: '1'
         run: go test -race -count=1 ./...
 
   ui:

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/albertocavalcante/assay/report"
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 func TestRoundTrip(t *testing.T) {
@@ -155,7 +155,7 @@ func TestDuplicateRuleNamesAllowed(t *testing.T) {
 // one has foreign_keys=ON.
 func TestForeignKeysEnabledOnEveryConnection(t *testing.T) {
 	ctx := context.Background()
-	dbPath := filepath.Join(t.TempDir(), "canopy.db")
+	dbPath := filepath.Join(t.TempDir(), "bzlhub.db")
 	s, err := store.Open(ctx, dbPath)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -261,7 +261,7 @@ func TestSearch_FileEmpty_ForMacroWithoutFile(t *testing.T) {
 // REPLACE the prior ingest's rows, not accumulate.
 func TestWriteReport_Idempotent(t *testing.T) {
 	ctx := context.Background()
-	dbPath := filepath.Join(t.TempDir(), "canopy.db")
+	dbPath := filepath.Join(t.TempDir(), "bzlhub.db")
 	s, err := store.Open(ctx, dbPath)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

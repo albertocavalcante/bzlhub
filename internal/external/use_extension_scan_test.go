@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/external"
+	"github.com/albertocavalcante/bzlhub/internal/external"
 )
 
 // ScanUseExtensions extracts use_extension declarations + their tag
@@ -18,7 +18,7 @@ import (
 //   - the list of tag-class invocations attached to it, each with
 //     attrs as a string-keyed map.
 //
-// Used by canopy ingest to build a cross-module index of
+// Used by bzlhub ingest to build a cross-module index of
 // "which canopy-indexed module uses which extension with which
 // tag values" — the foundation of the consumer-corpus aggregation
 // that fills in real tag values when re-driving a producer

@@ -1,0 +1,371 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/albertocavalcante/assay/main/report/schema.json",
+  "$comment": "JSON Schema for assay's ModuleReport. Hand-maintained; assay/report/schema_test.go enforces drift via a reflect walk over report.ModuleReport. See CHANGELOG for breaking-change history.",
+  "title": "ModuleReport",
+  "description": "Structured description of a Bazel module produced by static analysis. Every consumer downstream of assay (canopy, MCP tools, CI checks) is a projection of this object.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["name", "hermeticity", "assets"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Module name, taken verbatim from MODULE.bazel's module(name = ...). Non-empty for any module the analyzer processed successfully."
+    },
+    "version": {
+      "type": "string",
+      "description": "Module version from module(version = ...). Empty when the module declares no version (e.g., development checkouts)."
+    },
+    "compatibility_level": {
+      "type": "integer",
+      "description": "Compatibility level from module(compatibility_level = N). Zero (omitted in JSON) when the module declares no level."
+    },
+    "bazel_compatibility": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Version constraints from module(bazel_compatibility = [...])."
+    },
+    "bazel_deps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ModuleKey" },
+      "description": "Direct dependencies declared via bazel_dep(...) in MODULE.bazel. Includes dev-dependencies (filter on dev_dependency for the runtime list)."
+    },
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/RuleSpec" },
+      "description": "rule() definitions discovered across the module's .bzl files."
+    },
+    "providers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ProviderSpec" },
+      "description": "provider() definitions."
+    },
+    "macros": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/MacroSpec" },
+      "description": "Top-level def-macros recognized by the macro detector. Heuristic; see docs/macro-detection-plan.md."
+    },
+    "aspects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/AspectSpec" },
+      "description": "aspect() definitions."
+    },
+    "toolchains": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ToolchainSpec" },
+      "description": "toolchain_type() declarations."
+    },
+    "toolchain_impls": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ToolchainImpl" },
+      "description": "BUILD-file toolchain(...) registrations — concrete pairings of toolchain_type with implementation targets."
+    },
+    "repository_rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/RepoRuleSpec" },
+      "description": "repository_rule() definitions."
+    },
+    "module_extensions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ModuleExtSpec" },
+      "description": "module_extension() definitions, including their tag_class children when discoverable."
+    },
+    "overrides": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ModuleOverride" },
+      "description": "archive_override / git_override / single_version_override / multiple_version_override / local_path_override statements."
+    },
+    "used_extensions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ExtensionUse" },
+      "description": "use_extension() chains (the extension's local name, its use_repo imports, and `<local>.<tag>(...)` invocations)."
+    },
+    "registered_toolchains": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Labels passed to register_toolchains(...) in MODULE.bazel."
+    },
+    "registered_execution_platforms": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Labels passed to register_execution_platforms(...)."
+    },
+    "includes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Labels referenced by include(\"//path:MODULE.bazel\") statements (Bazel 7.2+). Emitted verbatim — the included fragments are not recursively parsed."
+    },
+    "hermeticity": {
+      "$ref": "#/$defs/HermeticityProfile",
+      "description": "Hermeticity classification with per-finding provenance and confidence."
+    },
+    "file_inventory": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/FileEntry" },
+      "description": "Every source file the walker visited, with size and kind."
+    },
+    "assets": {
+      "$ref": "#/$defs/ModuleAssets",
+      "description": "Human-facing supporting material: README, license, example directories."
+    }
+  },
+  "$defs": {
+    "ModuleKey": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "version"],
+      "properties": {
+        "name":           { "type": "string" },
+        "version":        { "type": "string" },
+        "dev_dependency": { "type": "boolean", "description": "True when bazel_dep was declared with dev_dependency = True." },
+        "repo_name":      { "type": "string", "description": "Local-binding name when bazel_dep specifies repo_name. Empty means the local name equals name." }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["file"],
+      "properties": {
+        "file":      { "type": "string" },
+        "start_col": { "type": "integer" },
+        "start_row": { "type": "integer" },
+        "end_col":   { "type": "integer" },
+        "end_row":   { "type": "integer" }
+      }
+    },
+    "AttrsExtractionMethod": {
+      "type": "string",
+      "enum": ["", "literal", "symbol_fold", "load_resolve", "interpreted"],
+      "description": "How an attrs slice was resolved. Empty means unresolved; consumers render the rule with a 'dynamic schema' fallback."
+    },
+    "AttrSpec": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name"],
+      "properties": {
+        "name":           { "type": "string" },
+        "type":           { "type": "string", "description": "string / label / label_list / int / bool etc." },
+        "doc":            { "type": "string" },
+        "default":        { "type": "string", "description": "Textual literal; empty when unset or non-literal." },
+        "mandatory":      { "type": "boolean" },
+        "provider_groups": {
+          "type": "array",
+          "description": "Disjunction of conjunctions from attr.label(providers = ...). Each outer slice is an OR alternative; each inner slice is the set of providers ALL of which must be present.",
+          "items": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "RuleSpec": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "provenance"],
+      "properties": {
+        "name":                    { "type": "string" },
+        "doc":                     { "type": "string" },
+        "attrs":                   { "type": "array", "items": { "$ref": "#/$defs/AttrSpec" } },
+        "attrs_extraction_method": { "$ref": "#/$defs/AttrsExtractionMethod" },
+        "executable":              { "type": "boolean" },
+        "test":                    { "type": "boolean" },
+        "private":                 { "type": "boolean", "description": "True when the rule's symbol starts with underscore." },
+        "provenance":              { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "ProviderSpec": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "provenance"],
+      "properties": {
+        "name":       { "type": "string" },
+        "doc":        { "type": "string" },
+        "fields":     { "type": "array", "items": { "type": "string" } },
+        "private":    { "type": "boolean" },
+        "provenance": { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "MacroSpec": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "provenance"],
+      "properties": {
+        "name":       { "type": "string" },
+        "params":     { "type": "array", "items": { "type": "string" } },
+        "doc":        { "type": "string" },
+        "provenance": { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "AspectSpec": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "provenance"],
+      "properties": {
+        "name":                       { "type": "string" },
+        "doc":                        { "type": "string" },
+        "attr_aspects":               { "type": "array", "items": { "type": "string" } },
+        "required_providers":         { "type": "array", "items": { "type": "string" } },
+        "attrs":                      { "type": "array", "items": { "$ref": "#/$defs/AttrSpec" } },
+        "attrs_extraction_method":    { "$ref": "#/$defs/AttrsExtractionMethod" },
+        "provides":                   { "type": "array", "items": { "type": "string" } },
+        "fragments":                  { "type": "array", "items": { "type": "string" } },
+        "host_fragments":             { "type": "array", "items": { "type": "string" } },
+        "toolchains":                 { "type": "array", "items": { "type": "string" } },
+        "apply_to_generating_rules":  { "type": "boolean" },
+        "private":                    { "type": "boolean" },
+        "provenance":                 { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "ToolchainSpec": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "provenance"],
+      "properties": {
+        "name":       { "type": "string", "description": "toolchain_type() name kwarg." },
+        "provenance": { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "ToolchainImpl": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "toolchain_type", "provenance"],
+      "properties": {
+        "name":                   { "type": "string" },
+        "toolchain_type":         { "type": "string" },
+        "toolchain_impl":         { "type": "string" },
+        "exec_compatible_with":   { "type": "array", "items": { "type": "string" } },
+        "target_compatible_with": { "type": "array", "items": { "type": "string" } },
+        "target_settings":        { "type": "array", "items": { "type": "string" } },
+        "provenance":             { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "RepoRuleSpec": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "provenance"],
+      "properties": {
+        "name":                    { "type": "string" },
+        "doc":                     { "type": "string" },
+        "attrs":                   { "type": "array", "items": { "$ref": "#/$defs/AttrSpec" } },
+        "attrs_extraction_method": { "$ref": "#/$defs/AttrsExtractionMethod" },
+        "local":                   { "type": "boolean" },
+        "private":                 { "type": "boolean" },
+        "provenance":              { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "ModuleExtSpec": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "provenance"],
+      "properties": {
+        "name":        { "type": "string" },
+        "doc":         { "type": "string" },
+        "tag_classes": { "type": "array", "items": { "$ref": "#/$defs/TagClassSpec" } },
+        "private":     { "type": "boolean" },
+        "provenance":  { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "TagClassSpec": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "provenance"],
+      "properties": {
+        "name":                    { "type": "string", "description": "Tag name as it appears in `use_extension(...).<name>(...)`." },
+        "doc":                     { "type": "string" },
+        "attrs":                   { "type": "array", "items": { "$ref": "#/$defs/AttrSpec" } },
+        "attrs_extraction_method": { "$ref": "#/$defs/AttrsExtractionMethod" },
+        "provenance":              { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "ModuleOverride": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["kind", "provenance"],
+      "properties": {
+        "kind":         { "type": "string", "enum": ["archive", "git", "single_version", "multiple_version", "local_path"] },
+        "module_name":  { "type": "string" },
+        "urls":         { "type": "array", "items": { "type": "string" } },
+        "integrity":    { "type": "string" },
+        "commit":       { "type": "string" },
+        "path":         { "type": "string" },
+        "version":      { "type": "string" },
+        "versions":     { "type": "array", "items": { "type": "string" } },
+        "patches":      { "type": "array", "items": { "type": "string" } },
+        "patch_strip":  { "type": "integer" },
+        "patch_cmds":   { "type": "array", "items": { "type": "string" } },
+        "provenance":   { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "ExtensionUse": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["local_name", "bzl_file", "extension_name", "provenance"],
+      "properties": {
+        "local_name":      { "type": "string" },
+        "bzl_file":        { "type": "string" },
+        "extension_name":  { "type": "string" },
+        "dev_dependency":  { "type": "boolean" },
+        "imported_repos":  { "type": "array", "items": { "type": "string" } },
+        "renamed_repos":   { "type": "object", "additionalProperties": { "type": "string" }, "description": "use_repo(... <alias> = \"<remote>\") rename kwargs, keyed by local alias." },
+        "tag_invocations": { "type": "array", "items": { "$ref": "#/$defs/ExtensionTagInvocation" } },
+        "provenance":      { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "ExtensionTagInvocation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["tag_name", "provenance"],
+      "properties": {
+        "tag_name":    { "type": "string" },
+        "kwargs":      { "type": "object", "additionalProperties": { "type": "string" } },
+        "kwarg_lists": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string" } } },
+        "kwarg_bools": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "kwarg_ints":  { "type": "object", "additionalProperties": { "type": "integer" } },
+        "provenance":  { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "HermeticityProfile": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["classes"],
+      "properties": {
+        "classes":  { "type": "array", "items": { "type": "string" }, "description": "pure-starlark / prebuilt-binaries-pinned / build-from-source / network-fetch-pinned / network-fetch-unpinned / requires-system-tools / repository-rule-arbitrary-code" },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/HermeticityFinding" } }
+      }
+    },
+    "HermeticityFinding": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["class", "provenance"],
+      "properties": {
+        "class":      { "type": "string" },
+        "confidence": { "type": "string", "enum": ["", "definitive", "heuristic"] },
+        "reason":     { "type": "string" },
+        "provenance": { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "FileEntry": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["path", "kind"],
+      "properties": {
+        "path": { "type": "string" },
+        "size": { "type": "integer" },
+        "kind": { "type": "string", "enum": ["bzl", "build", "module", "other"] }
+      }
+    },
+    "ModuleAssets": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "readme":         { "type": "string" },
+        "readme_path":    { "type": "string" },
+        "license":        { "type": "string" },
+        "license_path":   { "type": "string" },
+        "license_name":   { "type": "string", "description": "SPDX-shaped name when matched by header keywords. Heuristic — see godoc." },
+        "example_dirs":   { "type": "array", "items": { "type": "string" } },
+        "changelog":      { "type": "string", "description": "Verbatim text of the module's CHANGELOG, capped at 256KB. Empty when no recognizable changelog file is present at the root." },
+        "changelog_path": { "type": "string", "description": "Relative path of the picked changelog file (CHANGELOG.md / CHANGES / HISTORY etc). Empty iff changelog is empty." },
+        "has_ci":         { "type": "boolean", "description": "True when at least one CI provider's workflow directory contains a non-hidden file." },
+        "ci_providers":   { "type": "array", "items": { "type": "string", "enum": ["bazelci", "forgejo", "github"] }, "description": "Detected CI providers, alphabetized at emit time. Filesystem-only signal; doesn't validate the workflows." }
+      }
+    }
+  }
+}

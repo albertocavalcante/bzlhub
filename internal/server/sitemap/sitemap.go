@@ -33,8 +33,27 @@ import (
 	"io"
 	"time"
 
-	"github.com/albertocavalcante/canopy/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api"
 )
+
+// isStubVersion reports whether v is a placeholder/sentinel version
+// canopy persists for cross-reference bookkeeping (a module pulled in
+// via bazel_deps but never ingested for real). Common shapes:
+//   - "0.0.0" or "0" — synthetic floor before ingest
+//   - "HEAD" — git-shaped placeholder from an early ingest tool
+//
+// These are excluded from the public sitemap because clicking the
+// corresponding /modules/<m>/<v> URL lands on an empty page — a real
+// page rendered against a stub row, with no rules / providers /
+// hermeticity to show. Indexing them costs Google a 404-ish signal
+// and gives users a broken-feeling landing.
+//
+// Not exhaustive — we don't try to detect every malformed version
+// the BCR ecosystem can produce. The three patterns above cover the
+// stub rows canopy creates internally, which is the source we control.
+func isStubVersion(v string) bool {
+	return v == "" || v == "0" || v == "0.0.0" || v == "HEAD"
+}
 
 // Static routes (not module pages) that should appear in the sitemap.
 // Order matters only for human reading of the resulting XML; ranking
@@ -114,6 +133,13 @@ func Stream(ctx context.Context, c api.Canopy, origin string, w io.Writer) error
 					continue
 				}
 				for _, v := range versions {
+					// Stub/sentinel rows (e.g. "0.0.0", "HEAD") aren't
+					// real pages — they render empty against a placeholder
+					// DB row. Crawlers should not index them. See
+					// isStubVersion for the patterns covered.
+					if isStubVersion(v) {
+						continue
+					}
 					if err := writeURL(enc, urlEntry{
 						Loc:        origin + "/modules/" + m.Name + "/" + v,
 						LastMod:    lastMod, // per-version date isn't on Summary; use module's latest

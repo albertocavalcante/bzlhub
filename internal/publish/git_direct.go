@@ -24,7 +24,7 @@ import (
 // File writes happen via an embedded FilesystemPublisher; the on-disk
 // shape is byte-for-byte identical to what `ingest --mirror-to`
 // produces. Blobs go to <worktree>/blobs/ but are excluded from the
-// commit via .gitignore — they're canopy's local serving cache, not
+// commit via .gitignore — they're bzlhub.s local serving cache, not
 // part of the BCR shape.
 type GitDirectPublisher struct {
 	workTree string
@@ -153,7 +153,7 @@ func (p *GitDirectPublisher) Publish(ctx context.Context, req PublishRequest) (R
 
 // syncToRemoteTip fetches the remote branch and hard-resets the
 // worktree to its tip. Local changes are discarded — the worktree is
-// canopy-owned, not human-edited.
+// bzlhub-owned, not human-edited.
 func (p *GitDirectPublisher) syncToRemoteTip(ctx context.Context) error {
 	if err := runGit(ctx, p.workTree, "fetch", "--quiet", p.remote, p.branch); err != nil {
 		return err

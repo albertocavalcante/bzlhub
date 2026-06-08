@@ -7,7 +7,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/albertocavalcante/canopy/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api"
 )
 
 // registerSurfaceTools registers the READ-side surface tools:
@@ -15,14 +15,14 @@ import (
 // "what does this module pull in, what does it expose, who depends
 // on it." Safe to expose anonymously on a public read-only instance.
 //
-// The write-side companion canopy_ingest_recursive lives in
+// The write-side companion bzlhub_ingest_recursive lives in
 // registerSurfaceWriteTools below; the dispatcher in server.go calls
 // it separately so HTTP deployments can opt out of advertising
-// mutation tools via CANOPY_MCP_WRITE_TOOLS_ENABLED.
+// mutation tools via BZLHUB_MCP_WRITE_TOOLS_ENABLED.
 func registerSurfaceTools(srv *server.MCPServer, c api.Canopy) {
 	srv.AddTool(
-		mcp.NewTool("canopy_airgap_surface",
-			mcp.WithDescription("Return the closure-wide URL surface for one (module, version): every URL the entire transitive bazel_deps closure of <module>@<version> would fetch, unioned and deduplicated, plus per-closure-node ref counts so the caller can see which dependency contributes which URLs. This is the airgap-prep question — 'what mirror entries do I need to bring this build into a sealed environment?' — answered for the complete closure, not just one module. Each ref carries the same classification + mutability + tainted fields as canopy_external_surface. Returns refs, modules (one row per closure node with ref_count + class_counts), fork_errors, class_counts (closure-wide), max_depth_reached, and missing_modules (closure references not yet in canopy's index)."),
+		mcp.NewTool("bzlhub_airgap_surface",
+			mcp.WithDescription("Return the closure-wide URL surface for one (module, version): every URL the entire transitive bazel_deps closure of <module>@<version> would fetch, unioned and deduplicated, plus per-closure-node ref counts so the caller can see which dependency contributes which URLs. This is the airgap-prep question — 'what mirror entries do I need to bring this build into a sealed environment?' — answered for the complete closure, not just one module. Each ref carries the same classification + mutability + tainted fields as bzlhub_external_surface. Returns refs, modules (one row per closure node with ref_count + class_counts), fork_errors, class_counts (closure-wide), max_depth_reached, and missing_modules (closure references not yet in canopy's index)."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Bazel module name (e.g. rules_go)")),
 			mcp.WithString("version", mcp.Required(), mcp.Description("Module version (e.g. 0.50.1)")),
 		),
@@ -30,7 +30,7 @@ func registerSurfaceTools(srv *server.MCPServer, c api.Canopy) {
 	)
 
 	srv.AddTool(
-		mcp.NewTool("canopy_external_surface",
+		mcp.NewTool("bzlhub_external_surface",
 			mcp.WithDescription("Return the external URL surface for one (module, version) — every URL the module's repository_rule and module_extension implementations would fetch, extracted via canopy's static analysis pipeline. Each ref is classified by ecosystem (bcr / maven / pypi-canonical / pypi-extra / npm / go-proxy / github-release / github-archive / oci / cloud-storage / vendor-http / unknown) and labeled with mutability (immutable when sha256/integrity-pinned; mutable-host for github archives; unknown otherwise) and a `tainted` flag when the analyzer's per-fork eval depended on opaque state (ctx.execute output, opaque external load). Use this when answering 'what URLs would I need to mirror in an air-gapped environment?' or 'is this module's download surface deterministic?'. Returns refs, fork_errors (per-platform analysis failures), and class_counts (chip-style aggregate)."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Bazel module name (e.g. rules_go)")),
 			mcp.WithString("version", mcp.Required(), mcp.Description("Module version (e.g. 0.50.1)")),
@@ -39,8 +39,8 @@ func registerSurfaceTools(srv *server.MCPServer, c api.Canopy) {
 	)
 
 	srv.AddTool(
-		mcp.NewTool("canopy_closure_graph",
-			mcp.WithDescription("Return the bazel_dep closure of (module, version) as a directed graph — nodes + edges walked from the locally-persisted reports. Each node is a (name, version) pair plus an `external` flag indicating modules referenced but NOT indexed in this canopy (use canopy_ingest_recursive to fill the gap). The graph stops at a depth cap; `max_depth_reached` flags when the walk hit it.\n\nUse this to ground answers to 'what does X@Y pull in?' and to surface gaps in the corpus before recommending bumps. For VISUAL output, consumers usually render via Mermaid (see canopy's UI); the JSON shape here is the same one the UI consumes."),
+		mcp.NewTool("bzlhub_closure_graph",
+			mcp.WithDescription("Return the bazel_dep closure of (module, version) as a directed graph — nodes + edges walked from the locally-persisted reports. Each node is a (name, version) pair plus an `external` flag indicating modules referenced but NOT indexed in this canopy (use bzlhub_ingest_recursive to fill the gap). The graph stops at a depth cap; `max_depth_reached` flags when the walk hit it.\n\nUse this to ground answers to 'what does X@Y pull in?' and to surface gaps in the corpus before recommending bumps. For VISUAL output, consumers usually render via Mermaid (see canopy's UI); the JSON shape here is the same one the UI consumes."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Root module name (e.g., 'rules_go').")),
 			mcp.WithString("version", mcp.Required(), mcp.Description("Root version.")),
 		),
@@ -48,7 +48,7 @@ func registerSurfaceTools(srv *server.MCPServer, c api.Canopy) {
 	)
 
 	srv.AddTool(
-		mcp.NewTool("canopy_reverse_deps",
+		mcp.NewTool("bzlhub_reverse_deps",
 			mcp.WithDescription("Return the modules in this canopy that depend on (module, version) — i.e., 'who consumes me?' Walks every indexed (m, v)'s bazel_deps and collects the consumers. Same data canopy's UI surfaces as 'used by N modules' on the listing cards, but at version-specific granularity instead of name-only.\n\nUse this when the user asks 'is it safe to break X?' or 'who depends on this module?' Empty result = no known consumers in this canopy (which doesn't mean none globally — canopy is your local mirror, not the world)."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Target module name.")),
 			mcp.WithString("version", mcp.Required(), mcp.Description("Target version (specific; reverse-deps are not aggregated across versions here — call once per version).")),
@@ -59,7 +59,7 @@ func registerSurfaceTools(srv *server.MCPServer, c api.Canopy) {
 }
 
 // registerSurfaceWriteTools registers the mutation tools in the
-// surface family — currently canopy_ingest_recursive, which walks
+// surface family — currently bzlhub_ingest_recursive, which walks
 // a bazel_dep closure and writes every reached version into the
 // local mirror. Anonymous callers shouldn't get this on a public
 // instance because each call kicks off background fetch + disk
@@ -70,8 +70,8 @@ func registerSurfaceTools(srv *server.MCPServer, c api.Canopy) {
 // (local trust); HTTP only invokes when the flag is on.
 func registerSurfaceWriteTools(srv *server.MCPServer, c api.Canopy) {
 	srv.AddTool(
-		mcp.NewTool("canopy_ingest_recursive",
-			mcp.WithDescription("Walk the bazel_dep closure of (module, version) and mirror every reached version into canopy's local tree. Each module is fetched, SRI-verified, mirrored (modules/<n>/<v>/* + content-addressed blobs/<sha256>), and indexed. Errors on individual modules don't abort sibling fetches — partial closures are useful inputs to canopy_drift. Returns visited/mirrored counts + per-module error list. Use with include_bazel_tools=true to also seed Bazel's implicit MODULE.tools deps for a self-sufficient air-gap mirror."),
+		mcp.NewTool("bzlhub_ingest_recursive",
+			mcp.WithDescription("Walk the bazel_dep closure of (module, version) and mirror every reached version into canopy's local tree. Each module is fetched, SRI-verified, mirrored (modules/<n>/<v>/* + content-addressed blobs/<sha256>), and indexed. Errors on individual modules don't abort sibling fetches — partial closures are useful inputs to bzlhub_drift. Returns visited/mirrored counts + per-module error list. Use with include_bazel_tools=true to also seed Bazel's implicit MODULE.tools deps for a self-sufficient air-gap mirror."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Root module name (e.g., 'rules_go').")),
 			mcp.WithString("version", mcp.Required(), mcp.Description("Root version (e.g., '0.52.0').")),
 			mcp.WithString("upstream", mcp.Description("Upstream registry URL. Default: the service's configured default.")),

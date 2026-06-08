@@ -11,12 +11,12 @@ import (
 
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
-// Round-trip the canopy_external_surface MCP tool: register it, invoke it
+// Round-trip the bzlhub_external_surface MCP tool: register it, invoke it
 // against a seeded store, and decode the JSON payload back into the API
 // response struct. Pins both the tool surface (name + required args) and
 // the JSON shape clients will see.
@@ -38,13 +38,13 @@ func TestMCP_ExternalSurfaceTool_RoundTrip(t *testing.T) {
 	}
 
 	srv := server.NewMCPServer("canopy-test", "test")
-	registerTools(srv, canopy.New(s), nil, true)
+	registerTools(srv, bzlhub.New(s), nil, true)
 
 	req := mcp.CallToolRequest{}
-	req.Params.Name = "canopy_external_surface"
+	req.Params.Name = "bzlhub_external_surface"
 	req.Params.Arguments = map[string]any{"module": "m", "version": "1"}
 
-	result, err := externalSurfaceHandler(canopy.New(s))(ctx, req)
+	result, err := externalSurfaceHandler(bzlhub.New(s))(ctx, req)
 	if err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -82,10 +82,10 @@ func TestMCP_ExternalSurfaceTool_RequiresArgs(t *testing.T) {
 	t.Cleanup(func() { _ = s.Close() })
 
 	req := mcp.CallToolRequest{}
-	req.Params.Name = "canopy_external_surface"
+	req.Params.Name = "bzlhub_external_surface"
 	req.Params.Arguments = map[string]any{} // empty
 
-	result, err := externalSurfaceHandler(canopy.New(s))(ctx, req)
+	result, err := externalSurfaceHandler(bzlhub.New(s))(ctx, req)
 	if err != nil {
 		t.Fatalf("handler returned go-error: %v", err)
 	}

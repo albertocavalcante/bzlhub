@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
 )
 
 // fakeProber is a deterministic Prober — each call looks up the (m,v)

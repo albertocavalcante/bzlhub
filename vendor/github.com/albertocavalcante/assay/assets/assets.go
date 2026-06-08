@@ -39,6 +39,11 @@ const maxReadmeBytes = 256 * 1024
 // blow up the report.
 const maxLicenseBytes = 256 * 1024
 
+// CHANGELOGs grow over time and on long-lived rulesets can exceed
+// 100KB. Same 256KB cap as README — UI links to the full file on
+// disk if a user needs more.
+const maxChangelogBytes = 256 * 1024
+
 // readmeFilenames are the names we look for at the module root, in
 // preference order. README.md wins because Markdown is what canopy
 // renders; other forms fall through.
@@ -50,13 +55,29 @@ var readmeFilenames = []string{
 	"README",
 }
 
+// changelogFilenames are checked in preference order. CHANGELOG.md
+// wins because canopy renders Markdown natively (same bias as
+// readmeFilenames). CHANGES / HISTORY are the older conventions and
+// fall through.
+var changelogFilenames = []string{
+	"CHANGELOG.md",
+	"CHANGELOG.markdown",
+	"CHANGELOG.rst",
+	"CHANGELOG.txt",
+	"CHANGELOG",
+	"CHANGES.md",
+	"CHANGES",
+	"HISTORY.md",
+	"HISTORY",
+}
+
 // licenseFilenames are checked in preference order. LICENSE wins over
 // COPYING because Bazel rulesets overwhelmingly use the former.
 var licenseFilenames = []string{
 	"LICENSE",
 	"LICENSE.md",
 	"LICENSE.txt",
-	"LICENCE",
+	"LICENCE", //nolint:misspell // UK spelling found on real modules; intentional fallback.
 	"COPYING",
 	"COPYING.txt",
 }
@@ -119,13 +140,74 @@ func ModuleAssetsFor(moduleDir string) report.ModuleAssets {
 		}
 	}
 
+	// CHANGELOG — same iteration pattern as README. Surface the
+	// raw text so canopy can render it inline on the registry page.
+	for _, name := range changelogFilenames {
+		bytes, ok := readCapped(filepath.Join(moduleDir, name), maxChangelogBytes)
+		if ok {
+			a.Changelog = string(bytes)
+			a.ChangelogPath = name
+			break
+		}
+	}
+
 	// Example directories at the root only. ReadDir is intentional
 	// rather than WalkDir — depth-1 enumeration is much faster on
 	// modules with large vendor trees, and "the examples folder" is
 	// uniformly at the root in real BCR modules.
 	a.ExampleDirs = findExampleDirs(moduleDir)
 
+	// CI providers — alphabetized at emit time so the slice order
+	// is deterministic across modules. Each provider's check is a
+	// non-hidden file under the canonical workflows directory.
+	a.CIProviders = detectCIProviders(moduleDir)
+	a.HasCI = len(a.CIProviders) > 0
+
 	return a
+}
+
+// ciProviderChecks enumerates each recognized CI provider and the
+// directory under moduleDir where its workflow files live.
+// Alphabetized so detectCIProviders emits a stable order without
+// post-sort. Mirrored deliberately in CHANGELOG and docs/epistemic-status.md.
+var ciProviderChecks = []struct {
+	provider string
+	dir      string
+}{
+	{"bazelci", ".bazelci"},
+	{"forgejo", ".forgejo/workflows"},
+	{"github", ".github/workflows"},
+}
+
+// detectCIProviders returns the names of CI providers whose
+// workflow directory contains at least one non-hidden file under
+// moduleDir. Filesystem-only; doesn't parse the YAML or verify the
+// workflows are valid.
+func detectCIProviders(moduleDir string) []string {
+	var out []string
+	for _, c := range ciProviderChecks {
+		entries, err := os.ReadDir(filepath.Join(moduleDir, c.dir))
+		if err != nil {
+			continue
+		}
+		if hasNonHiddenEntry(entries) {
+			out = append(out, c.provider)
+		}
+	}
+	return out
+}
+
+// hasNonHiddenEntry returns true when at least one entry's name
+// doesn't start with a dot. Filters out the .gitkeep / .gitignore
+// scaffolding that would otherwise false-positive an empty
+// workflows directory.
+func hasNonHiddenEntry(entries []os.DirEntry) bool {
+	for _, e := range entries {
+		if !strings.HasPrefix(e.Name(), ".") {
+			return true
+		}
+	}
+	return false
 }
 
 // readCapped reads at most max bytes from path. Returns ok=false on
@@ -134,11 +216,11 @@ func ModuleAssetsFor(moduleDir string) report.ModuleAssets {
 // raw bytes up to max — caller decides whether to add an "(truncated)"
 // marker.
 func readCapped(path string, max int) ([]byte, bool) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: path is composed from a caller-supplied module root + a known filename list; not user-controlled at this point.
 	if err != nil {
 		return nil, false
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	buf := make([]byte, max+1) // +1 to detect overflow cheaply
 	n, _ := f.Read(buf)
 	if n > max {

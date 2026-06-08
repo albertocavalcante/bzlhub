@@ -21,7 +21,7 @@ import (
 const auditTimestampLayout = "2006-01-02T15:04:05.000000000Z07:00"
 
 // AuditEvent is one row of the audit_events table. JSON tags align with
-// the wire shape exposed by /api/history and the canopy_history MCP tool.
+// the wire shape exposed by /api/history and the bzlhub_history MCP tool.
 type AuditEvent struct {
 	ID         int64           `json:"id"`
 	Timestamp  time.Time       `json:"timestamp"`
@@ -37,6 +37,75 @@ type AuditEvent struct {
 	// username from the auth.Identity attached to ctx). Empty for
 	// anonymous requests + pre-migration rows.
 	UserID string `json:"user_id,omitempty"`
+}
+
+// ListAuditAfterID returns events with id > afterID, OLDEST-first
+// (ascending id). Used by the webhook delivery daemon as a watermark
+// cursor — pass the last successfully-delivered id back to fetch
+// the next batch.
+//
+// Limit defaults to 100 when ≤ 0 and is capped at 1000 to keep
+// each batch bounded.
+func (s *Store) ListAuditAfterID(ctx context.Context, afterID int64, limit int) ([]AuditEvent, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, ts, kind, source, module, version, ok, duration_ms, error, payload, user_id
+		FROM audit_events
+		WHERE id > ?
+		ORDER BY id ASC
+		LIMIT ?
+	`, afterID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list audit_events after id: %w", err)
+	}
+	defer rows.Close()
+	return scanAuditRows(rows)
+}
+
+// MaxAuditID returns the highest id in audit_events, or 0 when
+// the table is empty. Used by webhook delivery to set its
+// watermark at boot — events recorded BEFORE canopy started
+// aren't re-delivered.
+func (s *Store) MaxAuditID(ctx context.Context) (int64, error) {
+	var id sql.NullInt64
+	err := s.db.QueryRowContext(ctx, `SELECT MAX(id) FROM audit_events`).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("max audit_events.id: %w", err)
+	}
+	if !id.Valid {
+		return 0, nil
+	}
+	return id.Int64, nil
+}
+
+// PruneAudit deletes audit_events rows whose ts is older than now
+// minus olderThan. Returns the number of rows deleted. A
+// retention sweep called from canopy's audit-retention daemon.
+//
+// olderThan ≤ 0 is a no-op (returns 0). The store doesn't enforce
+// a minimum retention — operators wanting "never prune" set
+// policy.audit.retain_days to 0 and skip wiring the daemon.
+func (s *Store) PruneAudit(ctx context.Context, olderThan time.Duration) (int, error) {
+	if olderThan <= 0 {
+		return 0, nil
+	}
+	cutoff := time.Now().UTC().Add(-olderThan).Format(auditTimestampLayout)
+	res, err := s.db.ExecContext(ctx, `
+		DELETE FROM audit_events WHERE ts < ?
+	`, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("prune audit_events: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("RowsAffected: %w", err)
+	}
+	return int(n), nil
 }
 
 // RecordAudit appends one event. Failures here are surfaced to the caller
@@ -149,7 +218,12 @@ func (s *Store) ListAudit(ctx context.Context, q AuditQuery) ([]AuditEvent, erro
 		return nil, fmt.Errorf("list audit_events: %w", err)
 	}
 	defer rows.Close()
+	return scanAuditRows(rows)
+}
 
+// scanAuditRows is the shared row-decode loop for every audit-list
+// query. Caller closes the *sql.Rows.
+func scanAuditRows(rows *sql.Rows) ([]AuditEvent, error) {
 	var out []AuditEvent
 	for rows.Next() {
 		var (

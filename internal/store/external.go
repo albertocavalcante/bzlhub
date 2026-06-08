@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/albertocavalcante/canopy/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api"
 )
 
 // ExternalRef is one stored external URL reference.

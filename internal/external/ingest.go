@@ -16,7 +16,7 @@ import (
 	assayext "github.com/albertocavalcante/assay/interp/external"
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // IngestModule runs assay's external.Analyze against the ingested

@@ -27,8 +27,8 @@ var (
 )
 
 // NewFileRoot creates a new FileRoot.
-func NewFileRoot(path string) *FileRoot {
-	return &FileRoot{path: path}
+func NewFileRoot(rootPath string) *FileRoot {
+	return &FileRoot{path: rootPath}
 }
 
 // String returns the Starlark representation.
@@ -54,7 +54,7 @@ func (r *FileRoot) Hash() (uint32, error) {
 // Reference: FileRootApi.java - getExecPathString()
 func (r *FileRoot) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "path":
+	case attrPath:
 		return starlark.String(r.path), nil
 	default:
 		return nil, starlark.NoSuchAttrError(fmt.Sprintf("root has no attribute %q", name))
@@ -113,9 +113,9 @@ var (
 )
 
 // NewFile creates a new File.
-func NewFile(path, shortPath string, root *FileRoot, owner *Label, isSource bool) *File {
+func NewFile(filePath, shortPath string, root *FileRoot, owner *Label, isSource bool) *File {
 	return &File{
-		path:      path,
+		path:      filePath,
 		shortPath: shortPath,
 		root:      root,
 		owner:     owner,
@@ -147,8 +147,8 @@ func NewDerivedFile(rootPath, rootRelativePath string, owner *Label) *File {
 }
 
 // NewTreeArtifact creates a new tree artifact (directory).
-func NewTreeArtifact(path, shortPath string, root *FileRoot, owner *Label) *File {
-	f := NewFile(path, shortPath, root, owner, false)
+func NewTreeArtifact(treePath, shortPath string, root *FileRoot, owner *Label) *File {
+	f := NewFile(treePath, shortPath, root, owner, false)
 	f.isDir = true
 	return f
 }
@@ -180,7 +180,7 @@ func (f *File) Hash() (uint32, error) {
 // Reference: FileApi.java interface methods
 func (f *File) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "path":
+	case attrPath:
 		// From FileApi.java: getExecPathStringForStarlark()
 		// "The execution path of this file, relative to the workspace's execution directory"
 		return starlark.String(f.path), nil
@@ -381,7 +381,7 @@ func (s *SymlinkEntry) Hash() (uint32, error) {
 // Reference: SymlinkEntryApi.java interface methods
 func (s *SymlinkEntry) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "path":
+	case attrPath:
 		// From SymlinkEntryApi.java: getPathString()
 		return starlark.String(s.path), nil
 	case "target_file":

@@ -77,6 +77,6 @@ func (missingBuildHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 <p>The embedded UI bundle is empty. To build it:</p>
 <pre><code>cd ui && pnpm install && pnpm run build
 cp -r ui/build/* internal/embed/ui/
-go build -o canopy ./cmd/canopy</code></pre>
+go build -o canopy ./cmd/bzlhub</code></pre>
 <p>Or run <code>./scripts/embed-ui.sh</code> if present.</p>`))
 }

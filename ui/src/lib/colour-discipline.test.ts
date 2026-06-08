@@ -1,4 +1,4 @@
-// colour-discipline.test.ts — the UI-side counterpart to canopy's
+// colour-discipline.test.ts — the UI-side counterpart to bzlhub's
 // Go-side egress lint (internal/egress/lint_test.go).
 //
 // Rule: no raw oklch(...) colour literals outside ui/src/app.css.

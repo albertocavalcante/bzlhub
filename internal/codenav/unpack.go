@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/albertocavalcante/canopy/internal/archive"
+	"github.com/albertocavalcante/bzlhub/internal/archive"
 )
 
 // sourceDescriptor is the subset of source.json we need to locate the
@@ -70,7 +70,7 @@ const completeSentinel = ".canopy-unpack-complete"
 // absolute path. Idempotent — re-running on an already-materialized
 // coordinate is a stat + early-return.
 //
-// Exported so canopy.Service.Summary (and any other future caller
+// Exported so bzlhub.Service.Summary (and any other future caller
 // that needs a path to the unpacked source without going through the
 // SCIP-loading Resolver) can trigger the same on-demand unpack code
 // codenav uses for browse requests.

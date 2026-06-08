@@ -1,6 +1,6 @@
 <!--
   ModuleNotFound — the friendly-404 surface for /modules/[name]/[version]
-  when the requested coordinate isn't in canopy's index.
+  when the requested coordinate isn't in bzlhub's index.
 
   On mount it preflights two things in parallel:
     1. /api/v1/system/bcr-probe — does the configured upstream registry have
@@ -11,7 +11,7 @@
   concrete next step:
     - BCR has the version + writes enabled → "Ingest from BCR" button
     - BCR has the module but not this version → suggest latest_version
-    - BCR doesn't have the module at all → suggest browsing canopy's
+    - BCR doesn't have the module at all → suggest browsing bzlhub's
       own index, with a BCR-search link as a last resort
     - Upstream registry unreachable → "registry temporarily
       unreachable" with retry
@@ -103,7 +103,7 @@
     try {
       // Step 1: Bump the root so it becomes queryable. This is the
       // step that actually fixes the 404 — without it, the recursive
-      // walker only writes the mirror and leaves canopy's SQLite
+      // walker only writes the mirror and leaves bzlhub's SQLite
       // index untouched, so /api/v1/modules keeps 404-ing.
       await bumpModule({ module: name, version });
 
@@ -115,7 +115,7 @@
 
       // Step 2: Best-effort closure walk for cross-module navigation.
       // The walker only mirrors (doesn't extract assay reports), but
-      // having tarballs on disk means a follow-up `canopy ingest` can
+      // having tarballs on disk means a follow-up `bzlhub ingest` can
       // hydrate dep coords later without re-fetching from BCR. We
       // don't await this — the user already has what they came for.
       ingestRecursive({ module: name, version })
@@ -132,7 +132,7 @@
         ingestState = {
           kind: 'error',
           message:
-            'Ingest writes are disabled on this canopy. The operator can flip CANOPY_INGEST_WRITE_ENABLED.',
+            'Ingest writes are disabled on this bzlhub. The operator can flip CANOPY_INGEST_WRITE_ENABLED.',
           retryAfter: 0,
         };
       } else if (e instanceof IngestRateLimitedError) {
@@ -173,7 +173,7 @@
   <p class="font-mono text-lg text-fg-dim">
     <span class="text-fg">{name}</span><span class="text-fg-dim">@</span><span class="text-fg">{version}</span>
   </p>
-  <p class="text-fg-dim text-sm">not in this canopy index</p>
+  <p class="text-fg-dim text-sm">not in this bzlhub index</p>
 
   {#if probeState.kind === 'probing'}
     <div class="flex items-center gap-2 text-xs text-fg-dim" data-testid="probe-loading">
@@ -189,7 +189,7 @@
     <div class="rounded-md border border-warn/30 bg-warn/10 px-4 py-3 text-sm text-fg w-full">
       <p class="font-medium">Upstream registry is temporarily unreachable.</p>
       <p class="text-xs text-fg-dim mt-1">
-        canopy can't confirm whether this coordinate exists. Try again in a moment.
+        bzlhub can't confirm whether this coordinate exists. Try again in a moment.
       </p>
       <details class="text-xs text-fg-dim mt-2">
         <summary class="cursor-pointer hover:text-fg-mute">details</summary>
@@ -198,7 +198,7 @@
     </div>
   {:else if probeState.kind === 'transport-error'}
     <div class="rounded-md border border-err/30 bg-err/10 px-4 py-3 text-sm text-err w-full">
-      <p>Couldn't reach canopy's API to check this coordinate.</p>
+      <p>Couldn't reach bzlhub's API to check this coordinate.</p>
       <details class="text-xs text-fg-dim mt-2">
         <summary class="cursor-pointer hover:text-err">details</summary>
         <pre class="font-mono text-[11px] mt-1 whitespace-pre-wrap break-all">{probeState.message}</pre>
@@ -227,7 +227,7 @@
         </p>
       {:else if !features.ingest_write_enabled}
         <p class="text-xs text-fg-dim italic">
-          this canopy doesn't allow web-driven ingest — use the canopy CLI
+          this bzlhub doesn't allow web-driven ingest — use the bzlhub CLI
         </p>
       {/if}
     {:else if probe.module_exists}
@@ -280,7 +280,7 @@
         </p>
         <div class="flex gap-3 text-xs mt-3">
           <a href="/modules" class="underline hover:text-fg" data-testid="browse-modules">
-            browse modules canopy already indexes
+            browse modules bzlhub already indexes
           </a>
           <a
             href={`https://registry.bazel.build/search?q=${encodeURIComponent(name)}`}
@@ -339,6 +339,6 @@
   {/if}
 
   <p class="text-xs mt-4 text-fg-dim/70">
-    or run <kbd>canopy ingest &lt;module-dir&gt;</kbd> with the source on disk
+    or run <kbd>bzlhub ingest &lt;module-dir&gt;</kbd> with the source on disk
   </p>
 </div>

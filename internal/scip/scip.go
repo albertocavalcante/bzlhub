@@ -12,7 +12,7 @@
 //     module at a different version).
 //   - Marshal the *scip.Index to protobuf bytes for SQLite storage.
 //
-// Callers should treat a Generate error as non-fatal — canopy ingest
+// Callers should treat a Generate error as non-fatal — bzlhub ingest
 // can still proceed; the SCIP index is supplementary navigation data,
 // not part of the canonical ModuleReport.
 package scip

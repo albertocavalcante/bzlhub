@@ -5,7 +5,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/albertocavalcante/canopy/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api"
 )
 
 // NewHTTPHandler returns an http.Handler implementing the MCP
@@ -34,11 +34,11 @@ import (
 // request. Registering siblings under /mcp/* would silently hang
 // curl clients.
 //
-// The v argument may be nil — when so, canopy_verify is not
+// The v argument may be nil — when so, bzlhub_verify is not
 // registered, matching the same nil-safe contract as Serve (stdio).
 //
-// writeEnabled gates the MUTATION tools (canopy_ingest_recursive,
-// canopy_bump). Public read-only deployments should pass false:
+// writeEnabled gates the MUTATION tools (bzlhub_ingest_recursive,
+// bzlhub_bump). Public read-only deployments should pass false:
 // anonymous visitors then see ~17 read tools in tools/list and
 // cannot trigger background mirror writes via tools/call. Trusted
 // internal deployments pass true. The server.go wiring drives this

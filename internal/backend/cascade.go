@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/albertocavalcante/canopy/internal/egress"
+	"github.com/albertocavalcante/bzlhub/internal/egress"
 )
 
 // Cascade is a Backend that walks: primary first, then HTTP upstreams in
@@ -36,7 +36,7 @@ type Cascade struct {
 
 	// promote is the deferred-bound cache-promotion hook (Plan 16
 	// Layer F). atomic.Pointer so probeOne can read concurrently
-	// while cmd/canopy boot wires it after Service construction.
+	// while cmd/bzlhub boot wires it after Service construction.
 	// nil pointer + nil func both = no-op (hook never fires).
 	promote atomic.Pointer[func(module, version string)]
 
@@ -138,7 +138,7 @@ type CascadeConfig struct {
 	// CacheCapacity bounds the in-process response cache (Plan 16
 	// Layer C). Default 1000 entries; ≤ 0 disables caching entirely
 	// (useful for tests that need fresh upstream fetches every call).
-	// Configurable via CANOPY_UPSTREAM_CACHE_SIZE at the cmd layer.
+	// Configurable via BZLHUB_UPSTREAM_CACHE_SIZE at the cmd layer.
 	CacheCapacity int
 
 	// DisableShadowDetection skips the drainShadowed goroutine after
@@ -150,7 +150,7 @@ type CascadeConfig struct {
 	// behavior). Operators serving high-volume cascades against
 	// rate-limited or expensive upstreams flip this on; the trade-off
 	// is the audit table never sees a shadowed-200 row. Configurable
-	// via CANOPY_DISABLE_SHADOW_DETECTION at the cmd layer.
+	// via BZLHUB_DISABLE_SHADOW_DETECTION at the cmd layer.
 	DisableShadowDetection bool
 }
 
@@ -181,7 +181,7 @@ func NewCascade(cfg CascadeConfig) (*Cascade, error) {
 		// fall-through to upstream BCRs participates in the
 		// process-wide policy (mirror-only profile denies; sync-runner
 		// audits; default permits). Profile binding happens at
-		// canopy serve startup; here we accept whatever policy is in
+		// bzlhub serve startup; here we accept whatever policy is in
 		// effect, with a permissive zero-value if none is bound.
 		c.http = egress.NewHTTPClient(egress.Policy{})
 		c.http.Timeout = 30 * time.Second
@@ -233,7 +233,7 @@ func (c *Cascade) CacheStats() CacheStats { return c.cache.Stats() }
 // own idempotence — Bump is idempotent by design, so naive wiring
 // is fine).
 //
-// Deferred binding (not part of CascadeConfig) so cmd/canopy can
+// Deferred binding (not part of CascadeConfig) so cmd/bzlhub can
 // wire the hook AFTER constructing the Service, while the Cascade
 // is constructed earlier in the boot sequence.
 //
@@ -251,7 +251,7 @@ func (c *Cascade) SetPromoteHook(hook func(module, version string)) {
 // a cascade probe. The kind argument is one of CollisionKindLocal,
 // CollisionKindUpstream, or CollisionKindShadowed.
 //
-// Same deferred-binding pattern as SetPromoteHook so cmd/canopy can
+// Same deferred-binding pattern as SetPromoteHook so cmd/bzlhub can
 // wire the hook to the store-layer LogModuleSource call after
 // constructing the Service. Detached goroutine; the hook is
 // responsible for its own context + idempotence (LogModuleSource

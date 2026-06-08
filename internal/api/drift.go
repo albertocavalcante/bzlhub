@@ -25,7 +25,7 @@ import "time"
 type DriftStatus string
 
 // Closed enum of drift statuses. Adding a value requires updating
-// the UI's DriftChip palette (Plan 19 Idea A) and the canopy drift
+// the UI's DriftChip palette (Plan 19 Idea A) and the bzlhub drift
 // computer (Plan 20 git-aware drift evolution).
 const (
 	DriftStatusUnknown        DriftStatus = "unknown"
@@ -72,21 +72,12 @@ type DriftSummary struct {
 	// every "no drift data" payload.
 	ComputedAt time.Time `json:"computed_at,omitzero"`
 
-	// UpstreamSHA is the HEAD commit of the local git-aware
-	// Mirror at the moment this drift was computed — i.e. the
-	// upstream snapshot the verdict was derived from. Empty when
-	// drift was computed without a Mirror attached (legacy
-	// HTTP-probe path, File backend, or rows predating the
-	// git-aware drift writer). Plan 21 staleness layer.
+	// UpstreamSHA is the Mirror's HEAD at the moment drift was
+	// computed — the upstream snapshot the verdict came from.
 	UpstreamSHA string `json:"upstream_sha,omitempty"`
 
-	// SyncedAt is when the Mirror's upstream was last confirmed —
-	// from bcrmirror.Mirror.LastSync at compute time. Distinct
-	// from ComputedAt: the latter is the freshness of the verdict,
-	// the former is the freshness of the upstream data the
-	// verdict was computed from. A drift refresh between syncs
-	// updates ComputedAt but leaves SyncedAt at the time of the
-	// last actual upstream probe. Zero when Mirror has never
-	// synced (fresh Open before any Clone or Sync).
+	// SyncedAt is when the Mirror's upstream was last contacted.
+	// Distinct from ComputedAt: a refresh between syncs advances
+	// ComputedAt but leaves SyncedAt at the last upstream probe.
 	SyncedAt time.Time `json:"synced_at,omitzero"`
 }

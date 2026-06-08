@@ -12,9 +12,9 @@ export type StoredScan = {
 export type StoredScanRecord = Record<string, StoredScan>;
 
 export function breakingScanStorageKey(upstream: string, report: Pick<DriftReport, 'mirror_root'>): string {
-  // Scope by (upstream, mirror_root) so two canopy setups don't bleed
+  // Scope by (upstream, mirror_root) so two bzlhub setups don't bleed
   // their scans into each other if a developer flips between them.
-  return `canopy:breakingScans:${upstream}:${report.mirror_root}`;
+  return `bzlhub:breakingScans:${upstream}:${report.mirror_root}`;
 }
 
 export function parseStoredScans(raw: string | null): StoredScanRecord {

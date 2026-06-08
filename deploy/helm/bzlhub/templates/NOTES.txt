@@ -1,0 +1,33 @@
+bzlhub {{ .Chart.AppVersion }} has been installed as {{ include "bzlhub.fullname" . }} in namespace {{ .Release.Namespace }}.
+
+Image:    {{ include "bzlhub.image" . }}
+Service:  {{ include "bzlhub.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}
+
+{{- if .Values.ingress.enabled }}
+
+Ingress is enabled. Reach bzlhub via:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else if .Values.gateway.enabled }}
+
+Gateway API HTTPRoute is enabled. Reach bzlhub via:
+{{- range .Values.gateway.hostnames }}
+  https://{{ . }}
+{{- end }}
+{{- else }}
+
+No ingress configured. Port-forward to reach the UI locally:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "bzlhub.fullname" . }} 8090:{{ .Values.service.port }}
+  open http://127.0.0.1:8090/
+
+Point Bazel at the registry:
+  bazel build --registry=http://127.0.0.1:8090 //...
+{{- end }}
+
+CronJobs:
+  ingest: {{ if .Values.cronjobs.ingest.enabled }}enabled, schedule "{{ .Values.cronjobs.ingest.schedule }}"{{ else }}disabled{{ end }}
+  drift:  {{ if .Values.cronjobs.drift.enabled }}enabled, schedule "{{ .Values.cronjobs.drift.schedule }}"{{ else }}disabled{{ end }}
+
+bzlhub is single-writer by design — replicas are fixed at 1. See the
+chart README for the HA story.

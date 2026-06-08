@@ -20,7 +20,7 @@ describe('parseScipSymbol', () => {
     });
   });
 
-  test('4-component canopy variant version', () => {
+  test('4-component bzlhub variant version', () => {
     expect(parseScipSymbol('bzlmod platforms@0.0.4.1 platforms.bzl#constraint_setting')).toEqual({
       module: 'platforms',
       version: '0.0.4.1',

@@ -33,7 +33,7 @@ func (s *Store) WriteScipBlob(ctx context.Context, name, version string, blob []
 
 // ListScipVersions returns every (module, version) pair that has a
 // stored SCIP blob, sorted by module ASC then version ASC. Built for
-// `canopy verify`'s scip_present check, which needs the full set
+// `bzlhub verify`'s scip_present check, which needs the full set
 // rather than per-pair existence probes. Returns an empty (not nil)
 // slice when the module_scip table is empty.
 func (s *Store) ListScipVersions(ctx context.Context) ([]ModuleVersion, error) {

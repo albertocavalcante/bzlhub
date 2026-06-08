@@ -6,7 +6,7 @@
       with a `url` field; works for any client that speaks Streamable
       HTTP.
     • Claude Code — the one-liner `claude mcp add --transport http`.
-    • stdio — local canopy binary for sandboxed / fully-offline agents
+    • stdio — local bzlhub binary for sandboxed / fully-offline agents
       that can't reach the network.
 
   Live tool catalogue at the bottom — POSTs `tools/list` against this
@@ -15,7 +15,7 @@
   the per-IP rate limit).
 
   Origin is derived from window.location so this same component works
-  on bzlhub.com, an internal canopy.example.com, Harbor-style
+  on bzlhub.com, an internal bzlhub.example.com, Harbor-style
   deployments — no per-deploy config.
 -->
 <script lang="ts">
@@ -73,9 +73,9 @@
   );
   const stdioSnippet = `{
   "mcpServers": {
-    "canopy": {
-      "command": "canopy",
-      "args": ["mcp", "--db", "/path/to/canopy.db"]
+    "bzlhub": {
+      "command": "bzlhub",
+      "args": ["mcp", "--db", "/path/to/bzlhub.db"]
     }
   }
 }`;
@@ -261,7 +261,7 @@
     <section class="mb-8">
       <p class="text-sm text-fg-mute mb-3 leading-relaxed">
         For local-process agents, sandboxed environments, or fully-offline
-        workflows. Requires <code class="font-mono">canopy</code> on PATH and a
+        workflows. Requires <code class="font-mono">bzlhub</code> on PATH and a
         populated SQLite index at the given path. Build from source or pull a
         prebuilt image — see the
         <a
@@ -286,7 +286,7 @@
         <pre class="font-mono text-[12px] text-fg px-3 py-2 overflow-x-auto leading-relaxed">{stdioSnippet}</pre>
       </div>
       <p class="text-xs text-fg-dim mt-2">
-        Replace <code class="font-mono">/path/to/canopy.db</code> with your
+        Replace <code class="font-mono">/path/to/bzlhub.db</code> with your
         local index file. Same tool catalogue as the HTTP transport — the
         registrar is shared.
       </p>

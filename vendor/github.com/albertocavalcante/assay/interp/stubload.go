@@ -112,7 +112,6 @@ func stubExternalLoads(src []byte, filename string) ([]byte, int, error) {
 	// statement still starts on a fresh line.
 	out := append([]byte(nil), src...)
 	for _, e := range slices.Backward(edits) {
-
 		replacement := []byte(e.stubLines)
 		out = append(append(out[:e.startByte:e.startByte], replacement...), out[e.endByte:]...)
 	}

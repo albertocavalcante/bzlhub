@@ -41,7 +41,7 @@ function report(overrides: Partial<ModuleDiffReport> = {}): ModuleDiffReport {
 describe('closure scan cache', () => {
   it('scopes entries by upstream and module', () => {
     expect(closureStorageKey('https://bcr.bazel.build', 'rules_go')).toBe(
-      'canopy:closureScans:https://bcr.bazel.build:rules_go',
+      'bzlhub:closureScans:https://bcr.bazel.build:rules_go',
     );
   });
 

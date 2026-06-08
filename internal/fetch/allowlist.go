@@ -22,7 +22,7 @@ import (
 
 // defaultAllowedHosts is the process-wide allowlist applied to every
 // fetch.Client created via NewClient. Set once at startup by
-// cmd/canopy/main.go from CANOPY_ALLOWED_HOSTS; left empty in tests
+// cmd/bzlhub/main.go from BZLHUB_ALLOWED_HOSTS; left empty in tests
 // and in personal-canopy where no enforcement is desired.
 var (
 	defaultAllowedHostsMu sync.RWMutex

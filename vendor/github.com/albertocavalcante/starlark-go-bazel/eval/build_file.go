@@ -12,8 +12,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/albertocavalcante/starlark-go-bazel/types"
 	"go.starlark.net/starlark"
+
+	"github.com/albertocavalcante/starlark-go-bazel/types"
 )
 
 // ThreadKeyTargets is the key for storing the target map in the thread.
@@ -159,13 +160,13 @@ func PackageBuiltin(thread *starlark.Thread, _ *starlark.Builtin, args starlark.
 			if list, ok := val.(*starlark.List); ok {
 				var visibility []string
 				iter := list.Iterate()
-				defer iter.Done()
 				var v starlark.Value
 				for iter.Next(&v) {
 					if s, ok := v.(starlark.String); ok {
 						visibility = append(visibility, string(s))
 					}
 				}
+				iter.Done()
 				pkg.DefaultVisibility = visibility
 			}
 		case "default_deprecation":

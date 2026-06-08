@@ -37,7 +37,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/albertocavalcante/canopy/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api"
 )
 
 // ogImageURL builds the absolute URL of the OG card for an
@@ -162,7 +162,7 @@ func Compose(ctx context.Context, path, origin string, c api.Canopy) Tags {
 		// /mcp SPA page (plan-19 Idea E) — agent integration guide
 		// for the Streamable HTTP MCP transport mounted at /mcp.
 		// The transport itself is registered explicitly in server.go
-		// when CANOPY_MCP_HTTP_ENABLED is on, taking precedence over
+		// when BZLHUB_MCP_HTTP_ENABLED is on, taking precedence over
 		// this SPA fallback for POST/GET — this case only fires for
 		// the GET /mcp that lands in the SPA's NotFound handler.
 		t.Title = "MCP · bzlhub"

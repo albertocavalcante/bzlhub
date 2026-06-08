@@ -5,7 +5,7 @@
 //
 // The two-walk historical layout (one each in bzlwalk + hermetic, plus
 // their pre-passes — four walks total) is collapsed here. Callers that
-// want standalone behaviour still get one walk via bzlwalk.Walk /
+// want standalone behavior still get one walk via bzlwalk.Walk /
 // hermetic.Classify wrappers; the win comes when assay.Analyze drives
 // both extractors with the same slice.
 package walkparse
@@ -46,7 +46,7 @@ type File struct {
 // (the WalkDir callback returning a non-nil error). Per-file parse
 // errors are recorded in File.ParseErr; the walk continues past them.
 //
-// ctx is checked at every directory entry — a cancelled context aborts
+// ctx is checked at every directory entry — a canceled context aborts
 // the walk with ctx.Err() (wraps to context.Canceled / DeadlineExceeded
 // via errors.Is).
 func Walk(ctx context.Context, rootDir string) ([]File, error) {

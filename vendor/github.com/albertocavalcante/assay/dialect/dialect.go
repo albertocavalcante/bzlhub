@@ -32,9 +32,21 @@ type Dialect interface {
 	// module_extension primitive. May be empty for dialects without one.
 	IsModuleExtensionSymbol(sym string) bool
 
+	// IsTagClassSymbol reports whether the identifier names the
+	// tag_class primitive (Bazel only — Buck2 returns false).
+	// Used by bzlwalk to pre-scan `IDENT = tag_class(...)` bindings
+	// so module_extensions can resolve their tag_classes dict.
+	IsTagClassSymbol(sym string) bool
+
 	// IsToolchainTypeSymbol reports whether the identifier names the
 	// toolchain_type primitive.
 	IsToolchainTypeSymbol(sym string) bool
+
+	// IsToolchainSymbol reports whether the identifier names the
+	// `toolchain(...)` BUILD-file primitive that registers a concrete
+	// implementation against a toolchain_type. Distinct from
+	// toolchain_type (the declaration).
+	IsToolchainSymbol(sym string) bool
 
 	// IsNetworkFetchAPI reports whether the identifier names an API that
 	// fetches from the network (download_file, http_archive, etc.).

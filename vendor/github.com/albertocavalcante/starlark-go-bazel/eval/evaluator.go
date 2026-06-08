@@ -11,12 +11,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/albertocavalcante/starlark-go-bazel/builtins"
-	"github.com/albertocavalcante/starlark-go-bazel/loader"
-	"github.com/albertocavalcante/starlark-go-bazel/types"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
+
+	"github.com/albertocavalcante/starlark-go-bazel/builtins"
+	"github.com/albertocavalcante/starlark-go-bazel/loader"
+	"github.com/albertocavalcante/starlark-go-bazel/types"
 )
 
 // Evaluator evaluates Starlark files (BUILD and .bzl).
@@ -274,6 +275,7 @@ func makeBzlPredeclared() starlark.StringDict {
 		"struct":           starlark.NewBuiltin("struct", starlarkstruct.Make),
 		"depset":           starlark.NewBuiltin("depset", types.DepsetBuiltin),
 		"rule":             starlark.NewBuiltin("rule", types.RuleBuiltin),
+		"aspect":           starlark.NewBuiltin("aspect", builtins.Aspect),
 		"repository_rule":  starlark.NewBuiltin("repository_rule", builtins.RepositoryRule),
 		"module_extension": starlark.NewBuiltin("module_extension", builtins.ModuleExtension),
 		"tag_class":        starlark.NewBuiltin("tag_class", builtins.TagClass),
@@ -307,12 +309,12 @@ type nativeStub struct{}
 
 func newNativeStub() *nativeStub { return &nativeStub{} }
 
-func (*nativeStub) String() string                           { return "<native (stub)>" }
-func (*nativeStub) Type() string                             { return "native" }
-func (*nativeStub) Freeze()                                  {}
-func (*nativeStub) Truth() starlark.Bool                     { return starlark.True }
-func (*nativeStub) Hash() (uint32, error)                    { return 0, fmt.Errorf("unhashable: native") }
-func (*nativeStub) AttrNames() []string                      { return nil }
+func (*nativeStub) String() string        { return "<native (stub)>" }
+func (*nativeStub) Type() string          { return "native" }
+func (*nativeStub) Freeze()               {}
+func (*nativeStub) Truth() starlark.Bool  { return starlark.True }
+func (*nativeStub) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: native") }
+func (*nativeStub) AttrNames() []string   { return nil }
 func (*nativeStub) Attr(name string) (starlark.Value, error) {
 	return starlark.NewBuiltin("native."+name, func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
 		// Conservative return: None is safe in any expression

@@ -11,11 +11,11 @@ import (
 
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/api/paths"
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/server"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/server"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 func TestExternalSurface_EndpointReturnsRefs(t *testing.T) {
@@ -42,7 +42,7 @@ func TestExternalSurface_EndpointReturnsRefs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.External("fixture", "1.0.0"))
@@ -99,7 +99,7 @@ func TestExternalSurface_FilterByQueryParams(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	cases := []struct {
@@ -199,7 +199,7 @@ func TestAirgapSurface_PerModuleProvenance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	t.Run("provenance populated", func(t *testing.T) {
@@ -311,7 +311,7 @@ func TestAirgapSurface_ClosureUnion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.AirgapSurface("root", "1.0.0"))
@@ -366,7 +366,7 @@ func TestAirgapDownloaderConfig_RendersRewriteLines(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.AirgapDownloaderConfig("m", "1") + "?mirror=http://mirror.example.com/")
@@ -424,7 +424,7 @@ func TestAirgapDownloaderConfig_JSONFormat(t *testing.T) {
 	}, nil); err != nil {
 		t.Fatal(err)
 	}
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.AirgapDownloaderConfig("m", "1") + "?format=json")
@@ -462,7 +462,7 @@ func TestAirgapModuleMirrors_RendersBazelrcLine(t *testing.T) {
 	if err := s.WriteReport(ctx, &report.ModuleReport{Name: "m", Version: "1"}); err != nil {
 		t.Fatal(err)
 	}
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.AirgapModuleMirrors("m", "1") + "?mirror=http://mirror.example.com/")
@@ -507,7 +507,7 @@ func TestAirgapModuleMirrors_UnknownModuleReturns404(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 	// NOTE: no WriteReport — module is intentionally absent.
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.AirgapModuleMirrors("nope", "0.0.0"))
@@ -534,7 +534,7 @@ func TestAirgapModuleMirrors_RejectsInjection(t *testing.T) {
 	if err := s.WriteReport(ctx, &report.ModuleReport{Name: "m", Version: "1"}); err != nil {
 		t.Fatal(err)
 	}
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	bad := []string{
@@ -566,7 +566,7 @@ func TestAirgapModuleMirrors_CustomRegistry(t *testing.T) {
 	if err := s.WriteReport(ctx, &report.ModuleReport{Name: "m", Version: "1"}); err != nil {
 		t.Fatal(err)
 	}
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.AirgapModuleMirrors("m", "1") + "?mirror=http://m.example/&registry=https://internal.registry/")
@@ -598,7 +598,7 @@ func TestExternalSurface_ConditionalGET_Returns304(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	// First request: 200 + ETag.
@@ -696,7 +696,7 @@ func TestExternalSurface_SurfacesCorpusUsages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.External("rules_go", "0.50.1"))
@@ -803,7 +803,7 @@ go_sdk = module_extension(
 		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.External("rules_go", "0.50.1"))
@@ -857,7 +857,7 @@ func TestExternalSurface_NoCorpusConsumersOmitsField(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 	res, err := http.Get(ts.URL + paths.External("lonely_ruleset", "0.1.0"))
 	if err != nil {
@@ -882,7 +882,7 @@ func TestExternalSurface_EmptyStore_ReturnsEmptyRefs(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.External("unknown", "0.0.0"))

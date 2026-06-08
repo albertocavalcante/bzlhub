@@ -2,10 +2,11 @@
 package bzl
 
 import (
+	"go.starlark.net/starlark"
+
 	"github.com/albertocavalcante/starlark-go-bazel/loader"
 	"github.com/albertocavalcante/starlark-go-bazel/taint"
 	"github.com/albertocavalcante/starlark-go-bazel/version"
-	"go.starlark.net/starlark"
 )
 
 // LoadFunc is the canonical signature for a thread.Load handler.
@@ -42,20 +43,35 @@ type Options struct {
 	// auto-promotes Mode to ModeLenient and preserves prior behavior.
 	LenientLoad bool
 
+	// SCAFFOLD: the per-Version delta table wires in M6 (see
+	// docs/plans/02-pre-m1-cleanup-and-publish.md §1). Today the
+	// field is read and stored — but every Version value behaves
+	// identically (Latest()'s surface) because the table is empty.
+	// Pin against this field knowing behavior is reserved.
+	//
 	// Version pins the Bazel LTS major whose default builtin surface
 	// is emulated. Zero value is VLatest. Orthogonal to the per-flag
 	// FeatureFlags map below.
 	Version version.Version
 
+	// SCAFFOLD: the loader-selection dispatch wires in M5. Today
+	// Mode is read but ModeLenient and ModeAnalysis evaluate
+	// identically to ModeStrict; the LenientLoad bool is the
+	// effective control until M5. See effectiveMode().
+	//
 	// Mode selects strictness — see mode.go. Zero value is ModeStrict
 	// which preserves prior default behavior.
 	Mode Mode
 
+	// SCAFFOLD: per-flag behavior dispatch wires in M6. Today the
+	// map is accepted and stored but no flag has runtime effect.
+	// Useful for forward-compat consumer pinning.
+	//
 	// FeatureFlags toggles individual Bazel experimental_*/incompatible_*
 	// features, orthogonal to Version. Key = the flag's command-line
 	// name without leading dashes (e.g. "experimental_repository_ctx_execute_wasm").
-	// Unset keys fall back to the Version default; future M6 work
-	// populates the per-Version default table.
+	// Unset keys fall back to the Version default; M6 populates the
+	// per-Version default table.
 	FeatureFlags map[string]bool
 
 	// PredeclaredBzl adds or overrides predeclared globals for .bzl
@@ -68,19 +84,32 @@ type Options struct {
 	// BUILD file evaluation. Same merge semantics as PredeclaredBzl.
 	PredeclaredBuild starlark.StringDict
 
+	// SCAFFOLD: capture-population wires in M5 alongside Mode. Today
+	// the pointer is accepted and stored but no eval path writes to
+	// it. CaptureSinks remains the zero value across runs until M5
+	// activates the capture path.
+	//
 	// CaptureSinks is the destination for analysis-mode capture
-	// output. Must be non-nil when Mode == ModeAnalysis; ignored in
-	// ModeStrict / ModeLenient. The Sinks type's field set grows
-	// across M4-M5; the M1 surface accepts the pointer.
+	// output. Must be non-nil when Mode == ModeAnalysis (once M5
+	// wires the dispatch); ignored in ModeStrict / ModeLenient. The
+	// Sinks type's field set grows across M4-M5.
 	CaptureSinks *taint.Sinks
 
 	// LoadResolver, when non-nil, REPLACES the default thread.Load
 	// handler for .bzl + BUILD evaluation. Use stub.LoaderFor to
 	// wire Permissive fallbacks for unresolvable external symbols;
 	// canopy ingest composes a tryReal callback against its mirror.
-	LoadResolver func(*starlark.Thread, string) (starlark.StringDict, error)
+	LoadResolver LoadFunc
 }
 
+// SCAFFOLD: the loader-selection switch that consumes this lives in
+// M5 (see docs/plans/02-pre-m1-cleanup-and-publish.md §1 for the
+// dead-vs-scaffold reflection). Today effectiveMode pins the
+// auto-promotion contract — the unit tests
+// (TestOptions_ZeroValueDefaults, TestOptions_LenientLoadAutoPromotes,
+// TestOptions_ExplicitModeWins) capture what M5 will honor when it
+// wires Mode into the loader dispatch.
+//
 // effectiveMode returns the Mode after applying the LenientLoad
 // backward-compat promotion: if the legacy bool is true and Mode is
 // zero (ModeStrict by iota), auto-promote to ModeLenient.

@@ -1,4 +1,4 @@
-// Parsing helpers for the SCIP symbol string canopy emits.
+// Parsing helpers for the SCIP symbol string bzlhub emits.
 //
 // Wire shape: `bzlmod <module>@<version> <relpath>#<name>`
 // Example:    `bzlmod rules_python@0.40.0 python/defs.bzl#py_library`
@@ -10,7 +10,7 @@
 // API result is available, prefer those structured fields.
 
 /**
- * ParsedScipSymbol holds the four canopy-defined parts of a SCIP
+ * ParsedScipSymbol holds the four bzlhub-defined parts of a SCIP
  * symbol. Null on any malformed input — callers should fall back to
  * showing the raw string.
  */
@@ -22,7 +22,7 @@ export interface ParsedScipSymbol {
 }
 
 /**
- * parseScipSymbol splits a canopy-emitted SCIP symbol into its
+ * parseScipSymbol splits a bzlhub-emitted SCIP symbol into its
  * four components. Returns null when the input doesn't match the
  * shape — be lenient about whitespace, but require both the
  * `<module>@<version>` and the `<relpath>#<name>` halves.

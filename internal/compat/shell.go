@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/albertocavalcante/canopy/internal/modulediff"
+	"github.com/albertocavalcante/bzlhub/internal/modulediff"
 )
 
 // renderShell emits a `migrate.sh` bash script that applies every

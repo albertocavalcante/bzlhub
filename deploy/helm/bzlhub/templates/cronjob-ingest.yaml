@@ -1,0 +1,77 @@
+{{- if .Values.cronjobs.ingest.enabled -}}
+{{- if not .Values.cronjobs.ingest.modules }}
+{{- fail "cronjobs.ingest.enabled=true but cronjobs.ingest.modules is empty — nothing to ingest" }}
+{{- end }}
+{{- /*
+   Guard: cronjob ingest hits the HTTP API, which is gated by the
+   BZLHUB_INGEST_WRITE_ENABLED feature flag on the server. Refuse to
+   render a broken cronjob silently.
+*/ -}}
+{{- $env := default (dict) .Values.env -}}
+{{- if ne (toString (index $env "BZLHUB_INGEST_WRITE_ENABLED")) "true" }}
+{{- fail "cronjobs.ingest.enabled=true requires env.BZLHUB_INGEST_WRITE_ENABLED=\"true\" on the bzlhub server (read the chart README — security implication: any HTTP caller can trigger ingests once this is on)" }}
+{{- end }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "bzlhub.cronName" (dict "root" . "suffix" "ingest") }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "bzlhub.labels" . | nindent 4 }}
+  {{- include "bzlhub.annotations" (dict "ctx" . "specific" (dict)) | nindent 2 }}
+spec:
+  schedule: {{ .Values.cronjobs.ingest.schedule | quote }}
+  concurrencyPolicy: {{ .Values.cronjobs.ingest.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.cronjobs.ingest.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjobs.ingest.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels: {{- include "bzlhub.selectorLabels" . | nindent 12 }}
+          {{- with .Values.cronjobs.ingest.podAnnotations }}
+          annotations: {{- toYaml . | nindent 12 }}
+          {{- end }}
+        spec:
+          restartPolicy: OnFailure
+          {{- with (include "bzlhub.imagePullSecrets" .) }}
+          {{- . | nindent 10 }}
+          {{- end }}
+          securityContext: {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: ingest
+              # Reuse the bzlhub image — wget is already present from
+              # the HEALTHCHECK in the Dockerfile. No new image to
+              # mirror, pin, or audit.
+              image: {{ include "bzlhub.image" . | quote }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              securityContext: {{- toYaml .Values.securityContext | nindent 16 }}
+              resources: {{- toYaml .Values.cronjobs.ingest.resources | nindent 16 }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  ENDPOINT="http://{{ include "bzlhub.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}/api/ingest-recursive"
+                  for mv in {{ join " " .Values.cronjobs.ingest.modules }}; do
+                    MODULE="${mv%@*}"
+                    VERSION="${mv#*@}"
+                    if [ "$MODULE" = "$mv" ] || [ -z "$VERSION" ]; then
+                      echo "skip malformed entry: $mv" >&2
+                      continue
+                    fi
+                    BODY=$(printf '{"module":"%s","version":"%s","upstream":"%s"}' \
+                      "$MODULE" "$VERSION" "{{ .Values.cronjobs.ingest.upstream }}")
+                    echo "==> POST $ENDPOINT module=$MODULE version=$VERSION"
+                    # --tries=1: cronjob retries are k8s's job, not wget's.
+                    # --timeout=0: a recursive ingest of a large closure
+                    # can take minutes; trust bzlhub's own request lifecycle.
+                    wget -q -O - \
+                      --header='Content-Type: application/json' \
+                      --post-data="$BODY" \
+                      --tries=1 \
+                      --timeout=0 \
+                      "$ENDPOINT"
+                    echo
+                  done
+{{- end }}

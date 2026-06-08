@@ -150,7 +150,7 @@
       <p class="text-[13px] text-fg-mute mt-1 max-w-[70ch]">
         Every URL the <em>entire transitive</em> <code class="text-fg">bazel_deps</code> closure
         of <code class="text-fg">{surface?.root ?? page.params.name + '@' + page.params.version}</code>
-        would fetch, unioned across canopy's indexed modules. This is what an
+        would fetch, unioned across bzlhub's indexed modules. This is what an
         air-gapped mirror needs to satisfy. Per-module ref counts let you see
         which dependency contributes which classes.
       </p>

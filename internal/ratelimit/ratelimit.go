@@ -11,11 +11,14 @@
 //     cannot exhaust server capacity. The semaphore is the actual
 //     resource defense; the per-IP limit is anti-noise.
 //
-// SECURITY-TODO: Cloudflare Access is not yet in front of canopy.
-// Until it is, the bypass list is keyed by IP. Once authn is wired,
-// swap the keying function to use user-id so the bypass list becomes
-// "trusted operators" rather than "trusted addresses." See
-// featureflags.go for the broader threat-model note.
+// Note: the bypass list is keyed by IP. The broader safety story for
+// direct-exposure deployments lives in featureflags.CheckSafeStartup,
+// which refuses to boot bzlhub serve when IngestWriteEnabled=true
+// without a configured BZLHUB_TRUSTED_PROXY_CIDR. Future evolution:
+// once an AuthN front-proxy is mandatory (Plan 71 §C3 + Plan 75
+// header-auth scaffold), swap this keying function to use user-id so
+// the bypass list becomes "trusted operators" rather than "trusted
+// addresses."
 package ratelimit
 
 import (

@@ -11,7 +11,7 @@
 // that don't need the heavy path don't pay for the interpreter dep.
 //
 // Current scope, known limitations, and which-test-pins-which-gap are
-// catalogued in LIMITATIONS.md (in this package directory). Keep that
+// cataloged in LIMITATIONS.md (in this package directory). Keep that
 // file authoritative; this comment summarizes the high points:
 //
 //   - rule() is supported — attr names are extracted, the rule's
@@ -42,6 +42,7 @@ import (
 	"strconv"
 
 	"github.com/albertocavalcante/assay/report"
+	"github.com/albertocavalcante/starlark-go-bazel/builtins"
 	"github.com/albertocavalcante/starlark-go-bazel/bzl"
 	"github.com/albertocavalcante/starlark-go-bazel/types"
 	"go.starlark.net/starlark"
@@ -70,7 +71,7 @@ func Hydrate(_ context.Context, workspaceRoot string, rep *report.ModuleReport) 
 
 	for i := range rep.Rules {
 		ru := &rep.Rules[i]
-		if ru.AttrsExtractionMethod != "" {
+		if ru.AttrsExtractionMethod != report.AttrsUnresolved {
 			continue // earlier tier already resolved
 		}
 		if ru.Provenance.File == "" {
@@ -86,7 +87,7 @@ func Hydrate(_ context.Context, workspaceRoot string, rep *report.ModuleReport) 
 
 	for i := range rep.RepositoryRules {
 		rr := &rep.RepositoryRules[i]
-		if rr.AttrsExtractionMethod != "" {
+		if rr.AttrsExtractionMethod != report.AttrsUnresolved {
 			continue
 		}
 		if rr.Provenance.File == "" {
@@ -105,6 +106,33 @@ func Hydrate(_ context.Context, workspaceRoot string, rep *report.ModuleReport) 
 		}
 		rr.Attrs = attrsFromRuleClass(rc)
 		rr.AttrsExtractionMethod = report.AttrsInterpreted
+	}
+
+	// Aspects flow through the same evalFile/global-lookup machinery
+	// as rules. The aspect's local binding name (`my_aspect =
+	// aspect(...)`) IS the global it's exported under, so
+	// lookupAspectClass(file, name) is exactly parallel to
+	// lookupRuleClass.
+	//
+	// Pre-M0 this loop was a no-op: starlark-go-bazel's aspect()
+	// rejected the AttrDescriptor type that attr.* produced. M0
+	// (plans 07 + 08 upstream) unified the type via the
+	// AttrDescriptorHolder interface, so aspects now hydrate via
+	// Tier-3 the same way rules do.
+	for i := range rep.Aspects {
+		a := &rep.Aspects[i]
+		if a.AttrsExtractionMethod != report.AttrsUnresolved {
+			continue
+		}
+		if a.Provenance.File == "" {
+			continue
+		}
+		ac := cache.lookupAspectClass(a.Provenance.File, a.Name)
+		if ac == nil {
+			continue
+		}
+		a.Attrs = attrsFromAspectClass(ac)
+		a.AttrsExtractionMethod = report.AttrsInterpreted
 	}
 }
 
@@ -151,6 +179,16 @@ func (c *evalCache) lookupRepositoryRuleClass(relFile, symbol string) *types.Rep
 	return lookupAs[*types.RepositoryRuleClass](c, relFile, symbol)
 }
 
+// lookupAspectClass mirrors lookupRuleClass for the aspect() path.
+// AspectClass lives in starlark-go-bazel's builtins package (not
+// types) because aspect's surface is M0+ and still being aligned with
+// the types-package canonical shape; its Attrs() returns
+// map[string]*types.AttrDescriptor though, so attrsFromAspectClass
+// can reuse the same descriptor-projection patterns as rules.
+func (c *evalCache) lookupAspectClass(relFile, symbol string) *builtins.AspectClass {
+	return lookupAs[*builtins.AspectClass](c, relFile, symbol)
+}
+
 // lookupAs is the shared evalFile + global-lookup + type-assert flow.
 // Returns the zero value of T (typically nil for pointer types) on any
 // step's failure. Avoids the four-line repetition that the two
@@ -170,6 +208,19 @@ func lookupAs[T any](c *evalCache, relFile, symbol string) T {
 		return zero
 	}
 	return t
+}
+
+// providersToGroups lifts the flat upstream `Providers []string` into
+// the ProviderGroups disjunction-of-conjunctions shape. The
+// AttrDescriptor from starlark-go-bazel doesn't preserve the AND/OR
+// distinction (it only carries the flat conjunction form); we map it
+// to a single conjunction wrapped in one outer alternative, matching
+// the AST-level extractProviderGroups output for the simple form.
+func providersToGroups(providers []string) [][]string {
+	if len(providers) == 0 {
+		return nil
+	}
+	return [][]string{append([]string(nil), providers...)}
 }
 
 // attrsFromRepositoryRuleClass mirrors attrsFromRuleClass for
@@ -204,7 +255,7 @@ func (c *evalCache) evalFile(relFile string) (starlark.StringDict, bool) {
 	// module loads ("//...") stay untouched and use the lenient
 	// FileSystem loader.
 	absPath := filepath.Join(c.workspaceRoot, relFile)
-	src, err := os.ReadFile(absPath)
+	src, err := os.ReadFile(absPath) //nolint:gosec // G304: relFile comes from the assay walker's own enumeration of the workspace, not user input.
 	if err != nil {
 		slog.Debug("interp: read failed", "file", relFile, "err", err)
 		c.failed[relFile] = true
@@ -243,6 +294,34 @@ var implicitBazelAttrs = map[string]bool{
 	"features":    true,
 }
 
+// attrsFromAspectClass mirrors attrsFromRuleClass for aspects. Aspect
+// attrs are a strict subset (implicit must be label-typed with a
+// default; explicit must be string/int/bool) but the projection
+// shape into AttrSpec is identical — same descriptor fields, same
+// implicit-attr filtering, same name-sort.
+func attrsFromAspectClass(ac *builtins.AspectClass) []report.AttrSpec {
+	descriptors := ac.Attrs()
+	out := make([]report.AttrSpec, 0, len(descriptors))
+	for name, ad := range descriptors {
+		if implicitBazelAttrs[name] {
+			continue
+		}
+		spec := report.AttrSpec{
+			Name:           name,
+			Type:           string(ad.Type),
+			Doc:            ad.Doc,
+			Mandatory:      ad.Mandatory,
+			ProviderGroups: providersToGroups(ad.Providers),
+		}
+		if ad.Default != nil {
+			spec.Default = starlarkDefaultText(ad.Default)
+		}
+		out = append(out, spec)
+	}
+	sortAttrsByName(out)
+	return out
+}
+
 // attrsFromRuleClass translates the interpreter's AttrDescriptor map
 // into assay's flat AttrSpec slice. Map ordering in Go is randomized,
 // so we sort by name to keep diffs deterministic across runs. Implicit
@@ -256,11 +335,11 @@ func attrsFromRuleClass(rc *types.RuleClass) []report.AttrSpec {
 			continue
 		}
 		spec := report.AttrSpec{
-			Name:      name,
-			Type:      string(ad.Type),
-			Doc:       ad.Doc,
-			Mandatory: ad.Mandatory,
-			Providers: append([]string(nil), ad.Providers...),
+			Name:           name,
+			Type:           string(ad.Type),
+			Doc:            ad.Doc,
+			Mandatory:      ad.Mandatory,
+			ProviderGroups: providersToGroups(ad.Providers),
 		}
 		if ad.Default != nil {
 			spec.Default = starlarkDefaultText(ad.Default)

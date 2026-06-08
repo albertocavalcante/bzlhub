@@ -3,7 +3,7 @@ package drift
 import (
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
 )
 
 // TestComputeForVersion_Behind asserts the "we have an older version

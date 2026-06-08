@@ -25,7 +25,7 @@ export function classifyDriftModule(m: ModuleDrift, breakingScan: BreakingScanMa
     return { tier: 'skipped', reason: 'yanked upstream — review before advancing' };
   }
   if (m.status === 'local-only') {
-    return { tier: 'skipped', reason: 'local-only (private / canopy-published)' };
+    return { tier: 'skipped', reason: 'local-only (private / bzlhub-published)' };
   }
   if (m.status === 'upstream-error') {
     return { tier: 'skipped', reason: 'upstream error — retry drift first' };

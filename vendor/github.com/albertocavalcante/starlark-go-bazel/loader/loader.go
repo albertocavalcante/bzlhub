@@ -90,7 +90,7 @@ func (f *OSFileSystem) ReadFile(path string) ([]byte, error) {
 	if !filepath.IsAbs(path) {
 		fullPath = filepath.Join(f.root, path)
 	}
-	return os.ReadFile(fullPath)
+	return os.ReadFile(fullPath) //nolint:gosec // G304: path is supplied by the caller by design (this is the OSFileSystem loader).
 }
 
 // Stat returns file info for the given path.
@@ -126,8 +126,8 @@ type FileSystemLoader struct {
 }
 
 // NewFileSystemLoader creates a new FileSystemLoader.
-func NewFileSystemLoader(fs FileSystem) *FileSystemLoader {
-	return &FileSystemLoader{fs: fs}
+func NewFileSystemLoader(filesys FileSystem) *FileSystemLoader {
+	return &FileSystemLoader{fs: filesys}
 }
 
 // Load loads a Starlark file by path.
@@ -264,9 +264,9 @@ func WithLenientLoad(enabled bool) BzlFileLoaderOption {
 
 // NewBzlFileLoader creates a new loader that reads from the given filesystem.
 // The repoRoot is the path to the workspace root (main repository).
-func NewBzlFileLoader(fs FileSystem, repoRoot string, opts ...BzlFileLoaderOption) *BzlFileLoader {
+func NewBzlFileLoader(filesys FileSystem, repoRoot string, opts ...BzlFileLoaderOption) *BzlFileLoader {
 	l := &BzlFileLoader{
-		fs:          fs,
+		fs:          filesys,
 		repoRoot:    repoRoot,
 		predeclared: make(starlark.StringDict),
 		repoMapping: make(map[string]string),

@@ -8,8 +8,8 @@
 
   Trust model
   -----------
-  canopy is operator-controlled: the operator chooses which modules
-  to ingest via /api/v1/actions/bump or `canopy ingest`. Doc strings flow into
+  bzlhub is operator-controlled: the operator chooses which modules
+  to ingest via /api/v1/actions/bump or `bzlhub ingest`. Doc strings flow into
   reports from the .bzl source we evaluate with the interpreter — so
   the XSS surface is "did I ingest a module that wrote evil HTML into
   a doc=string?" That requires the operator to ingest a hostile

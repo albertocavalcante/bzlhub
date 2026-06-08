@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/albertocavalcante/assay/report"
-	"github.com/albertocavalcante/canopy/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api"
 )
 
 // Search runs a full-text query with optional hermeticity filtering.

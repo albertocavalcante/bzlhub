@@ -7,7 +7,7 @@
 // to fix it."
 //
 // The analyzer is pure: it reads from a ReportSource (which the
-// service layer plugs as canopy.Service) and never reaches out to
+// service layer plugs as bzlhub.Service) and never reaches out to
 // the network. The MODULE.bazel input is parsed in-process via
 // go-bzlmod; no Starlark evaluation, no URL fetches, no shelling out.
 //
@@ -25,11 +25,11 @@ import (
 	"github.com/albertocavalcante/assay/report"
 	bzlmod "github.com/albertocavalcante/go-bzlmod"
 
-	"github.com/albertocavalcante/canopy/internal/modulediff"
+	"github.com/albertocavalcante/bzlhub/internal/modulediff"
 )
 
 // ReportSource is the read-only view of canopy's index the analyzer
-// needs. *canopy.Service satisfies it via its existing methods,
+// needs. *bzlhub.Service satisfies it via its existing methods,
 // keeping this package decoupled from the broader service surface.
 type ReportSource interface {
 	// LatestVersion returns the highest indexed version for a module,

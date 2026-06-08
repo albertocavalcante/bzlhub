@@ -22,8 +22,8 @@ function row(overrides: Partial<ModuleDrift> = {}): ModuleDrift {
 
 describe('breakingScanStorageKey', () => {
   it('scopes cache entries by upstream and mirror root', () => {
-    expect(breakingScanStorageKey('https://bcr.bazel.build', { mirror_root: '/tmp/canopy' })).toBe(
-      'canopy:breakingScans:https://bcr.bazel.build:/tmp/canopy',
+    expect(breakingScanStorageKey('https://bcr.bazel.build', { mirror_root: '/tmp/bzlhub' })).toBe(
+      'bzlhub:breakingScans:https://bcr.bazel.build:/tmp/bzlhub',
     );
   });
 });

@@ -3,14 +3,14 @@ package server
 import (
 	"context"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/githubmeta"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/githubmeta"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // ReadHelper is the read-side surface server.go needs beyond
-// api.Canopy. These methods exist on *canopy.Service but don't
+// api.Canopy. These methods exist on *bzlhub.Service but don't
 // belong on the cross-transport api.Canopy contract — MCP and CLI
 // callers don't need pin counts or GitHub-meta. Defining the
 // dependency at the server layer (where it's actually used) lets
@@ -38,7 +38,7 @@ type ReadHelper interface {
 	GetGitHubMeta(ctx context.Context, module string) (*githubmeta.Meta, error)
 	// Aggregate corpus counters (module count, version count,
 	// documented-symbols total) for the home-page dashboard.
-	ComputeCorpusStats(ctx context.Context) (*canopy.CorpusStats, error)
+	ComputeCorpusStats(ctx context.Context) (*bzlhub.CorpusStats, error)
 	// Latest BCR provenance (bump_success audit payload) for one
 	// (module, version). Nil when no BCR-stamped bump exists.
 	GetLatestBumpProvenance(ctx context.Context, module, version string) (*api.BumpProvenance, error)

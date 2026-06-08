@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/albertocavalcante/assay/report"
-	"github.com/albertocavalcante/canopy/internal/docview"
+	"github.com/albertocavalcante/bzlhub/internal/docview"
 )
 
 func TestAugmentModuleResponseReturnsPlainReportWithoutAugmentations(t *testing.T) {

@@ -18,8 +18,8 @@
   onMount(() => {
     input?.focus();
     const onGlobal = () => input?.focus();
-    window.addEventListener('canopy:focus-search', onGlobal);
-    return () => window.removeEventListener('canopy:focus-search', onGlobal);
+    window.addEventListener('bzlhub:focus-search', onGlobal);
+    return () => window.removeEventListener('bzlhub:focus-search', onGlobal);
   });
 
   function onKeydown(e: KeyboardEvent) {

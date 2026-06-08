@@ -9,14 +9,14 @@ import (
 
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api"
 )
 
 // registerSearchTools registers the read-only browsing surface:
 // search, module_report, list_versions, summary, history.
 func registerSearchTools(srv *server.MCPServer, c api.Canopy) {
 	srv.AddTool(
-		mcp.NewTool("canopy_search",
+		mcp.NewTool("bzlhub_search",
 			mcp.WithDescription("Full-text + faceted search across canopy's index of Bazel modules. Matches module names, rule names, provider names, macro names, and doc strings via FTS5 trigram tokenizer."),
 			mcp.WithString("query", mcp.Required(), mcp.Description("Free-text search query")),
 			mcp.WithArray("hermeticity", mcp.Description("Optional hermeticity-class filter (any of pure-starlark, prebuilt-binaries-pinned, build-from-source, network-fetch-pinned, network-fetch-unpinned, requires-system-tools, repository-rule-arbitrary-code).")),
@@ -26,7 +26,7 @@ func registerSearchTools(srv *server.MCPServer, c api.Canopy) {
 	)
 
 	srv.AddTool(
-		mcp.NewTool("canopy_module_report",
+		mcp.NewTool("bzlhub_module_report",
 			mcp.WithDescription("Fetch the full ModuleReport for one (module, version) — includes rules with attribute schemas, providers with fields, macros, repository rules, module extensions, toolchains, and the hermeticity profile with per-finding provenance."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Bazel module name")),
 			mcp.WithString("version", mcp.Required(), mcp.Description("Module version")),
@@ -35,7 +35,7 @@ func registerSearchTools(srv *server.MCPServer, c api.Canopy) {
 	)
 
 	srv.AddTool(
-		mcp.NewTool("canopy_list_versions",
+		mcp.NewTool("bzlhub_list_versions",
 			mcp.WithDescription("List known versions of a Bazel module in canopy's index, newest first."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Bazel module name")),
 		),
@@ -43,8 +43,8 @@ func registerSearchTools(srv *server.MCPServer, c api.Canopy) {
 	)
 
 	srv.AddTool(
-		mcp.NewTool("canopy_summary",
-			mcp.WithDescription("Return the 'first impression' summary of one (module, version): name, version, compatibility level, declared bazel_deps, README contents, LICENSE name + path, example directories, and registry-level fields (homepage, maintainers, repository, yanked versions) when canopy's mirror has metadata.json. Use this when the user asks 'what is X@Y?' or wants a one-shot snapshot of a module without paging through rules/providers/macros (use canopy_module_report for the deep schema). Built on bazel-module-summary-go so the shape is stable across MCP, future CLI, and direct library consumers."),
+		mcp.NewTool("bzlhub_summary",
+			mcp.WithDescription("Return the 'first impression' summary of one (module, version): name, version, compatibility level, declared bazel_deps, README contents, LICENSE name + path, example directories, and registry-level fields (homepage, maintainers, repository, yanked versions) when canopy's mirror has metadata.json. Use this when the user asks 'what is X@Y?' or wants a one-shot snapshot of a module without paging through rules/providers/macros (use bzlhub_module_report for the deep schema). Built on bazel-module-summary-go so the shape is stable across MCP, future CLI, and direct library consumers."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Bazel module name (e.g. rules_go)")),
 			mcp.WithString("version", mcp.Required(), mcp.Description("Module version (e.g. 0.50.1)")),
 		),
@@ -52,7 +52,7 @@ func registerSearchTools(srv *server.MCPServer, c api.Canopy) {
 	)
 
 	srv.AddTool(
-		mcp.NewTool("canopy_history",
+		mcp.NewTool("bzlhub_history",
 			mcp.WithDescription("Return recent audit events: bump_success / bump_failure / ingest_recursive_success / ingest_recursive_failure. Each row carries module, version, source surface (drift-ui / cli / mcp / rest), duration_ms, success flag, and optional error/payload. Use this to answer 'what happened to my mirror?' or 'who bumped rules_go yesterday?' Read-only ops (search, drift) are intentionally NOT logged here."),
 			mcp.WithArray("kind", mcp.Description("Filter by event kinds (any of). Empty → all kinds.")),
 			mcp.WithString("source", mcp.Description("Filter by source surface (e.g. drift-ui, cli, mcp, rest). Empty → any.")),

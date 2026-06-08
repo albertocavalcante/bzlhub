@@ -71,7 +71,7 @@ func checkIndexMirrorAgreement(s *state) []Finding {
 			Version:  k.version,
 			Path:     "modules/" + k.name + "/" + k.version,
 			Message:  "present in mirror tree but missing from index",
-			Fix:      "run `canopy ingest <module-dir>` to register the on-disk version into the index",
+			Fix:      "run `bzlhub ingest <module-dir>` to register the on-disk version into the index",
 			Details:  map[string]any{"side": "mirror-only"},
 		})
 	}

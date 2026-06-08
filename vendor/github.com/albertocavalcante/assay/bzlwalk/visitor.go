@@ -6,8 +6,8 @@ import (
 
 	"go.starlark.net/syntax"
 
-	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/report"
+	syntaxutil "github.com/albertocavalcante/go-starlark-syntaxutil"
 )
 
 // scanAssign handles top-level `NAME = some_call(...)` statements.
@@ -35,7 +35,7 @@ func (v *visitor) scanAssign(s *syntax.AssignStmt, file string) {
 		return
 	}
 
-	prov := syntaxutil.ProvenanceFrom(file, call)
+	prov := report.ProvenanceFromNode(file, call)
 	priv := strings.HasPrefix(lhs.Name, "_")
 	d := v.dialect
 
@@ -63,13 +63,21 @@ func (v *visitor) scanAssign(s *syntax.AssignStmt, file string) {
 		})
 
 	case d.IsAspectSymbol(callee):
+		attrs, method := v.extractAttrsWithFold(call)
 		v.report.Aspects = append(v.report.Aspects, report.AspectSpec{
-			Name:              lhs.Name,
-			Doc:               syntaxutil.StringKeywordArg(call, "doc"),
-			AttrAspects:       syntaxutil.StringListKeywordArg(call, "attr_aspects"),
-			RequiredProviders: syntaxutil.StringListKeywordArg(call, "required_providers"),
-			Private:           priv,
-			Provenance:        prov,
+			Name:                   lhs.Name,
+			Doc:                    syntaxutil.StringKeywordArg(call, "doc"),
+			AttrAspects:            syntaxutil.StringListKeywordArg(call, "attr_aspects"),
+			RequiredProviders:      syntaxutil.IdentListKeywordArg(call, "required_providers"),
+			Attrs:                  attrs,
+			AttrsExtractionMethod:  method,
+			Provides:               syntaxutil.IdentListKeywordArg(call, "provides"),
+			Fragments:              syntaxutil.StringListKeywordArg(call, "fragments"),
+			HostFragments:          syntaxutil.StringListKeywordArg(call, "host_fragments"),
+			Toolchains:             syntaxutil.StringListKeywordArg(call, "toolchains"),
+			ApplyToGeneratingRules: syntaxutil.BoolKeywordArg(call, "apply_to_generating_rules"),
+			Private:                priv,
+			Provenance:             prov,
 		})
 
 	case d.IsRepositoryRuleSymbol(callee):
@@ -88,27 +96,56 @@ func (v *visitor) scanAssign(s *syntax.AssignStmt, file string) {
 		v.report.ModuleExtensions = append(v.report.ModuleExtensions, report.ModuleExtSpec{
 			Name:       lhs.Name,
 			Doc:        syntaxutil.StringKeywordArg(call, "doc"),
+			TagClasses: v.extractTagClasses(call),
 			Private:    priv,
 			Provenance: prov,
 		})
+
+	case d.IsTagClassSymbol(callee):
+		// tag_class bindings are recorded in the pre-pass (see
+		// collectTagClassBindings) and surfaced only as children of
+		// module_extension's tag_classes dict. They have no
+		// independent report entry — nothing to do here.
+		return
 	}
 }
 
 // scanTopLevelCall handles top-level calls without an assignment, e.g.,
-// `toolchain_type(name = "...")` or `package(default_visibility = ...)`.
+// `toolchain_type(name = "...")`, `toolchain(name = ..., toolchain_type = ...)`,
+// or `package(default_visibility = ...)`.
 func (v *visitor) scanTopLevelCall(call *syntax.CallExpr, file string) {
 	callee := syntaxutil.IdentName(call.Fn)
 	if callee == "" {
 		return
 	}
-	if v.dialect.IsToolchainTypeSymbol(callee) {
+	switch {
+	case v.dialect.IsToolchainTypeSymbol(callee):
 		name := syntaxutil.StringKeywordArg(call, "name")
 		if name == "" {
 			return
 		}
 		v.report.Toolchains = append(v.report.Toolchains, report.ToolchainSpec{
 			Name:       name,
-			Provenance: syntaxutil.ProvenanceFrom(file, call),
+			Provenance: report.ProvenanceFromNode(file, call),
+		})
+
+	case v.dialect.IsToolchainSymbol(callee):
+		name := syntaxutil.StringKeywordArg(call, "name")
+		tt := syntaxutil.StringKeywordArg(call, "toolchain_type")
+		// A toolchain registration without a name or a type is
+		// unusable downstream (Bazel itself will error); skip
+		// rather than emit a half-populated entry.
+		if name == "" || tt == "" {
+			return
+		}
+		v.report.ToolchainImpls = append(v.report.ToolchainImpls, report.ToolchainImpl{
+			Name:                 name,
+			ToolchainType:        tt,
+			ToolchainImpl:        syntaxutil.StringKeywordArg(call, "toolchain"),
+			ExecCompatibleWith:   syntaxutil.StringListKeywordArg(call, "exec_compatible_with"),
+			TargetCompatibleWith: syntaxutil.StringListKeywordArg(call, "target_compatible_with"),
+			TargetSettings:       syntaxutil.StringListKeywordArg(call, "target_settings"),
+			Provenance:           report.ProvenanceFromNode(file, call),
 		})
 	}
 }
@@ -155,7 +192,7 @@ func (v *visitor) scanDef(s *syntax.DefStmt, file string) {
 		name:       name,
 		params:     params,
 		doc:        docStringFromBody(s.Body),
-		provenance: syntaxutil.ProvenanceFrom(file, s),
+		provenance: report.ProvenanceFromNode(file, s),
 	}
 	if bodyCallsRuleLike(s.Body, v.macroCtx, v.composedMacros[file]) {
 		v.emitMacro(candidate)
@@ -194,7 +231,7 @@ func (v *visitor) extractAttrsWithFold(call *syntax.CallExpr) ([]report.AttrSpec
 	}
 	attrsExpr := syntaxutil.KeywordArg(call, "attrs")
 	if attrsExpr == nil {
-		return nil, ""
+		return nil, report.AttrsUnresolved
 	}
 	ctx := &foldContext{
 		sym:       v.symbols,
@@ -206,7 +243,7 @@ func (v *visitor) extractAttrsWithFold(call *syntax.CallExpr) ([]report.AttrSpec
 	}
 	folded, ok, crossedLoad := foldAttrsExpr(attrsExpr, ctx)
 	if !ok || len(folded) == 0 {
-		return nil, ""
+		return nil, report.AttrsUnresolved
 	}
 	if crossedLoad {
 		return folded, report.AttrsLoadResolve
@@ -221,7 +258,7 @@ func extractAttrs(call *syntax.CallExpr, keyword string) []report.AttrSpec {
 	if !ok {
 		return nil
 	}
-	var out []report.AttrSpec
+	out := make([]report.AttrSpec, 0, len(dict.List))
 	for _, e := range dict.List {
 		entry, ok := e.(*syntax.DictEntry)
 		if !ok {
@@ -235,16 +272,51 @@ func extractAttrs(call *syntax.CallExpr, keyword string) []report.AttrSpec {
 		if !ok {
 			continue
 		}
-		spec := report.AttrSpec{Name: keyStr}
-		if valCall, ok := entry.Value.(*syntax.CallExpr); ok {
-			spec.Type = attrTypeFromCall(valCall)
-			spec.Doc = syntaxutil.StringKeywordArg(valCall, "doc")
-			spec.Mandatory = syntaxutil.BoolKeywordArg(valCall, "mandatory")
-			if def := syntaxutil.KeywordArg(valCall, "default"); def != nil {
-				spec.Default = literalAsText(def)
+		out = append(out, attrSpecFromCall(keyStr, entry.Value))
+	}
+	return out
+}
+
+// providerGroupsFromExpr maps the value expression of a
+// `providers = ...` kwarg into the disjunction-of-conjunctions
+// shape: outer slices are OR alternatives, inner slices are AND
+// requirements within an alternative.
+//
+// Three shapes are recognized literally:
+//
+//	providers = [GoInfo]        -> [[GoInfo]]
+//	providers = [A, B, C]       -> [[A, B, C]]   (one conjunction)
+//	providers = [[A], [B, C]]   -> [[A], [B, C]] (disjunction)
+//
+// Bare provider names collapse into the first conjunction so
+// simple-form semantics ("all of these required") are preserved.
+// Non-list values and inner entries that aren't idents or
+// lists-of-idents are silently dropped.
+func providerGroupsFromExpr(expr syntax.Expr) [][]string {
+	list, ok := expr.(*syntax.ListExpr)
+	if !ok {
+		return nil
+	}
+	out := make([][]string, 0, len(list.List))
+	for _, el := range list.List {
+		switch n := el.(type) {
+		case *syntax.Ident:
+			if len(out) == 0 {
+				out = append(out, []string{n.Name})
+			} else {
+				out[0] = append(out[0], n.Name)
+			}
+		case *syntax.ListExpr:
+			var conj []string
+			for _, inner := range n.List {
+				if id, ok := inner.(*syntax.Ident); ok {
+					conj = append(conj, id.Name)
+				}
+			}
+			if len(conj) > 0 {
+				out = append(out, conj)
 			}
 		}
-		out = append(out, spec)
 	}
 	return out
 }

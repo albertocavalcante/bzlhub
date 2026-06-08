@@ -29,6 +29,12 @@ var (
 	// proceed rather than treating it as a hard failure.
 	ErrAlreadyCloned = errors.New("bcrmirror: path already contains a clone")
 
+	// ErrLocked is returned by Clone or Sync when another process
+	// holds the per-mirror advisory lock (<mirror>/.git/canopy.lock).
+	// Callers retry after the holder releases, or after a manual
+	// orphan-lock cleanup if the holder crashed.
+	ErrLocked = errors.New("bcrmirror: mirror is locked by another process")
+
 	// ErrNotFastForward is returned by Sync when the local clone
 	// diverged from remote — a fast-forward pull is impossible. The
 	// caller decides whether to force-pull (via SyncOptions.Force)

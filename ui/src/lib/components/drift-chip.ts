@@ -67,20 +67,44 @@ export function hoverTitle(drift: DriftSummary, status: string, now: number = Da
   if (status === 'behind') {
     const n = drift.behind ?? 0;
     const upstream = drift.latest_upstream ? `; upstream at ${drift.latest_upstream}` : '';
-    const asof = ageAffix(drift.computed_at, now);
-    const asofPart = asof ? ` — computed ${asof}` : '';
-    return `${n} newer upstream${upstream}${asofPart}`;
+    return `${n} newer upstream${upstream}${stalenessAffix(drift, now)}`;
   }
   if (status === 'yanked-upstream') {
-    const asof = ageAffix(drift.computed_at, now);
-    const asofPart = asof ? ` — computed ${asof}` : '';
-    return `Upstream yanked this version${asofPart}`;
+    return `Upstream yanked this version${stalenessAffix(drift, now)}`;
   }
   if (status === 'local-only') {
     return 'Not present upstream (local-only module)';
   }
   return '';
 }
+
+/**
+ * stalenessAffix renders the "— computed Xh ago; synced Yd ago"
+ * suffix that follows every hoverable drift status. The synced clause
+ * appears only when synced_at and computed_at differ by more than
+ * minSyncedSpread — same-call writes (a sync_run that triggered the
+ * refresh) shouldn't doublestamp the affix.
+ */
+function stalenessAffix(drift: DriftSummary, now: number): string {
+  const computed = ageAffix(drift.computed_at, now);
+  if (!computed) return '';
+
+  const computedT = drift.computed_at ? new Date(drift.computed_at).getTime() : NaN;
+  const syncedT = drift.synced_at ? new Date(drift.synced_at).getTime() : NaN;
+  const showSynced =
+    Number.isFinite(computedT) &&
+    Number.isFinite(syncedT) &&
+    Math.abs(computedT - syncedT) > minSyncedSpreadMs;
+  const synced = showSynced ? ageAffix(drift.synced_at, now) : '';
+  const syncedPart = synced ? `; synced ${synced}` : '';
+
+  return ` — computed ${computed}${syncedPart}`;
+}
+
+// Sync + compute landing in the same write pass produces timestamps
+// within milliseconds; 60s catches that case generously without
+// suppressing real-difference signals.
+const minSyncedSpreadMs = 60 * 1000;
 
 /**
  * ageAffix renders the "X ago" suffix for a RFC3339 timestamp.

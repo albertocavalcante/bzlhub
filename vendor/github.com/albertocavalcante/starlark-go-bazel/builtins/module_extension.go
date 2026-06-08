@@ -3,21 +3,22 @@ package builtins
 import (
 	"fmt"
 
-	"github.com/albertocavalcante/starlark-go-bazel/types"
 	"go.starlark.net/starlark"
+
+	"github.com/albertocavalcante/starlark-go-bazel/types"
 )
 
 // ModuleExtension implements the module_extension() Bazel builtin.
 // Kwargs match the Bazel surface (verified at
 // StarlarkRepositoryModule.java:210):
 //
-//   implementation: callable, required
-//   tag_classes:    dict<string, tag_class>, default {}
-//   doc:            string, default None
-//   environ:        list<string>, default [] — DEPRECATED, migrate to
-//                   module_ctx.getenv
-//   os_dependent:   bool, default False (Bazel 7+)
-//   arch_dependent: bool, default False (Bazel 7+)
+//	implementation: callable, required
+//	tag_classes:    dict<string, tag_class>, default {}
+//	doc:            string, default None
+//	environ:        list<string>, default [] — DEPRECATED, migrate to
+//	                module_ctx.getenv
+//	os_dependent:   bool, default False (Bazel 7+)
+//	arch_dependent: bool, default False (Bazel 7+)
 //
 // Returns a *types.ModuleExtensionClass.
 func ModuleExtension(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

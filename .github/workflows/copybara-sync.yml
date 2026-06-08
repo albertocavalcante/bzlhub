@@ -1,0 +1,102 @@
+name: Copybara Sync
+
+# Syncs github.com/albertocavalcante/canopy (the private GH mirror of
+# the Forgejo SoT) -> github.com/albertocavalcante/bzlhub (the public
+# OSS face). See .copybara/STRATEGY.md for the full design.
+#
+# Authentication: Eukia GitHub App (App ID lives in vars.EUKIA_APP_ID,
+# private key in secrets.EUKIA_APP_PRIVATE_KEY). The App must be
+# installed on BOTH canopy (read) and bzlhub (write); the workflow
+# fails with a 404 on push if either install is missing.
+#
+# Triggers:
+#   - push to main: any change that survives the .copybara exclude
+#     list gets propagated. Path filter avoids burning a run on docs
+#     that aren't synced.
+#   - workflow_dispatch: manual run with dry_run / force / init_history /
+#     last_rev knobs for first-time imports, recovery, and validation.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/plans/**"
+      - "docs/spikes/**"
+      - "docs/plan.md"
+      - "docs/ideas.md"
+      - "docs/research.md"
+      - ".forgejo/**"
+      - ".mcp.json"
+      - ".playwright-mcp/**"
+      - ".copybara/**"
+      - "ui/build/**"
+      - "ui/.svelte-kit/**"
+      - "ui/node_modules/**"
+      - "internal/embed/ui/**"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (validate only, no push)"
+        required: false
+        default: false
+        type: boolean
+      force:
+        description: "Force push (overwrites destination — first import or recovery only)"
+        required: false
+        default: false
+        type: boolean
+      init_history:
+        description: "Initialize history (first-time sync; ignored in SQUASH mode but kept for parity)"
+        required: false
+        default: false
+        type: boolean
+      last_rev:
+        description: "Last revision SHA (advanced: override starting point)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: copybara-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: canopy → bzlhub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Eukia App Token
+        id: eukia
+        # SHA-pinned per portfolio convention (feedback_pin_by_commit_not_tag)
+        # tag = "v2.2.1"
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf
+        with:
+          app-id: ${{ vars.EUKIA_APP_ID }}
+          private-key: ${{ secrets.EUKIA_APP_PRIVATE_KEY }}
+          owner: albertocavalcante
+          repositories: canopy,bzlhub
+
+      - name: Checkout canopy (private GH mirror)
+        # tag = "v6.0.2"
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+          token: ${{ steps.eukia.outputs.token }}
+
+      - name: Run Copybara
+        # tag = "240c86b" (latest run-copybara HEAD as of 2026-06-08)
+        uses: albertocavalcante/actions/run-copybara@240c86b5ff0b76efbbcbcd1781116753e80fb9d5
+        with:
+          config-file: .copybara/copy.bara.sky
+          workflow: default
+          destination-url: https://github.com/albertocavalcante/bzlhub.git
+          init-history: ${{ inputs.init_history || 'false' }}
+          last-rev: ${{ inputs.last_rev || '' }}
+          force: ${{ inputs.force || 'false' }}
+          dry-run: ${{ inputs.dry_run || 'false' }}
+          git-token: ${{ steps.eukia.outputs.token }}
+          git-user-name: "Eukia[bot]"
+          git-user-email: "eukia[bot]@users.noreply.github.com"

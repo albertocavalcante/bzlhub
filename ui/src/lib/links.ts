@@ -1,21 +1,21 @@
 /**
- * URL composition helpers shared across the canopy UI.
+ * URL composition helpers shared across the bzlhub UI.
  *
  * Centralizing these in one module keeps the route shape (`/modules/<m>`,
  * `/modules/<m>/<v>`, `/modules/<m>/<v>/code-nav/file/<path>?line=<n>`)
  * defined in exactly one place — no string-template duplication scattered
- * across components that drifts as we change canopy's URL surface.
+ * across components that drifts as we change bzlhub's URL surface.
  *
  * All inputs are URI-encoded at the boundary so callers can pass raw
  * module/version/file values straight from API responses.
  */
 
-/** Canopy's per-module listing page (all indexed versions). */
+/** Bzlhub's per-module listing page (all indexed versions). */
 export function moduleHref(name: string): string {
   return `/modules/${encodeURIComponent(name)}`;
 }
 
-/** Canopy's per-(module, version) module landing page. */
+/** Bzlhub's per-(module, version) module landing page. */
 export function moduleVersionHref(name: string, version: string): string {
   return `/modules/${encodeURIComponent(name)}/${encodeURIComponent(version)}`;
 }

@@ -61,7 +61,7 @@
 
 <svelte:head>
   <title>
-    {report ? `${report.name}@${report.version}` : 'module'} · docs — canopy
+    {report ? `${report.name}@${report.version}` : 'module'} · docs — bzlhub
   </title>
 </svelte:head>
 
@@ -152,7 +152,7 @@
                 <a
                   href={`/modules/${encodeURIComponent(page.params.name ?? '')}/${encodeURIComponent(page.params.version ?? '')}/consumers/${encodeURIComponent(p.name)}`}
                   class="text-[11px] text-fg-dim hover:text-accent font-mono"
-                  title="Find every call site of this provider across canopy's indexed corpus"
+                  title="Find every call site of this provider across bzlhub's indexed corpus"
                 >
                   consumers →
                 </a>
@@ -204,7 +204,7 @@
               <a
                 href={`/modules/${encodeURIComponent(page.params.name ?? '')}/${encodeURIComponent(page.params.version ?? '')}/consumers/${encodeURIComponent(r.name)}`}
                 class="text-[11px] text-fg-dim hover:text-accent font-mono"
-                title="Find every call site of this repository rule across canopy's indexed corpus"
+                title="Find every call site of this repository rule across bzlhub's indexed corpus"
               >
                 consumers →
               </a>
@@ -302,7 +302,7 @@
                   <a
                     href={`/modules/${encodeURIComponent(page.params.name)}/${encodeURIComponent(page.params.version)}/consumers/${encodeURIComponent(m.name)}`}
                     class="text-[11px] text-fg-dim hover:text-accent font-mono"
-                    title="Find every call site of this macro across canopy's indexed corpus"
+                    title="Find every call site of this macro across bzlhub's indexed corpus"
                     onclick={(e) => e.stopPropagation()}
                   >
                     consumers →

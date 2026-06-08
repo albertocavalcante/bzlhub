@@ -123,7 +123,7 @@ func Analyze(ctx context.Context, workspaceRoot string, opts Options) (*Result, 
 	entries := make([]fileEntry, 0, len(bzlFiles))
 	result := &Result{}
 	for _, bzlPath := range bzlFiles {
-		src, err := os.ReadFile(bzlPath)
+		src, err := os.ReadFile(bzlPath) //nolint:gosec // G304: bzlPath comes from the package's own directory walk.
 		if err != nil {
 			result.FileErrors = append(result.FileErrors, FileError{File: bzlPath, Err: err})
 			continue

@@ -18,7 +18,7 @@ const upstreamProbeTimeout = 5 * time.Second
 
 // MaxCascadeBodyBytes caps the in-memory buffer probeOne builds when
 // caching a successful upstream response. A compromised upstream
-// serving a multi-GB body would otherwise OOM the canopy serve
+// serving a multi-GB body would otherwise OOM the bzlhub serve
 // process — the cache fill would buffer the entire response before
 // putting it. 16MB matches fetch.MaxJSONResponseBytes; BCR's largest
 // real metadata.json sits under 100KB so the cap is two orders of

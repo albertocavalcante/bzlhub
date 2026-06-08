@@ -12,8 +12,8 @@ import (
 	"github.com/albertocavalcante/assay"
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/archive"
-	"github.com/albertocavalcante/canopy/internal/modulediff"
+	"github.com/albertocavalcante/bzlhub/internal/archive"
+	"github.com/albertocavalcante/bzlhub/internal/modulediff"
 )
 
 // checkDeep re-runs assay on each module's archive and compares the
@@ -94,7 +94,7 @@ func checkDeep(ctx context.Context, s *state) []Finding {
 			Version:  k.version,
 			Path:     filepath.Join("modules", k.name, k.version),
 			Message:  "stored ModuleReport does not match freshly-assayed report",
-			Fix:      "re-ingest with `canopy ingest --from <upstream> <m>@<v>` to refresh the stored report",
+			Fix:      "re-ingest with `bzlhub ingest --from <upstream> <m>@<v>` to refresh the stored report",
 			Details: map[string]any{
 				"rules_added":       len(d.Rules.Added),
 				"rules_removed":     len(d.Rules.Removed),

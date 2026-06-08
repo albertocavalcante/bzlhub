@@ -1,6 +1,6 @@
 // Types mirror the Go report.ModuleReport surface. Keep in sync with
 // github.com/albertocavalcante/assay/blob/main/report/{report,hermeticity}.go
-// and canopy's internal/api/canopy.go.
+// and bzlhub's internal/api/bzlhub.go.
 
 export type HermeticityClass =
   | 'pure-starlark'
@@ -150,7 +150,7 @@ export interface ModuleReport {
   file_inventory?: FileEntry[];
   assets?: ModuleAssets;
   // Per-symbol parsed-docstring map, keyed by symbol name. Populated
-  // by canopy's API handler via starlark-doc-go on every read; absent
+  // by bzlhub's API handler via starlark-doc-go on every read; absent
   // when no symbol on this module has a non-empty doc string.
   parsed_docs?: Record<string, ParsedDoc>;
   // Registry-level metadata lifted from the local mirror's
@@ -174,7 +174,7 @@ export interface ModuleReport {
   provenance?: BumpProvenance;
 }
 
-// BumpProvenance is canopy's record of the upstream BCR git state
+// BumpProvenance is bzlhub's record of the upstream BCR git state
 // at the moment a (module, version) was ingested. RecordedAt is
 // RFC3339; URL is the GitHub UI link to that commit's tree view.
 export interface BumpProvenance {
@@ -183,7 +183,7 @@ export interface BumpProvenance {
   recorded_at: string;
 }
 
-// GitHubMeta is canopy's projection of GitHub's repo + languages
+// GitHubMeta is bzlhub's projection of GitHub's repo + languages
 // endpoints. Refreshed every 6h (or on Bump) by the server-side
 // sweeper; UI renders fields directly.
 export interface GitHubMeta {
@@ -207,7 +207,7 @@ export interface GitHubMeta {
 // RegistryMetadata mirrors bazel-module-summary-go's RegistryMetadata
 // — the subset of BCR's modules/<m>/metadata.json that describes
 // the module-as-a-whole (not a specific version). Populated by
-// canopy's API handler from the local mirror; absent when the
+// bzlhub's API handler from the local mirror; absent when the
 // mirror hasn't yet enriched the metadata from upstream.
 export interface RegistryMetadata {
   homepage?: string;
@@ -226,7 +226,7 @@ export interface Maintainer {
 }
 
 // ParsedDoc is the presentation-ready doc-string shape produced by
-// canopy's internal/docview package: starlark-doc-go's fields
+// bzlhub's internal/docview package: starlark-doc-go's fields
 // (Summary/Description/Args/Returns/...) plus bazel-doc-go Refs
 // already augmented with resolved Hrefs, plus a deduplicated
 // Chips list for the "referenced" footer row. Renderers consume
@@ -539,4 +539,59 @@ export interface ClosureDiffReport {
   errors_by_module?: Record<string, string>;
   closure_breaking_total: number;
   closure_breaking_by_module?: Record<string, number>;
+}
+
+// ----- procurement types — mirror internal/store/requests.go -----
+
+export type RequestState =
+  | 'pending'
+  | 'preflighting'
+  | 'auto_pass'
+  | 'needs_review'
+  | 'approved'
+  | 'fetching'
+  | 'indexed'
+  | 'denied';
+
+export interface Request {
+  id: number;
+  submitter_sub: string;
+  submitter_email?: string;
+  auth_method: string;
+  module: string;
+  version: string;
+  source_url?: string;
+  submitter_notes?: string;
+  state: RequestState;
+  state_changed_at: string;
+  created_at: string;
+  preflight_json?: unknown;
+  denial_reason?: string;
+  fetched_sha?: string;
+  committed_sha?: string;
+  retry_count: number;
+}
+
+export interface RequestsResult {
+  requests: Request[];
+}
+
+// ----- policy types — mirror internal/policy/policy.go -----
+
+export interface PolicyEffective {
+  profile: string;
+  actions: Record<string, boolean>;
+  // identity reflects who the server resolved the caller as,
+  // regardless of source (bearer header, X-Forwarded-* from a
+  // trusted proxy, OIDC, or anonymous). UI button-visibility logic
+  // reads `source !== 'anonymous'` to decide whether to render
+  // the signed-in affordances.
+  identity: PolicyIdentity;
+}
+
+export interface PolicyIdentity {
+  email: string;
+  user: string;
+  groups: string[] | null;
+  source: 'anonymous' | 'bearer' | 'header' | 'oidc';
 }

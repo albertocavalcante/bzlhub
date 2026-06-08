@@ -14,8 +14,9 @@
 package builtins
 
 import (
-	"github.com/albertocavalcante/starlark-go-bazel/types"
 	"go.starlark.net/starlark"
+
+	"github.com/albertocavalcante/starlark-go-bazel/types"
 )
 
 // Predeclared returns all predeclared Bazel builtins for .bzl files.
@@ -23,15 +24,15 @@ import (
 func Predeclared() starlark.StringDict {
 	return starlark.StringDict{
 		// Core builtins
-		"rule":     starlark.NewBuiltin("rule", Rule),
-		"provider": starlark.NewBuiltin("provider", Provider),
-		"aspect":   starlark.NewBuiltin("aspect", Aspect),
-		"select":   starlark.NewBuiltin("select", Select),
-		"struct":   starlark.NewBuiltin("struct", StructBuiltin),
+		builtinNameRule:   starlark.NewBuiltin(builtinNameRule, Rule),
+		"provider":        starlark.NewBuiltin("provider", Provider),
+		builtinNameAspect: starlark.NewBuiltin(builtinNameAspect, Aspect),
+		builtinNameSelect: starlark.NewBuiltin(builtinNameSelect, Select),
+		builtinNameStruct: starlark.NewBuiltin(builtinNameStruct, StructBuiltin),
 
 		// Type constructors
-		"depset": starlark.NewBuiltin("depset", DepsetBuiltin),
-		"Label":  starlark.NewBuiltin("Label", types.LabelBuiltin),
+		builtinNameDepset: starlark.NewBuiltin(builtinNameDepset, DepsetBuiltin),
+		builtinNameLabel:  starlark.NewBuiltin(builtinNameLabel, types.LabelBuiltin),
 
 		// Modules
 		"attr": AttrModule(),
@@ -42,8 +43,8 @@ func Predeclared() starlark.StringDict {
 // BUILD files have a subset of .bzl file builtins plus native rule functions.
 func BuildFilePredeclared() starlark.StringDict {
 	return starlark.StringDict{
-		"select": starlark.NewBuiltin("select", Select),
-		"depset": starlark.NewBuiltin("depset", DepsetBuiltin),
-		"Label":  starlark.NewBuiltin("Label", types.LabelBuiltin),
+		builtinNameSelect: starlark.NewBuiltin(builtinNameSelect, Select),
+		builtinNameDepset: starlark.NewBuiltin(builtinNameDepset, DepsetBuiltin),
+		builtinNameLabel:  starlark.NewBuiltin(builtinNameLabel, types.LabelBuiltin),
 	}
 }

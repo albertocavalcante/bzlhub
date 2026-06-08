@@ -11,8 +11,8 @@ import (
 
 	"github.com/albertocavalcante/understory/pkg/understory/ui"
 
-	"github.com/albertocavalcante/canopy/internal/codenav"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/codenav"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // codeNav forwards /modules/<m>/<v>/code-nav/<rest> into the embedded

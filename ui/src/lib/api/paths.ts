@@ -1,5 +1,5 @@
 /**
- * Single source of truth for canopy's HTTP API path shape on the UI
+ * Single source of truth for bzlhub's HTTP API path shape on the UI
  * side. Mirrors internal/api/paths/paths.go on the server.
  *
  * Every fetch site, EventSource, and download link goes through here.
@@ -81,4 +81,13 @@ export const paths = {
     bcrProbe: () => `${PREFIX}/system/bcr-probe`,
     status: () => `${PREFIX}/system/status`,
   },
+
+  // Procurement (Plan 67 — submit / list / approve / deny).
+  requests: () => `${PREFIX}/requests`,
+  requestDetail: (id: number | string) => `${PREFIX}/requests/${e(String(id))}`,
+  requestApprove: (id: number | string) => `${PREFIX}/requests/${e(String(id))}/approve`,
+  requestDeny: (id: number | string) => `${PREFIX}/requests/${e(String(id))}/deny`,
+
+  // Per-caller effective policy view — powers UI button visibility.
+  policyEffective: () => `${PREFIX}/policy/effective`,
 };

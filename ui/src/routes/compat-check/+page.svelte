@@ -104,14 +104,14 @@ bazel_dep(name = "rules_python", version = "0.27.0")
 </script>
 
 <svelte:head>
-  <title>Compatibility check — canopy</title>
+  <title>Compatibility check — bzlhub</title>
 </svelte:head>
 
 <div class="flex flex-col gap-6">
   <header class="flex flex-col gap-2">
     <h1 class="font-mono text-2xl text-fg tracking-tight">compatibility check</h1>
     <p class="text-[13px] text-fg-mute max-w-2xl">
-      Paste a <code class="font-mono text-fg">MODULE.bazel</code>. Canopy diffs
+      Paste a <code class="font-mono text-fg">MODULE.bazel</code>. Bzlhub diffs
       every <code class="font-mono text-fg">bazel_dep</code> against the latest
       indexed version and reports what breaks. Stays local — no network calls
       from your input.
@@ -170,7 +170,7 @@ bazel_dep(name = "rules_python", version = "0.27.0")
       {/if}
       {#if result.summary.missing_from_corpus > 0}
         <span>
-          <span class="text-warn font-mono">{result.summary.missing_from_corpus}</span> not in canopy
+          <span class="text-warn font-mono">{result.summary.missing_from_corpus}</span> not in bzlhub
         </span>
       {/if}
       {#if result.summary.already_latest > 0}
@@ -230,7 +230,7 @@ bazel_dep(name = "rules_python", version = "0.27.0")
               {#if !d.in_corpus}
                 <span
                   class="text-[10px] uppercase tracking-wide text-warn font-mono px-1.5 py-0.5 rounded border border-warn/40 bg-warn/10"
-                  title="canopy hasn't ingested this module yet"
+                  title="bzlhub hasn't ingested this module yet"
                 >not indexed</span>
               {:else if d.same_version}
                 <span class="text-[10px] uppercase tracking-wide text-fg-dim font-mono">

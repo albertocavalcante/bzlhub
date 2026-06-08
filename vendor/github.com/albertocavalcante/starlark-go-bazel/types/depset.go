@@ -73,7 +73,7 @@ func ParseOrder(s string) (Order, error) {
 	case "topological":
 		return OrderTopological, nil
 	default:
-		return OrderDefault, fmt.Errorf("Invalid order: %s", s)
+		return OrderDefault, fmt.Errorf("invalid order: %s", s)
 	}
 }
 
@@ -378,11 +378,12 @@ func (d *Depset) alreadySeen(seen map[uint32][]starlark.Value, elem starlark.Val
 	return false
 }
 
-// hashString computes a simple hash for a string.
+// hashString computes a simple hash for a string. Used internally
+// for depset element bucketing; collisions are tolerable.
 func hashString(s string) uint32 {
 	var h uint32
 	for _, c := range s {
-		h = h*31 + uint32(c)
+		h = h*31 + uint32(c) //nolint:gosec // G115: rune→uint32 wraps intentionally for the simple hash.
 	}
 	return h
 }
@@ -421,7 +422,7 @@ func (d *Depset) TransitiveSets() []*Depset {
 func DepsetBuiltin(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var (
 		direct     starlark.Value = starlark.None
-		orderStr   string         = "default"
+		orderStr                  = "default"
 		transitive starlark.Value = starlark.None
 	)
 

@@ -38,6 +38,18 @@ type Mirror struct {
 
 	// repo is the lazily-opened go-git repository handle.
 	repo *git.Repository
+
+	// lastSyncReadErr is the error from Open's LAST_SYNC parse, or
+	// nil. Exposed via LastSyncReadErr so callers can log
+	// hand-editing recovery without failing Open itself.
+	lastSyncReadErr error
+
+	// root is an os.Root rooted at Mirror.Path. All read-side
+	// filesystem operations (read.go's metadata / source.json /
+	// patch reads) go through it so a malicious upstream commit
+	// can't trick the Mirror into following a symlink that
+	// escapes the mirror directory. nil until Open succeeds.
+	root *os.Root
 }
 
 // New constructs a Mirror bound to path and remote. Does not touch
@@ -95,17 +107,52 @@ func (m *Mirror) Open(ctx context.Context) error {
 		}
 	}
 
-	// Read HEAD up-front so lastSHA reflects reality from Open
-	// onward, not just after the first Sync. Failure to resolve
-	// HEAD is non-fatal — a brand-new git init has no HEAD commit
-	// yet, which is a legitimate state Open should accept.
+	// HEAD failure is non-fatal — a fresh git init has none yet.
 	head, _ := readHEAD(repo)
+	persisted, syncErr := readLastSyncFile(m.Path)
+
+	root, err := os.OpenRoot(m.Path)
+	if err != nil {
+		return fmt.Errorf("bcrmirror.Open: OpenRoot %s: %w", m.Path, err)
+	}
 
 	m.stateMu.Lock()
+	if m.root != nil {
+		_ = m.root.Close()
+	}
 	m.repo = repo
 	m.lastSHA = head
+	m.lastSync = persisted
+	m.lastSyncReadErr = syncErr
+	m.root = root
 	m.stateMu.Unlock()
 	return nil
+}
+
+// Close releases the underlying os.Root file descriptor. Optional
+// — Mirror works without Close (the fd lives until process exit),
+// but long-running daemons that open many Mirrors should call it.
+func (m *Mirror) Close() error {
+	m.stateMu.Lock()
+	defer m.stateMu.Unlock()
+	if m.root == nil {
+		return nil
+	}
+	err := m.root.Close()
+	m.root = nil
+	return err
+}
+
+// LastSyncReadErr returns the error from Open's LAST_SYNC parse, or
+// nil. A non-nil value means an existing LAST_SYNC file was found
+// but couldn't be decoded (truncated, hand-edited, wrong format) —
+// Open still succeeded and lastSync was seeded to zero; the next
+// Sync will overwrite the file. Callers SHOULD log a warning so
+// the recovery isn't silent.
+func (m *Mirror) LastSyncReadErr() error {
+	m.stateMu.RLock()
+	defer m.stateMu.RUnlock()
+	return m.lastSyncReadErr
 }
 
 // verifyRemoteURL inspects the "origin" remote on repo and confirms
@@ -128,18 +175,10 @@ func verifyRemoteURL(repo *git.Repository, expected string) error {
 	return nil
 }
 
-// LastSync returns the wall-clock time of this Mirror's most recent
-// successful upstream contact — either Clone (on bootstrap) or
-// Sync (on subsequent probes, including the up-to-date case where
-// nothing advanced). Zero time when no successful sync has been
-// observed since Open.
-//
-// Drives canopy's DriftSummary.SyncedAt: the freshness of the
-// upstream snapshot used to compute drift, distinct from the
-// freshness of the drift verdict itself (ComputedAt).
-//
-// Safe for concurrent reads; serialised against the writers in
-// Clone + Sync via stateMu.
+// LastSync returns the wall-clock time of this Mirror's most
+// recent successful upstream contact (Clone or Sync, including
+// up-to-date probes). Zero before any sync. Safe for concurrent
+// reads.
 func (m *Mirror) LastSync() time.Time {
 	m.stateMu.RLock()
 	defer m.stateMu.RUnlock()

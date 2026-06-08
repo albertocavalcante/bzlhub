@@ -96,7 +96,7 @@ func (f *File) Hash() (uint32, error) {
 // Source: FileApi in starlarkbuildapi
 func (f *File) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "path":
+	case attrPath:
 		// The full path to this file, relative to the workspace root
 		return starlark.String(filepath.Join(f.root, f.path)), nil
 	case "short_path":
@@ -115,7 +115,7 @@ func (f *File) Attr(name string) (starlark.Value, error) {
 	case "extension":
 		// The file extension
 		ext := filepath.Ext(f.path)
-		if len(ext) > 0 && ext[0] == '.' {
+		if ext != "" && ext[0] == '.' {
 			ext = ext[1:]
 		}
 		return starlark.String(ext), nil
@@ -219,7 +219,7 @@ func (r *FileRoot) Hash() (uint32, error) {
 // Attr returns an attribute of the root.
 func (r *FileRoot) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "path":
+	case attrPath:
 		return starlark.String(r.path), nil
 	default:
 		return nil, starlark.NoSuchAttrError(fmt.Sprintf("root has no attribute %q", name))
@@ -279,7 +279,7 @@ func (r *Runfiles) Hash() (uint32, error) {
 // Attr returns an attribute.
 func (r *Runfiles) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "files":
+	case attrFiles:
 		items := make([]starlark.Value, len(r.files))
 		for i, f := range r.files {
 			items[i] = f

@@ -16,11 +16,11 @@ import (
 	"github.com/albertocavalcante/assay/report"
 	bzlsummary "github.com/albertocavalcante/bazel-module-summary-go"
 
-	"github.com/albertocavalcante/canopy/internal/closurediff"
-	"github.com/albertocavalcante/canopy/internal/compat"
-	"github.com/albertocavalcante/canopy/internal/drift"
-	"github.com/albertocavalcante/canopy/internal/modulediff"
-	canopyscip "github.com/albertocavalcante/canopy/internal/scip"
+	"github.com/albertocavalcante/bzlhub/internal/closurediff"
+	"github.com/albertocavalcante/bzlhub/internal/compat"
+	"github.com/albertocavalcante/bzlhub/internal/drift"
+	"github.com/albertocavalcante/bzlhub/internal/modulediff"
+	canopyscip "github.com/albertocavalcante/bzlhub/internal/scip"
 )
 
 // ErrModuleNotFound is returned by Canopy.GetModule when the named
@@ -270,7 +270,7 @@ type Canopy interface {
 
 	// IngestDir reads a module source directory (containing MODULE.bazel),
 	// runs the introspection pipeline, and writes the resulting report to the
-	// index. Used by `canopy ingest` and by publish-time hooks later.
+	// index. Used by `bzlhub ingest` and by publish-time hooks later.
 	IngestDir(ctx context.Context, dir string) (*report.ModuleReport, error)
 
 	// Drift compares the canopy mirror's contents (whatever the configured

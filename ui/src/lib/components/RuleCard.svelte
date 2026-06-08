@@ -27,7 +27,7 @@
   let open = $state(false);
 
   // Auto-expand + scroll into view when the page lands with a matching
-  // hash. Accepts BOTH the canopy-internal prefixed form
+  // hash. Accepts BOTH the bzlhub-internal prefixed form
   // (#rule-cc_binary, used by the diff page's deep-links) AND the
   // bare-name form (#cc_binary), which is Stardoc's convention and
   // what authors write in their doc= strings via [text](#sibling).
@@ -114,7 +114,7 @@
     <a
       href={`/modules/${encodeURIComponent(module)}/${encodeURIComponent(version)}/consumers/${encodeURIComponent(rule.name)}`}
       class="text-[11px] text-fg-dim hover:text-accent font-mono"
-      title="Find every call site of this rule across canopy's indexed corpus"
+      title="Find every call site of this rule across bzlhub's indexed corpus"
       aria-label={`who uses ${rule.name}`}
       onclick={(e) => e.stopPropagation()}
     >

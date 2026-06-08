@@ -16,9 +16,11 @@ func (bazelDialect) IsRepositoryRuleSymbol(s string) bool {
 func (bazelDialect) IsModuleExtensionSymbol(s string) bool {
 	return s == "module_extension"
 }
+func (bazelDialect) IsTagClassSymbol(s string) bool { return s == "tag_class" }
 func (bazelDialect) IsToolchainTypeSymbol(s string) bool {
 	return s == "toolchain_type"
 }
+func (bazelDialect) IsToolchainSymbol(s string) bool { return s == "toolchain" }
 
 // Network-fetch primitives recognized in repository_rule / module_extension bodies.
 // These come from Bazel's repository_ctx + the @bazel_tools http_archive family.

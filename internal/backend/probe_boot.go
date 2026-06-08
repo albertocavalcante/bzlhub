@@ -10,7 +10,7 @@ import (
 )
 
 // ProbeUpstream sends a single GET <url>/bazel_registry.json to test
-// reachability + BCR-shape. Used by canopy serve at boot to populate
+// reachability + BCR-shape. Used by bzlhub serve at boot to populate
 // initial reachability state.
 //
 // Returns:
@@ -18,7 +18,7 @@ import (
 //   - nil, ProbeNotBCR        → reached upstream but it returned 4xx
 //   - nil, ProbeTransientErr  → 5xx, timeout, network error
 //
-// The boot wiring in cmd/canopy treats ProbeNotBCR as hard-fail (config
+// The boot wiring in cmd/bzlhub treats ProbeNotBCR as hard-fail (config
 // error: typo'd URL, wrong host), ProbeTransientErr as soft-fail (start
 // degraded, background probe loop will retry).
 func (c *Cascade) ProbeUpstream(ctx context.Context, up *Upstream) error {
@@ -94,7 +94,7 @@ func IsProbeTransient(err error) bool {
 
 // RunProbeLoop refreshes every upstream's reachability state on the
 // given interval, returning when ctx is canceled. Intended to be
-// called in a detached goroutine from cmd/canopy after boot.
+// called in a detached goroutine from cmd/bzlhub after boot.
 //
 // Each tick probes every upstream sequentially. ProbeUpstream's
 // per-call timeout (upstreamProbeTimeout = 5s) bounds the work per
@@ -103,7 +103,7 @@ func IsProbeTransient(err error) bool {
 //
 // interval ≤ 0 returns immediately — caller is opting out (useful for
 // tests that don't want a background goroutine, or for one-shot
-// canopy serve invocations).
+// bzlhub serve invocations).
 func (c *Cascade) RunProbeLoop(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
 		return

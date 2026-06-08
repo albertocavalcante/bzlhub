@@ -183,7 +183,7 @@ func TestRoundTrip_PermitInAuditModeEmitsOk(t *testing.T) {
 // TestPolicyContext_BindingPropagates verifies the WithPolicy /
 // PolicyFromContext / Client(ctx) round-trip carries the policy
 // through to the actual HTTP client construction. Used by
-// cmd/canopy/serve.go at startup to bind the active profile policy
+// cmd/bzlhub/serve.go at startup to bind the active profile policy
 // once, then propagate via context to every caller.
 func TestPolicyContext_BindingPropagates(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

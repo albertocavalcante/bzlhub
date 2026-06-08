@@ -50,7 +50,7 @@ type BlobReader interface {
 //
 // e.g. `bzlmod rules_python@0.40.0 python/defs.bzl#py_library`.
 // Callers that only know the short identifier (`py_library`) can
-// construct it from canopy_get_module's provenance data (each rule /
+// construct it from bzlhub_get_module's provenance data (each rule /
 // provider / macro has a Provenance.File field giving the relpath).
 //
 // Backed by understory.OpenBytes from v0.1.1 onward — canopy's SCIP

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bzlhub.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "bzlhub.labels" . | nindent 4 }}
+  {{- include "bzlhub.annotations" (dict "ctx" . "specific" .Values.service.annotations) | nindent 2 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector: {{- include "bzlhub.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP

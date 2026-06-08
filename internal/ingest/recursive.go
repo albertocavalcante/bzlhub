@@ -11,9 +11,9 @@ import (
 	gobzlmod "github.com/albertocavalcante/go-bzlmod"
 	"github.com/albertocavalcante/go-bzlmod/bazeltools"
 
-	"github.com/albertocavalcante/canopy/internal/eventbus"
-	"github.com/albertocavalcante/canopy/internal/fetch"
-	"github.com/albertocavalcante/canopy/internal/mirror"
+	"github.com/albertocavalcante/bzlhub/internal/eventbus"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/mirror"
 )
 
 // RecursiveOptions configures a closure walk.

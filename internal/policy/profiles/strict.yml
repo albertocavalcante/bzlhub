@@ -1,0 +1,47 @@
+# strict profile — Plan 71 default.
+#
+# Anonymous browse; authenticated writes; group-gated approvals.
+# This is canopy's default posture — corp.bzlhub.com and the
+# personal-canopy install both start here.
+version: 1
+profile: strict
+
+auth:
+  actions:
+    view_modules:        any
+    view_module_report:  any
+    view_requests:       any
+    view_audit:          any
+    view_maintainers:    any
+    view_user_profile:   any
+    submit_request:      authenticated
+    approve_request:     group:approver
+    deny_request:        group:approver
+    maintain_module:     maintainer
+    grant_maintainer:    group:approver
+    use_mcp_read:        any
+    use_mcp_write:       group:approver
+
+admission:
+  license:
+    require_license:  true
+    unknown_verdict:  review
+  hermeticity:
+    pure-starlark:                 pass
+    prebuilt-binaries-pinned:      pass
+    build-from-source:             pass
+    network-fetch-pinned:          pass
+    network-fetch-unpinned:        review
+    requires-system-tools:         review
+    repository-rule-arbitrary-code: review
+  review:
+    timeout_days: 14
+    auto_pass_on_already_in_upstream: true
+
+mcp:
+  http_enabled:        false
+  write_tools_enabled: false
+
+maintainers:
+  auto_grant_on_admission: true
+  min_per_module:          1

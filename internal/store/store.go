@@ -42,11 +42,25 @@ type Store struct {
 // the pool has cascades enabled, which is load-bearing for the
 // re-ingest cascade in WriteReport.
 func Open(ctx context.Context, path string) (*Store, error) {
+	// Per-connection pragmas baked into the DSN. journal_mode=WAL +
+	// busy_timeout=5s defang the "database is locked" SQLITE_BUSY
+	// errors that surface under concurrent writers (preflight pool,
+	// admit pool, audit retention sweep, webhook watermark advance,
+	// HTTP handlers all sharing one file lock). Saw one in the
+	// preflight no-duplicate-processing test before this — WAL lets
+	// readers proceed during writes; busy_timeout queues racing
+	// writers for up to 5s instead of failing immediately.
+	//
+	// WAL adds -wal + -shm sidecar files next to the database;
+	// backup scripts should copy them together or use
+	// `sqlite3 .backup`.  Self-hosted/canopy-demo/DEPLOY.md backup
+	// section uses a named volume tar which captures all three.
 	dsn := path
+	pragmas := "_pragma=foreign_keys(true)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
 	if !strings.Contains(dsn, "?") {
-		dsn += "?_pragma=foreign_keys(true)"
+		dsn += "?" + pragmas
 	} else {
-		dsn += "&_pragma=foreign_keys(true)"
+		dsn += "&" + pragmas
 	}
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {

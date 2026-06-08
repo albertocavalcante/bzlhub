@@ -41,7 +41,7 @@ func (r *RuleClass) String() string {
 }
 
 // Type returns "rule".
-func (r *RuleClass) Type() string { return "rule" }
+func (r *RuleClass) Type() string { return builtinNameRule }
 
 // Freeze marks the rule as frozen.
 func (r *RuleClass) Freeze() { r.frozen = true }
@@ -172,7 +172,7 @@ func Rule(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs [
 		subrules                 *starlark.List
 	)
 
-	if err := starlark.UnpackArgs("rule", args, kwargs,
+	if err := starlark.UnpackArgs(builtinNameRule, args, kwargs,
 		"implementation", &implementation,
 		"test?", &test,
 		"attrs?", &attrs,
@@ -323,38 +323,44 @@ func Rule(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs [
 	}, nil
 }
 
+// isAlpha reports whether c is an ASCII letter.
+func isAlpha(c byte) bool { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
+
+// isIdentStart reports whether c can start a Starlark identifier.
+func isIdentStart(c byte) bool { return isAlpha(c) || c == '_' }
+
+// isIdentChar reports whether c can appear in (but not start) a
+// Starlark identifier.
+func isIdentChar(c byte) bool { return isAlpha(c) || (c >= '0' && c <= '9') || c == '_' }
+
 // isValidAttrName checks if the name is a valid Starlark identifier.
 func isValidAttrName(name string) bool {
-	if len(name) == 0 {
+	if name == "" {
 		return false
 	}
-
-	// First character must be letter or underscore
-	c := name[0]
-	if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+	if !isIdentStart(name[0]) {
 		return false
 	}
-
-	// Remaining characters must be letter, digit, or underscore
 	for i := 1; i < len(name); i++ {
-		c := name[i]
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+		if !isIdentChar(name[i]) {
 			return false
 		}
 	}
-
 	return true
 }
 
 // AttrDescriptor represents an attribute schema created by attr.* functions.
 type AttrDescriptor struct {
-	attrType        string           // "label", "string", "int", "bool", etc.
-	defaultValue    starlark.Value   // Default value
-	doc             string           // Documentation
-	mandatory       bool             // Whether the attribute is required
-	allowEmpty      bool             // For lists: allow empty list
-	allowFiles      starlark.Value   // For labels: file type filter
-	allowRules      []string         // For labels: allowed rule kinds
+	attrType     string         // "label", "string", "int", "bool", etc.
+	defaultValue starlark.Value // Default value
+	doc          string         // Documentation
+	mandatory    bool           // Whether the attribute is required
+	allowEmpty   bool           // For lists: allow empty list
+	allowFiles   starlark.Value // For labels: file type filter
+	// SCAFFOLD: `attr.label(allow_rules = [...])` is captured here for
+	// future analysis-mode enforcement; today the value is stored but
+	// no path reads it.
+	allowRules      []string         //nolint:unused // SCAFFOLD: enforcement lands when ctx wires allowed-rule checks.
 	providers       []starlark.Value // For labels: required providers
 	allowSingleFile bool             // For labels: must be single file
 	executable      bool             // For labels: must be executable
@@ -415,30 +421,30 @@ func (a *attrModule) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable t
 
 func (a *attrModule) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "bool":
-		return starlark.NewBuiltin("attr.bool", attrBool), nil
-	case "int":
-		return starlark.NewBuiltin("attr.int", attrInt), nil
-	case "int_list":
-		return starlark.NewBuiltin("attr.int_list", attrIntList), nil
-	case "label":
-		return starlark.NewBuiltin("attr.label", attrLabel), nil
-	case "label_keyed_string_dict":
-		return starlark.NewBuiltin("attr.label_keyed_string_dict", attrLabelKeyedStringDict), nil
-	case "label_list":
-		return starlark.NewBuiltin("attr.label_list", attrLabelList), nil
-	case "output":
-		return starlark.NewBuiltin("attr.output", attrOutput), nil
-	case "output_list":
-		return starlark.NewBuiltin("attr.output_list", attrOutputList), nil
-	case "string":
-		return starlark.NewBuiltin("attr.string", attrString), nil
-	case "string_dict":
-		return starlark.NewBuiltin("attr.string_dict", attrStringDict), nil
-	case "string_list":
-		return starlark.NewBuiltin("attr.string_list", attrStringList), nil
-	case "string_list_dict":
-		return starlark.NewBuiltin("attr.string_list_dict", attrStringListDict), nil
+	case attrTypeBool:
+		return starlark.NewBuiltin("attr."+attrTypeBool, attrBool), nil
+	case attrTypeInt:
+		return starlark.NewBuiltin("attr."+attrTypeInt, attrInt), nil
+	case attrTypeIntList:
+		return starlark.NewBuiltin("attr."+attrTypeIntList, attrIntList), nil
+	case attrTypeLabel:
+		return starlark.NewBuiltin("attr."+attrTypeLabel, attrLabel), nil
+	case attrTypeLabelKeyedStringDict:
+		return starlark.NewBuiltin("attr."+attrTypeLabelKeyedStringDict, attrLabelKeyedStringDict), nil
+	case attrTypeLabelList:
+		return starlark.NewBuiltin("attr."+attrTypeLabelList, attrLabelList), nil
+	case attrTypeOutput:
+		return starlark.NewBuiltin("attr."+attrTypeOutput, attrOutput), nil
+	case attrTypeOutputList:
+		return starlark.NewBuiltin("attr."+attrTypeOutputList, attrOutputList), nil
+	case attrTypeString:
+		return starlark.NewBuiltin("attr."+attrTypeString, attrString), nil
+	case attrTypeStringDict:
+		return starlark.NewBuiltin("attr."+attrTypeStringDict, attrStringDict), nil
+	case attrTypeStringList:
+		return starlark.NewBuiltin("attr."+attrTypeStringList, attrStringList), nil
+	case attrTypeStringListDict:
+		return starlark.NewBuiltin("attr."+attrTypeStringListDict, attrStringListDict), nil
 	default:
 		return nil, starlark.NoSuchAttrError(fmt.Sprintf("attr has no attribute %q", name))
 	}
@@ -446,18 +452,18 @@ func (a *attrModule) Attr(name string) (starlark.Value, error) {
 
 func (a *attrModule) AttrNames() []string {
 	return []string{
-		"bool",
-		"int",
-		"int_list",
-		"label",
-		"label_keyed_string_dict",
-		"label_list",
-		"output",
-		"output_list",
-		"string",
-		"string_dict",
-		"string_list",
-		"string_list_dict",
+		attrTypeBool,
+		attrTypeInt,
+		attrTypeIntList,
+		attrTypeLabel,
+		attrTypeLabelKeyedStringDict,
+		attrTypeLabelList,
+		attrTypeOutput,
+		attrTypeOutputList,
+		attrTypeString,
+		attrTypeStringDict,
+		attrTypeStringList,
+		attrTypeStringListDict,
 	}
 }
 
@@ -506,7 +512,7 @@ func attrBool(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwar
 		defaultVal = starlark.False
 	}
 	return &AttrDescriptor{
-		attrType:     "bool",
+		attrType:     attrTypeBool,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -531,18 +537,18 @@ func attrInt(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwarg
 		if key == "values" {
 			if list, ok := kv[1].(*starlark.List); ok {
 				iter := list.Iterate()
-				defer iter.Done()
 				var x starlark.Value
 				for iter.Next(&x) {
 					if s, ok := x.(starlark.Int); ok {
 						values = append(values, s.String())
 					}
 				}
+				iter.Done()
 			}
 		}
 	}
 	return &AttrDescriptor{
-		attrType:     "int",
+		attrType:     attrTypeInt,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -562,7 +568,7 @@ func attrIntList(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, k
 		defaultVal = starlark.NewList(nil)
 	}
 	return &AttrDescriptor{
-		attrType:     "int_list",
+		attrType:     attrTypeIntList,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -579,7 +585,7 @@ func attrLabel(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwa
 	}
 
 	desc := &AttrDescriptor{
-		attrType:     "label",
+		attrType:     attrTypeLabel,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -605,20 +611,20 @@ func attrLabel(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwa
 		case "providers":
 			if list, ok := val.(*starlark.List); ok {
 				iter := list.Iterate()
-				defer iter.Done()
 				var x starlark.Value
 				for iter.Next(&x) {
 					desc.providers = append(desc.providers, x)
 				}
+				iter.Done()
 			}
 		case "aspects":
 			if list, ok := val.(*starlark.List); ok {
 				iter := list.Iterate()
-				defer iter.Done()
 				var x starlark.Value
 				for iter.Next(&x) {
 					desc.aspects = append(desc.aspects, x)
 				}
+				iter.Done()
 			}
 		}
 	}
@@ -639,7 +645,7 @@ func attrLabelList(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple,
 	}
 
 	desc := &AttrDescriptor{
-		attrType:     "label_list",
+		attrType:     attrTypeLabelList,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -662,20 +668,20 @@ func attrLabelList(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple,
 		case "providers":
 			if list, ok := val.(*starlark.List); ok {
 				iter := list.Iterate()
-				defer iter.Done()
 				var x starlark.Value
 				for iter.Next(&x) {
 					desc.providers = append(desc.providers, x)
 				}
+				iter.Done()
 			}
 		case "aspects":
 			if list, ok := val.(*starlark.List); ok {
 				iter := list.Iterate()
-				defer iter.Done()
 				var x starlark.Value
 				for iter.Next(&x) {
 					desc.aspects = append(desc.aspects, x)
 				}
+				iter.Done()
 			}
 		}
 	}
@@ -695,7 +701,7 @@ func attrLabelKeyedStringDict(_ *starlark.Thread, _ *starlark.Builtin, args star
 		defaultVal = starlark.NewDict(0)
 	}
 	return &AttrDescriptor{
-		attrType:     "label_keyed_string_dict",
+		attrType:     attrTypeLabelKeyedStringDict,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -711,7 +717,7 @@ func attrOutput(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kw
 		return nil, err
 	}
 	return &AttrDescriptor{
-		attrType:     "output",
+		attrType:     attrTypeOutput,
 		defaultValue: starlark.None,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -730,7 +736,7 @@ func attrOutputList(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 		defaultVal = starlark.NewList(nil)
 	}
 	return &AttrDescriptor{
-		attrType:     "output_list",
+		attrType:     attrTypeOutputList,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -755,18 +761,18 @@ func attrString(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kw
 		if key == "values" {
 			if list, ok := kv[1].(*starlark.List); ok {
 				iter := list.Iterate()
-				defer iter.Done()
 				var x starlark.Value
 				for iter.Next(&x) {
 					if s, ok := x.(starlark.String); ok {
 						values = append(values, string(s))
 					}
 				}
+				iter.Done()
 			}
 		}
 	}
 	return &AttrDescriptor{
-		attrType:     "string",
+		attrType:     attrTypeString,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -786,7 +792,7 @@ func attrStringDict(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 		defaultVal = starlark.NewDict(0)
 	}
 	return &AttrDescriptor{
-		attrType:     "string_dict",
+		attrType:     attrTypeStringDict,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -805,7 +811,7 @@ func attrStringList(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple
 		defaultVal = starlark.NewList(nil)
 	}
 	return &AttrDescriptor{
-		attrType:     "string_list",
+		attrType:     attrTypeStringList,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,
@@ -824,7 +830,7 @@ func attrStringListDict(_ *starlark.Thread, _ *starlark.Builtin, args starlark.T
 		defaultVal = starlark.NewDict(0)
 	}
 	return &AttrDescriptor{
-		attrType:     "string_list_dict",
+		attrType:     attrTypeStringListDict,
 		defaultValue: defaultVal,
 		doc:          doc,
 		mandatory:    mandatory,

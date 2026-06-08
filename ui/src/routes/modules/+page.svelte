@@ -1,7 +1,7 @@
 <script lang="ts">
   // /modules — corpus browse page.
   //
-  // The discoverability surface canopy was missing: land here, see
+  // The discoverability surface bzlhub was missing: land here, see
   // every indexed module in one grid, click through. Pairs with
   // search (which requires a query) as the "explore" half of the
   // discovery story.
@@ -120,12 +120,12 @@
 </script>
 
 <svelte:head>
-  <title>modules — canopy</title>
+  <title>modules — bzlhub</title>
 </svelte:head>
 
 <div class="flex flex-col gap-6">
   <nav class="text-[12px] font-mono text-fg-dim">
-    <a href="/" class="hover:text-accent">canopy</a> /
+    <a href="/" class="hover:text-accent">bzlhub</a> /
     <span class="text-fg">modules</span>
   </nav>
 
@@ -133,7 +133,7 @@
     <div class="flex flex-col gap-2">
       <h1 class="font-mono text-2xl text-fg tracking-tight">modules</h1>
       <p class="text-[12px] text-fg-mute">
-        every module indexed in this canopy — click through for versions, schemas, source.
+        every module indexed in this bzlhub — click through for versions, schemas, source.
       </p>
     </div>
     <ShareLink />
@@ -194,7 +194,7 @@
     <div class="text-center py-16 text-fg-dim">
       <p class="font-mono text-lg">no modules indexed yet</p>
       <p class="text-[12px] mt-4">
-        run <code class="text-fg">canopy ingest</code> or POST to
+        run <code class="text-fg">bzlhub ingest</code> or POST to
         <code class="text-fg">/api/v1/actions/bump</code> to populate the corpus.
       </p>
     </div>

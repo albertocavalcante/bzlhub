@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/api/paths"
-	"github.com/albertocavalcante/canopy/internal/compat"
-	"github.com/albertocavalcante/canopy/internal/ratelimit"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/compat"
+	"github.com/albertocavalcante/bzlhub/internal/ratelimit"
 )
 
 const maxCompatCheckBody = 256 * 1024
@@ -66,7 +66,7 @@ func (h *handler) apiCompatCheck(w http.ResponseWriter, r *http.Request) {
 func (h *handler) apiBump(w http.ResponseWriter, r *http.Request) {
 	if !h.opts.Flags.IngestWriteEnabled {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
-			"error": "ingest writes are disabled on this canopy (CANOPY_INGEST_WRITE_ENABLED=false)",
+			"error": "ingest writes are disabled on this canopy (BZLHUB_INGEST_WRITE_ENABLED=false)",
 		})
 		return
 	}
@@ -145,17 +145,17 @@ func (h *handler) apiBump(w http.ResponseWriter, r *http.Request) {
 // the closure unfold in real time via /api/events.
 //
 // Three gates layered before the actual ingest call:
-//  1. Feature-flag kill-switch (CANOPY_INGEST_WRITE_ENABLED).
+//  1. Feature-flag kill-switch (BZLHUB_INGEST_WRITE_ENABLED).
 //  2. Per-IP rate limit + global concurrency semaphore.
 //  3. SSRF guard: body.Upstream is honored only when explicitly
-//     allowed via CANOPY_INGEST_ALLOW_CUSTOM_UPSTREAM, otherwise the
+//     allowed via BZLHUB_INGEST_ALLOW_CUSTOM_UPSTREAM, otherwise the
 //     server-configured RegistryURL is used. UI clients always go
 //     through the default; CLI/MCP operators on the trusted box can
 //     enable the override.
 func (h *handler) apiIngestRecursive(w http.ResponseWriter, r *http.Request) {
 	if !h.opts.Flags.IngestWriteEnabled {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
-			"error": "ingest writes are disabled on this canopy (CANOPY_INGEST_WRITE_ENABLED=false)",
+			"error": "ingest writes are disabled on this canopy (BZLHUB_INGEST_WRITE_ENABLED=false)",
 		})
 		return
 	}
@@ -239,7 +239,7 @@ func (h *handler) apiIngestRecursive(w http.ResponseWriter, r *http.Request) {
 func (h *handler) apiIngestMissing(w http.ResponseWriter, r *http.Request) {
 	if !h.opts.Flags.IngestWriteEnabled {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
-			"error": "ingest writes are disabled on this canopy (CANOPY_INGEST_WRITE_ENABLED=false)",
+			"error": "ingest writes are disabled on this canopy (BZLHUB_INGEST_WRITE_ENABLED=false)",
 		})
 		return
 	}

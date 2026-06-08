@@ -554,16 +554,30 @@ func (a *Actions) templateDict(_ *starlark.Thread, _ *starlark.Builtin, _ starla
 }
 
 // Args represents an Args object for building command lines.
-// Source: Args.java in Starlark
+// Source: Args.java in Starlark.
+//
+// SCAFFOLD: the add_all() / add_joined() builder fields below
+// (mapEach, beforeEach, joinWith, formatEach, uniquify, expandDirs,
+// omitIfEmpty) mirror Bazel's Args.java and are reserved for when
+// the corresponding Args methods land. Today only add() is wired
+// (values + frozen). The fields are kept on the struct so a future
+// implementation can populate them without a struct rev.
 type Args struct {
-	values      []string
-	frozen      bool
-	mapEach     starlark.Callable
-	beforeEach  string
-	joinWith    string
-	formatEach  string
-	uniquify    bool
-	expandDirs  bool
+	values []string
+	frozen bool
+	//nolint:unused // SCAFFOLD: populated by add_all/add_joined when M5+ wires them.
+	mapEach starlark.Callable
+	//nolint:unused // SCAFFOLD: populated by add_all/add_joined when M5+ wires them.
+	beforeEach string
+	//nolint:unused // SCAFFOLD: populated by add_all/add_joined when M5+ wires them.
+	joinWith string
+	//nolint:unused // SCAFFOLD: populated by add_all/add_joined when M5+ wires them.
+	formatEach string
+	//nolint:unused // SCAFFOLD: populated by add_all/add_joined when M5+ wires them.
+	uniquify bool
+	//nolint:unused // SCAFFOLD: populated by add_all/add_joined when M5+ wires them.
+	expandDirs bool
+	//nolint:unused // SCAFFOLD: populated by add_all/add_joined when M5+ wires them.
 	omitIfEmpty bool
 }
 
@@ -665,7 +679,7 @@ func (a *Args) addAll(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tup
 
 // addJoined implements Args.add_joined().
 func (a *Args) addJoined(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var joinWith string = ","
+	var joinWith = ","
 	for _, kv := range kwargs {
 		key := string(kv[0].(starlark.String))
 		if key == "join_with" {

@@ -13,14 +13,14 @@ import (
 
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // Registration-level sanity check: registerTools binds the right
 // handler to the right tool name. Without this, a typo like
-// AddTool(NewTool("canopy_consumers"), compatCheckHandler(c)) would
+// AddTool(NewTool("bzlhub_consumers"), compatCheckHandler(c)) would
 // pass the existing round-trip tests (they call the Go function by
 // reference) while breaking real MCP clients that dispatch by name.
 //
@@ -44,7 +44,7 @@ func TestMCP_NewToolsAreRegisteredByName(t *testing.T) {
 	}
 
 	srv := server.NewMCPServer("canopy-test", "test")
-	registerTools(srv, canopy.New(s), nil, true)
+	registerTools(srv, bzlhub.New(s), nil, true)
 
 	cases := []struct {
 		toolName string
@@ -55,7 +55,7 @@ func TestMCP_NewToolsAreRegisteredByName(t *testing.T) {
 		wantSubstrings []string
 	}{
 		{
-			toolName: "canopy_consumers",
+			toolName: "bzlhub_consumers",
 			args: map[string]any{
 				"module":  "producer",
 				"version": "1",
@@ -68,7 +68,7 @@ func TestMCP_NewToolsAreRegisteredByName(t *testing.T) {
 			},
 		},
 		{
-			toolName: "canopy_compat_check",
+			toolName: "bzlhub_compat_check",
 			args: map[string]any{
 				// Real input — at least one bazel_dep so the analyzer
 				// doesn't bail with ErrEmptyInput. The dep doesn't
@@ -136,7 +136,7 @@ func TestMCP_NewToolsAreRegisteredByName(t *testing.T) {
 	}
 }
 
-// canopy_consumers MCP tool round-trip: seed a producer + consumer
+// bzlhub_consumers MCP tool round-trip: seed a producer + consumer
 // with a real SCIP reference, invoke the tool via its handler, and
 // verify the JSON shape clients will see.
 func TestMCP_ConsumersTool_RoundTrip(t *testing.T) {
@@ -165,13 +165,13 @@ func TestMCP_ConsumersTool_RoundTrip(t *testing.T) {
 	}
 
 	req := mcp.CallToolRequest{}
-	req.Params.Name = "canopy_consumers"
+	req.Params.Name = "bzlhub_consumers"
 	req.Params.Arguments = map[string]any{
 		"module":  "producer",
 		"version": "1",
 		"name":    "my_rule",
 	}
-	result, err := consumersHandler(canopy.New(s))(ctx, req)
+	result, err := consumersHandler(bzlhub.New(s))(ctx, req)
 	if err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -201,9 +201,9 @@ func TestMCP_ConsumersTool_RequiresArgs(t *testing.T) {
 	t.Cleanup(func() { _ = s.Close() })
 
 	req := mcp.CallToolRequest{}
-	req.Params.Name = "canopy_consumers"
+	req.Params.Name = "bzlhub_consumers"
 	req.Params.Arguments = map[string]any{} // empty
-	result, err := consumersHandler(canopy.New(s))(ctx, req)
+	result, err := consumersHandler(bzlhub.New(s))(ctx, req)
 	if err != nil {
 		t.Fatalf("handler returned go-error: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestMCP_ConsumersTool_RequiresArgs(t *testing.T) {
 	}
 }
 
-// canopy_compat_check MCP tool round-trip: feed a real-shaped
+// bzlhub_compat_check MCP tool round-trip: feed a real-shaped
 // MODULE.bazel body + verify the response includes plan_markdown +
 // plan_shell (Plan 06 codemods bundled).
 func TestMCP_CompatCheckTool_RoundTrip(t *testing.T) {
@@ -241,9 +241,9 @@ bazel_dep(name = "rules_go", version = "0.50.0")
 `
 
 	req := mcp.CallToolRequest{}
-	req.Params.Name = "canopy_compat_check"
+	req.Params.Name = "bzlhub_compat_check"
 	req.Params.Arguments = map[string]any{"body": body}
-	result, err := compatCheckHandler(canopy.New(s))(ctx, req)
+	result, err := compatCheckHandler(bzlhub.New(s))(ctx, req)
 	if err != nil {
 		t.Fatalf("handler: %v", err)
 	}

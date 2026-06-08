@@ -23,8 +23,8 @@ func TestPAT_ReadsFromFile(t *testing.T) {
 	if err := os.WriteFile(path, []byte("ghp_demo"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("CANOPY_TEST_GH_TOKEN_FILE", path)
-	tok, err := PAT{Env: "CANOPY_TEST_GH_TOKEN"}.Token(context.Background())
+	t.Setenv("BZLHUB_TEST_GH_TOKEN_FILE", path)
+	tok, err := PAT{Env: "BZLHUB_TEST_GH_TOKEN"}.Token(context.Background())
 	if err != nil {
 		t.Fatalf("PAT.Token errored: %v", err)
 	}
@@ -34,8 +34,8 @@ func TestPAT_ReadsFromFile(t *testing.T) {
 }
 
 func TestPAT_EnvFallback(t *testing.T) {
-	t.Setenv("CANOPY_TEST_GH_TOKEN", "literal-tok")
-	tok, _ := PAT{Env: "CANOPY_TEST_GH_TOKEN"}.Token(context.Background())
+	t.Setenv("BZLHUB_TEST_GH_TOKEN", "literal-tok")
+	tok, _ := PAT{Env: "BZLHUB_TEST_GH_TOKEN"}.Token(context.Background())
 	if tok != "literal-tok" {
 		t.Fatalf("got %q, want literal-tok", tok)
 	}
@@ -49,9 +49,9 @@ func TestPAT_EmptyEnvNameYieldsEmpty(t *testing.T) {
 }
 
 func TestPAT_MissingFileFallsToEmpty(t *testing.T) {
-	t.Setenv("CANOPY_TEST_GH_TOKEN_FILE", "/no/such/file")
-	t.Setenv("CANOPY_TEST_GH_TOKEN", "should-not-leak")
-	tok, _ := PAT{Env: "CANOPY_TEST_GH_TOKEN"}.Token(context.Background())
+	t.Setenv("BZLHUB_TEST_GH_TOKEN_FILE", "/no/such/file")
+	t.Setenv("BZLHUB_TEST_GH_TOKEN", "should-not-leak")
+	tok, _ := PAT{Env: "BZLHUB_TEST_GH_TOKEN"}.Token(context.Background())
 	if tok != "" {
 		t.Fatalf("got %q, want empty when _FILE set but unreadable", tok)
 	}

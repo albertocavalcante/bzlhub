@@ -4,7 +4,7 @@
   Reads /api/v1/system/status (Cache-Control: no-store) every 15s.
   Polling pauses when the tab is hidden (Page Visibility API) and
   resumes on visibility change. No invented metrics — every field
-  on the page is something canopy already tracks.
+  on the page is something bzlhub already tracks.
 
   Contract + design: docs/plans/65-about-and-status-content-spec.md
   §Part 3. Backend handler: internal/server/system_handlers.go::apiStatus.
@@ -23,78 +23,27 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { paths } from '$lib/api/paths';
-
-  // ---- JSON wire shape (mirrors api.SystemStatus) -----------------
-
-  type UpstreamStatus = {
-    url: string;
-    reachable: boolean;
-    last_probe_at?: string;
-    last_probe_latency_ms?: number;
-    last_probe_error?: string;
-    cache_entries: number;
-    cache_hit_rate: number;
-  };
-  type SystemStatus = {
-    version: string;
-    commit?: string;
-    built_at?: string;
-    uptime_seconds: number;
-    mirror: {
-      modules_indexed: number;
-      versions_indexed: number;
-      size_bytes?: number;
-      last_ingest_at?: string;
-      promote_on_serve_enabled: boolean;
-    };
-    federation: { upstreams: UpstreamStatus[] };
-    drift: {
-      last_refresh_at?: string;
-      modules_behind: number;
-      modules_yanked_upstream: number;
-    };
-    addons: {
-      promote_on_serve: boolean;
-      snapshot_publishing: boolean;
-      litestream: boolean;
-      mcp_http: boolean;
-    };
-  };
-
-  type StateLevel = 'healthy' | 'degraded' | 'unhealthy';
-
-  // ---- Polling config + hysteresis thresholds ---------------------
-  // Match the federation probe cadence so the page never shows
-  // data the server itself hasn't refreshed since last tick.
-  const POLL_INTERVAL_MS = 15_000;
-  // Amber → Green requires 3 consecutive healthy snapshots — one
-  // green bounce after a real failure is not recovery.
-  const SUCCESS_THRESHOLD = 3;
-  // Amber → Red requires 5 consecutive unhealthy snapshots — short
-  // upstream blips shouldn't escalate to red on the public page.
-  const FAILURE_THRESHOLD = 5;
-  // Amber → Red also triggers when we've been stuck in amber for
-  // five minutes — pathological-but-not-blip patterns escalate.
-  const AMBER_TIMEOUT_MS = 5 * 60_000;
-  // Steady-state thresholds (plan-65 v2 §Part 3).
-  const SLOW_PROBE_MS = 500;
-  const MIRROR_STALE_DAYS_AMBER = 7;
-  const MIRROR_STALE_DAYS_RED = 30;
-  const DRIFT_COUNT_AMBER = 5;
-  const DRIFT_COUNT_RED = 20;
+  import {
+    applyHysteresis,
+    initialHysteresis,
+    POLL_INTERVAL_MS,
+    rank,
+    SUCCESS_THRESHOLD,
+    FAILURE_THRESHOLD,
+    wireInstantState,
+    type HysteresisState,
+    type StateLevel,
+    type SystemStatus,
+  } from '$lib/status/state';
 
   // ---- Reactive state ---------------------------------------------
 
   let status = $state<SystemStatus | null>(null);
   let fetchError = $state<string | null>(null);
   let lastFetchAt = $state<Date | null>(null);
-  // The HYSTERESIS-smoothed state — what we render. Starts amber so
-  // we don't theatrically claim "healthy" before the first probe.
-  let displayedState = $state<StateLevel>('degraded');
-  // Counters used by the hysteresis state machine.
-  let consecutiveFailures = $state(0);
-  let consecutiveSuccesses = $state(0);
-  let amberEnteredAt: number | null = null;
+  // Threaded HYSTERESIS state — pure updates each tick via
+  // applyHysteresis. Starts amber so first paint isn't theatre.
+  let hysteresis = $state<HysteresisState>(initialHysteresis());
   // Driver for "now" — updates every second so relative-time
   // strings ("35s ago") tick without waiting for the next /status
   // poll. Cheap.
@@ -102,91 +51,9 @@
   let pollHandle = $state<ReturnType<typeof setInterval> | undefined>(undefined);
   let tickHandle: ReturnType<typeof setInterval> | undefined;
 
-  // ---- Helpers ----------------------------------------------------
-
-  function rank(s: StateLevel): number {
-    return s === 'healthy' ? 0 : s === 'degraded' ? 1 : 2;
-  }
-  function worseOf(a: StateLevel, b: StateLevel): StateLevel {
-    return rank(a) >= rank(b) ? a : b;
-  }
-
-  function computeInstantState(s: SystemStatus | null): StateLevel {
-    if (!s) return 'unhealthy';
-    const ups = s.federation?.upstreams ?? [];
-    const anyUnreachable = ups.some((u) => !u.reachable);
-    const anySlow = ups.some(
-      (u) => u.reachable && (u.last_probe_latency_ms ?? 0) > SLOW_PROBE_MS,
-    );
-
-    const lastIngest = s.mirror?.last_ingest_at
-      ? new Date(s.mirror.last_ingest_at)
-      : null;
-    const ageDays =
-      lastIngest === null ? null : (Date.now() - lastIngest.getTime()) / 86_400_000;
-
-    const driftCount =
-      (s.drift?.modules_behind ?? 0) + (s.drift?.modules_yanked_upstream ?? 0);
-
-    if (anyUnreachable) return 'unhealthy';
-    if (ageDays !== null && ageDays > MIRROR_STALE_DAYS_RED) return 'unhealthy';
-    if (driftCount > DRIFT_COUNT_RED) return 'unhealthy';
-
-    if (anySlow) return 'degraded';
-    if (ageDays !== null && ageDays >= MIRROR_STALE_DAYS_AMBER) return 'degraded';
-    if (driftCount >= DRIFT_COUNT_AMBER) return 'degraded';
-
-    return 'healthy';
-  }
-
-  function applyHysteresis(prev: StateLevel, instant: StateLevel): StateLevel {
-    // Same-state: reset the counter for the OPPOSITE direction so a
-    // single bounce on the recovery side doesn't carry into a real
-    // recovery later.
-    if (instant === prev) {
-      if (prev === 'healthy') consecutiveFailures = 0;
-      else if (prev === 'unhealthy') consecutiveSuccesses = 0;
-      return prev;
-    }
-
-    // Improving: prev=unhealthy → instant healthier
-    if (prev === 'unhealthy') {
-      // Red → Amber on FIRST recovery sample (show that recovery has
-      // begun); Red → Green is never direct — must pass through amber.
-      consecutiveSuccesses = 1;
-      amberEnteredAt = Date.now();
-      return 'degraded';
-    }
-    if (prev === 'degraded') {
-      if (instant === 'healthy') {
-        consecutiveSuccesses += 1;
-        consecutiveFailures = 0;
-        if (consecutiveSuccesses >= SUCCESS_THRESHOLD) {
-          amberEnteredAt = null;
-          return 'healthy';
-        }
-        return 'degraded';
-      }
-      if (instant === 'unhealthy') {
-        consecutiveFailures += 1;
-        consecutiveSuccesses = 0;
-        const stuckTooLong =
-          amberEnteredAt !== null && Date.now() - amberEnteredAt > AMBER_TIMEOUT_MS;
-        if (consecutiveFailures >= FAILURE_THRESHOLD || stuckTooLong) {
-          return 'unhealthy';
-        }
-        return 'degraded';
-      }
-    }
-
-    // prev === 'healthy' and instant is worse: green → amber is
-    // immediate (visitors should see degradation start). Never jump
-    // straight to red from green — escalation goes through amber.
-    consecutiveFailures = 1;
-    consecutiveSuccesses = 0;
-    amberEnteredAt = Date.now();
-    return worseOf(prev, 'degraded');
-  }
+  // Convenience accessor — render code reads displayedState, not
+  // the full hysteresis record.
+  const displayedState = $derived(hysteresis.displayed);
 
   async function tick() {
     try {
@@ -199,12 +66,15 @@
       status = json;
       fetchError = null;
       lastFetchAt = new Date();
-      displayedState = applyHysteresis(displayedState, computeInstantState(json));
+      // Server has already computed the instant verdict via
+      // internal/bzlhub/health.Derive; we just thread it through
+      // client-side hysteresis. Single source of truth lives in Go.
+      hysteresis = applyHysteresis(hysteresis, wireInstantState(json), Date.now());
     } catch (e) {
       fetchError = e instanceof Error ? e.message : String(e);
       // A polling failure is itself an unhealthy signal — the server
       // is at least partially unreachable from where the browser sits.
-      displayedState = applyHysteresis(displayedState, 'unhealthy');
+      hysteresis = applyHysteresis(hysteresis, 'unhealthy', Date.now());
     }
   }
 
@@ -300,22 +170,24 @@
         ? 'degraded'
         : 'unhealthy',
   );
-  // Are we in a transition (the instant state differs from displayed)?
-  const inTransition = $derived.by(() => {
-    if (!status) return false;
-    return computeInstantState(status) !== displayedState;
-  });
+  // Are we in a transition (the instant state from the wire differs
+  // from the smoothed displayed state)? The wire's instant_state
+  // moves the moment the server's view changes; displayedState
+  // catches up only after SUCCESS_THRESHOLD / FAILURE_THRESHOLD
+  // confirming ticks. The gap between the two is the transition
+  // window we surface as a "recovering / degrading" hint.
+  const wireInstant = $derived(wireInstantState(status));
+  const inTransition = $derived(status !== null && wireInstant !== displayedState);
   // During recovery (instant healthier than displayed), surface how
   // many confirming probes we've seen so far so the reader knows the
   // amber checkmark isn't theatre — it's "recovering, almost there."
   const transitionHint = $derived.by(() => {
-    if (!inTransition || !status) return '';
-    const instant = computeInstantState(status);
-    if (rank(instant) < rank(displayedState)) {
-      return `recovering — ${consecutiveSuccesses} of ${SUCCESS_THRESHOLD} confirming probes`;
+    if (!inTransition) return '';
+    if (rank(wireInstant) < rank(displayedState)) {
+      return `recovering — ${hysteresis.consecutiveSuccesses} of ${SUCCESS_THRESHOLD} confirming probes`;
     }
-    if (rank(instant) > rank(displayedState)) {
-      return `degrading — ${consecutiveFailures} of ${FAILURE_THRESHOLD} confirming failures`;
+    if (rank(wireInstant) > rank(displayedState)) {
+      return `degrading — ${hysteresis.consecutiveFailures} of ${FAILURE_THRESHOLD} confirming failures`;
     }
     return '';
   });
@@ -328,6 +200,14 @@
       out.push(`${status.drift.modules_yanked_upstream} yanked-upstream`);
     return out;
   });
+
+  // Server-derived signal breakdown (computed.signals[]). Empty
+  // when healthy. Surfaced as a why-paragraph between the state
+  // pill and the structured details — readers triaging an amber/
+  // red verdict see EVERY contributing signal in one glance,
+  // including which upstream is slow and how stale the sync is,
+  // without re-reading the source rows below.
+  const signals = $derived(status?.computed?.signals ?? []);
 
   const enabledAddons = $derived.by(() => {
     if (!status) return [] as string[];
@@ -402,6 +282,36 @@
     </p>
   {/if}
 
+  {#if signals.length > 0}
+    <!--
+      Why-paragraph: server-derived signal breakdown
+      (computed.signals[]). Anti-slop §Part 3 rule: when amber or
+      red, render MORE information, not less. The reader who hits
+      /status during a degraded state sees EVERY contributing
+      signal in one block, not just the page-level verdict.
+      Sorted by level (red first) so the most severe shows up top.
+    -->
+    <ul
+      class="signals-list mb-4"
+      aria-label="contributing signals"
+      aria-live="polite"
+    >
+      {#each [...signals].sort((a, b) => (b.level === 'unhealthy' ? 1 : 0) - (a.level === 'unhealthy' ? 1 : 0)) as sig (sig.kind + sig.detail)}
+        <li
+          class="signal"
+          class:signal-unhealthy={sig.level === 'unhealthy'}
+          class:signal-degraded={sig.level === 'degraded'}
+        >
+          <span class="signal-icon" aria-hidden="true">
+            {sig.level === 'unhealthy' ? '✗' : '⚠'}
+          </span>
+          <span class="signal-kind">{sig.kind}</span>
+          <span class="signal-detail">{sig.detail}</span>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+
   {#if fetchError && !status}
     <p class="font-mono text-xs text-err mb-4">
       could not fetch status: {fetchError}
@@ -460,6 +370,27 @@
               no ingests yet
             {/if}
           </div>
+          {#if status.mirror.last_sync_at || status.mirror.head_sha}
+            <!--
+              Mirror heartbeat. last_sync_at proves `bzlhub sync run`
+              is reaching upstream regardless of whether new modules
+              landed in the index; head_sha pins the BCR commit the
+              cascade is serving from. Both omitted for File-backed
+              installs and pre-Plan-21 mirrors.
+            -->
+            <div class="sub">
+              {#if status.mirror.last_sync_at}
+                synced {fmtRelative(status.mirror.last_sync_at, nowTick)}
+              {/if}
+              {#if status.mirror.last_sync_at && status.mirror.head_sha}
+                <span class="sep">·</span>
+              {/if}
+              {#if status.mirror.head_sha}
+                HEAD
+                <span class="font-mono">{status.mirror.head_sha.slice(0, 7)}</span>
+              {/if}
+            </div>
+          {/if}
           <div class="sub muted">
             promote-on-serve: {status.mirror.promote_on_serve_enabled
               ? 'on'
@@ -478,12 +409,15 @@
             {#each status.federation.upstreams as u (u.url)}
               <div class="line">
                 <span class="icon" aria-hidden="true">{u.reachable ? '✓' : '✗'}</span>
-                <span
-                  class="primary"
-                  class:text-err={!u.reachable}
-                  class:text-warn={u.reachable &&
-                    (u.last_probe_latency_ms ?? 0) > SLOW_PROBE_MS}
-                >
+                <!--
+                  Hostname coloring: red on unreachable. The "slow
+                  but reachable" amber decoration was retired when
+                  the threshold moved server-side — the page-level
+                  state pill already carries that verdict, and
+                  per-row coloring would require duplicating the
+                  threshold constant client-side.
+                -->
+                <span class="primary" class:text-err={!u.reachable}>
                   {fmtHostname(u.url)}
                 </span>
                 {#if u.reachable && u.last_probe_latency_ms !== undefined}
@@ -632,8 +566,51 @@
   .text-err {
     color: var(--color-err);
   }
-  .text-warn {
-    color: var(--color-warn);
+
+  /* Signal breakdown: one row per contributing reason. Red rows
+     get a stronger left border so triage-by-glance is colour-
+     blind safe (border + icon + kind text all carry the level). */
+  .signals-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+  }
+  .signal {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 10px;
+    border-left: 3px solid var(--color-line, #ddd);
+    background: var(--color-bg-elev, transparent);
+    border-radius: 0 3px 3px 0;
+  }
+  .signal-unhealthy {
+    border-left-color: var(--color-err);
+  }
+  .signal-degraded {
+    border-left-color: var(--color-warn, var(--color-fg-mute));
+  }
+  .signal-icon {
+    color: var(--color-fg-mute, #555);
+    min-width: 1em;
+  }
+  .signal-unhealthy .signal-icon {
+    color: var(--color-err);
+  }
+  .signal-degraded .signal-icon {
+    color: var(--color-warn, var(--color-fg-mute));
+  }
+  .signal-kind {
+    color: var(--color-fg, #111);
+    font-weight: 500;
+  }
+  .signal-detail {
+    color: var(--color-fg-mute, #555);
   }
 
   /* Mobile reflow: stack label above value. */

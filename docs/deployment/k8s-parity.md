@@ -1,13 +1,13 @@
-# Deployment parity — canopy on docker-compose and Kubernetes
+# Deployment parity — bzlhub on docker-compose and Kubernetes
 
 > **Status**: stable contract; implementation audits pending — see §11.
-> **Audience**: operators deploying canopy; canopy maintainers.
+> **Audience**: operators deploying bzlhub; bzlhub maintainers.
 > **Authority**: this is the contract. The compose stack at
-> `self-hosted/canopy/` and the Helm chart at `deploy/helm/canopy/` are
+> `self-hosted/bzlhub/` and the Helm chart at `deploy/helm/bzlhub/` are
 > consumers of it. When a feature needs to break a rule here, change this
 > document in the same PR — don't drift.
 
-This doc specifies what the canopy binary expects from its environment
+This doc specifies what the bzlhub binary expects from its environment
 so that the same image and the same operational decisions work in both
 deployment shapes:
 
@@ -22,7 +22,7 @@ minimal. Everything optional is opt-in.
 
 ## 1. Architectural model
 
-Canopy is a **stateless-tolerable cache + search index** over upstream
+Bzlhub is a **stateless-tolerable cache + search index** over upstream
 sources of module truth.
 
 ```
@@ -36,7 +36,7 @@ sources of module truth.
                   │ federation / pull-through
                   ▼
    ┌──────────────────────────────────────────┐
-   │  canopy / bzlhub                          │
+   │  bzlhub / bzlhub                          │
    │   • mirror/   (warm cache, derived)       │
    │   • index/    (SQLite + FTS5, derived)    │
    └──────────────┬───────────────────────────┘
@@ -45,7 +45,7 @@ sources of module truth.
               Bazel users + UI + MCP
 ```
 
-Canopy is **not** the source of truth for any module. Upstream is.
+Bzlhub is **not** the source of truth for any module. Upstream is.
 The on-disk `mirror/` and `index/` are derived state, recoverable by
 re-fetching from upstreams.
 
@@ -60,8 +60,8 @@ truth.
 
 | Target | Form | Status |
 |---|---|---|
-| docker-compose on a single host | `self-hosted/canopy/compose.yml` | shipped |
-| Kubernetes | `deploy/helm/canopy/` | chart present; cluster smoke-test pending |
+| docker-compose on a single host | `self-hosted/bzlhub/compose.yml` | shipped |
+| Kubernetes | `deploy/helm/bzlhub/` | chart present; cluster smoke-test pending |
 
 Both forms MUST honour the contract in §3.
 
@@ -90,7 +90,7 @@ differ between deployments.
 
 ## 3. Required application behaviour (the contract)
 
-Canopy MUST exhibit these properties. They are not optional. Breaking
+Bzlhub MUST exhibit these properties. They are not optional. Breaking
 any of them is a breaking change and requires a corresponding edit to
 this document.
 
@@ -98,7 +98,7 @@ The terms MUST / SHOULD / MAY follow RFC 2119.
 
 ### 3.1 Cold-start without state
 
-Canopy MUST boot and start serving traffic with empty `mirror/` and
+Bzlhub MUST boot and start serving traffic with empty `mirror/` and
 empty `index/`. It MUST NOT crash, refuse all traffic, or require an
 out-of-band ingest step before answering requests.
 
@@ -133,24 +133,24 @@ Edge case — empty upstream list (`CANOPY_UPSTREAMS` unset):
 > progress UX described below are NOT implemented today. Current
 > behaviour: cold-start with empty volumes serves pull-through via
 > the federation cascade only; the index stays empty unless the
-> operator runs `canopy ingest` manually or enables the
+> operator runs `bzlhub ingest` manually or enables the
 > `cronjobs.ingest` Helm addon.
 
 When the index is detected to be empty at boot AND `upstreams` is
-non-empty, canopy SHOULD initiate a background rehydration loop. The
+non-empty, bzlhub SHOULD initiate a background rehydration loop. The
 strategy is selectable via configuration; default is **hybrid**
 (pull-through serves traffic from second 1, background loop fills the
 mirror and rebuilds the index opportunistically).
 
 When `upstreams` is empty, rehydration is a no-op regardless of
 strategy. The empty state is preserved until an upstream is configured
-and canopy is restarted or sent an explicit rehydration trigger.
+and bzlhub is restarted or sent an explicit rehydration trigger.
 
 ### Today's operational alternative
 
 Until self-rehydration ships, the equivalent is:
 
-- For one-shot warm: run `canopy ingest --recursive --upstream
+- For one-shot warm: run `bzlhub ingest --recursive --upstream
   https://bcr.bazel.build` on the host (or `kubectl exec` into the
   pod for K8s).
 - For ongoing refresh: enable `cronjobs.ingest.enabled: true` in
@@ -169,7 +169,7 @@ implemented, the CronJob remains useful for scheduled deep refresh
 
 ### 3.3 No required external services
 
-Canopy MUST NOT require, at install time, run time, or restore time:
+Bzlhub MUST NOT require, at install time, run time, or restore time:
 
 - An object storage bucket (S3, R2, GCS, Azure Blob).
 - An external database. The index is local SQLite via
@@ -190,7 +190,7 @@ local development. Rationale: secrets that exist only as env vars leak
 into `docker inspect`, `/proc/<pid>/environ`, crash dumps, and child
 processes. File-mounted secrets do not.
 
-Canopy MUST NOT require a configuration file as the primary surface.
+Bzlhub MUST NOT require a configuration file as the primary surface.
 A file is acceptable as an alternative, but env vars are the contract.
 
 ### 3.5 Pluggable upstreams
@@ -202,14 +202,14 @@ declarations, each tagged with a `type`. Initial set:
 - `git` — *(planned)* git repository serving BCR layout, with auth.
 - `artifactory` — *(planned)* Artifactory generic repo holding modules.
 
-`upstreams: []` is a valid configuration. It means canopy serves only
+`upstreams: []` is a valid configuration. It means bzlhub serves only
 what is already in `mirror/`; pull-through is a no-op. This is useful
 for fully-air-gapped staging where the operator pre-loads the mirror
 some other way.
 
 ### 3.6 Pluggable snapshot store (addon)
 
-Canopy MAY support exporting/restoring its index+mirror as a snapshot
+Bzlhub MAY support exporting/restoring its index+mirror as a snapshot
 artifact to/from a pluggable store. The snapshot interface MUST NOT
 assume S3/R2. First backends:
 
@@ -219,14 +219,14 @@ assume S3/R2. First backends:
 - `s3` — only when the operator has S3-compatible storage available.
 
 When the snapshot addon is **implemented AND enabled** AND volumes are
-empty at boot, canopy MUST attempt a snapshot restore before falling
+empty at boot, bzlhub MUST attempt a snapshot restore before falling
 back to §3.2 rehydration. If snapshot restore fails (network error,
-404, checksum mismatch), canopy MUST log the failure and fall back to
+404, checksum mismatch), bzlhub MUST log the failure and fall back to
 §3.2 — never crash on a snapshot miss.
 
 ### 3.7 Health and readiness
 
-Canopy MUST expose:
+Bzlhub MUST expose:
 
 | Endpoint | Semantics | Status |
 |---|---|---|
@@ -247,7 +247,7 @@ the Dockerfile `HEALTHCHECK` target `/healthz`.
 
 ### 3.8 Single replica
 
-Canopy is single-replica only. The Helm chart MUST deploy a
+Bzlhub is single-replica only. The Helm chart MUST deploy a
 `StatefulSet` with `replicas: 1`. Horizontal scaling requires a shared
 storage backend and is explicitly out of scope; the design is a
 single-binary registry process per deployment.
@@ -261,7 +261,7 @@ it. Operators sensitive to rescheduling time SHOULD use `ReadWriteOncePod`
 
 ### 3.9 Security context
 
-Canopy MUST run as a non-root UID. No part of the deployment requires
+Bzlhub MUST run as a non-root UID. No part of the deployment requires
 root inside the container.
 
 The current `Dockerfile` runs as UID/GID `65532:65532` (the de-facto
@@ -295,11 +295,11 @@ The group-writable bit on data dirs is NOT a security relaxation: GID
 
 ### 3.10 TLS termination at the edge
 
-Canopy MUST serve plain HTTP on a single port. TLS termination is
+Bzlhub MUST serve plain HTTP on a single port. TLS termination is
 delegated to the edge layer (Caddy on a VPS host, an Ingress / Gateway
 controller, or Cloudflare Tunnel).
 
-For client identity, canopy honours `X-Forwarded-User`,
+For client identity, bzlhub honours `X-Forwarded-User`,
 `X-Forwarded-Email`, and `X-Forwarded-Groups` from clients whose
 source IP falls within a configured trust list.
 
@@ -316,7 +316,7 @@ you see":
   the ingress controller's pod CIDR, or `127.0.0.1/32` for a
   same-host reverse proxy).
 - Forged headers from any other source are silently dropped.
-- A request reaching canopy directly from an untrusted source IP gets
+- A request reaching bzlhub directly from an untrusted source IP gets
   treated as anonymous, regardless of what headers it sets.
 
 Defence-in-depth recommendations:
@@ -324,15 +324,15 @@ Defence-in-depth recommendations:
 - On Kubernetes: a `NetworkPolicy` restricting ingress to the auth
   proxy / ingress controller pods. The CIDR trust list AND the
   network policy enforce the same boundary — belt and braces.
-- On a single-host VPS: canopy binds to `127.0.0.1` (compose service
+- On a single-host VPS: bzlhub binds to `127.0.0.1` (compose service
   port binding) AND `CANOPY_TRUSTED_PROXY_CIDR=127.0.0.1/32`.
 
-Note: canopy deliberately does NOT honour `X-Forwarded-For` for
+Note: bzlhub deliberately does NOT honour `X-Forwarded-For` for
 client-IP determination — only the source IP of the connection itself
 is used for trust evaluation. This avoids the classic "trusted proxy
 forwards a forged XFF" exploit.
 
-For unauthenticated public deployments (canopy as a read-only mirror),
+For unauthenticated public deployments (bzlhub as a read-only mirror),
 no trusted-edge configuration is needed; write endpoints are gated by
 `CANOPY_INGEST_WRITE_ENABLED` (default: off).
 
@@ -345,7 +345,7 @@ no trusted-edge configuration is needed; write endpoints are gated by
 | Volume | Contents | Default PVC size | Growth |
 |---|---|---|---|
 | `mirror/` | BCR-shape file tree: `modules/`, `blobs/`, JSON metadata | 10 GiB | Linear with corpus; full public BCR is currently a few GB (estimate, not measured). |
-| `index/` | SQLite database (`canopy.db`) with module metadata, FTS5 search index, dependency edges | 1 GiB | Sub-linear with corpus; typically <1 GB even for full BCR (estimate). |
+| `index/` | SQLite database (`bzlhub.db`) with module metadata, FTS5 search index, dependency edges | 1 GiB | Sub-linear with corpus; typically <1 GB even for full BCR (estimate). |
 
 Sizes are starting points; operators should monitor and resize PVCs
 as the corpus grows. Actual values will be measured on the bzlhub.com
@@ -392,7 +392,7 @@ Every addon MUST be off by default in `values.yaml`. Enabling an
 addon MUST be a single explicit opt-in flip (`addons.<name>.enabled:
 true`) plus any addon-specific configuration.
 
-A disabled or absent addon MUST NOT prevent canopy from booting or
+A disabled or absent addon MUST NOT prevent bzlhub from booting or
 serving traffic. "Absent" means: a value override that removes the
 addon block entirely is equivalent to `addons.<name>.enabled: false`;
 the chart never assumes a value block exists. The core app continues
@@ -413,7 +413,7 @@ Currently planned addons (none enabled in defaults):
 ## 7. Sidecar policy
 
 The default Helm chart MUST render **zero** sidecar containers. A
-default pod spec contains the `canopy` container and only the `canopy`
+default pod spec contains the `bzlhub` container and only the `bzlhub`
 container.
 
 A sidecar MAY be added to an addon's rendering iff all three hold:
@@ -435,18 +435,18 @@ Explicitly NOT sidecars:
 
 - **Auth proxies** (oauth2-proxy, Authelia) — edge concern. May be a
   separate Deployment in the same cluster, but NOT a sidecar inside
-  the canopy pod. The canopy pod trusts headers from a configured
+  the bzlhub pod. The bzlhub pod trusts headers from a configured
   trusted-edge per §3.10.
 - **Log forwarders** (Promtail, Vector) — node-level / host-level
   infrastructure.
-- **Metrics exporters** — add `/metrics` to canopy itself if needed.
+- **Metrics exporters** — add `/metrics` to bzlhub itself if needed.
 - **Backup schedulers** (restic) — scheduled job, not co-resident.
 
 ---
 
 ## 8. `values.yaml` reference
 
-> **Note (2026-05-28 audit)**: the actual `deploy/helm/canopy/values.yaml`
+> **Note (2026-05-28 audit)**: the actual `deploy/helm/bzlhub/values.yaml`
 > is RICHER than the reference below — it has `image.registry` /
 > `image.repository` / `image.digest` separated, `global.imageRegistry`
 > for ArgoCD/Bitnami-style compatibility, per-volume `persistence.{mirror,index}`,
@@ -465,7 +465,7 @@ image:
   # registry — see docs/deployment/build-from-source.md for the
   # build-and-push-to-your-own-registry path.
   registry: ghcr.io                       # OCI registry hostname
-  repository: albertocavalcante/canopy    # path within registry
+  repository: albertocavalcante/bzlhub    # path within registry
   tag: ""                                 # defaults to chart appVersion
   digest: ""                              # sha256:… pin (takes precedence over tag)
   pullPolicy: IfNotPresent                # use Always for floating tags like :main
@@ -571,14 +571,14 @@ serviceAccount:
 
 | Variable | Purpose | Default | Required? |
 |---|---|---|---|
-Today's actual env vars (verified by reading `cmd/canopy/serve.go`):
+Today's actual env vars (verified by reading `cmd/bzlhub/serve.go`):
 
 | Variable | Purpose | Default | Required? |
 |---|---|---|---|
 | `CANOPY_BIND` | Listen address | `0.0.0.0:8090` | no |
-| `CANOPY_ROOT` | Path to the `mirror/` tree | `/var/lib/canopy/mirror` | no |
-| `CANOPY_DB` | Path to the SQLite index file | `/var/lib/canopy/index/canopy.db` | no |
-| `CANOPY_MIRROR_BASE_URL` | If set, canopy advertises itself as a tarball mirror via `bazel_registry.json.mirrors` | unset | no |
+| `CANOPY_ROOT` | Path to the `mirror/` tree | `/var/lib/bzlhub/mirror` | no |
+| `CANOPY_DB` | Path to the SQLite index file | `/var/lib/bzlhub/index/bzlhub.db` | no |
+| `CANOPY_MIRROR_BASE_URL` | If set, bzlhub advertises itself as a tarball mirror via `bazel_registry.json.mirrors` | unset | no |
 | `CANOPY_UPSTREAMS` | Comma-separated list of upstream BCR-shape registry URLs (federation cascade) | unset → no federation | no |
 | `CANOPY_UPSTREAM_CACHE_SIZE` | Federation response cache size; negative disables | `1000` | no |
 | `CANOPY_UPSTREAM_PROBE_INTERVAL` | Background probe interval for upstream reachability | per code default | no |
@@ -611,10 +611,10 @@ pointing at a file-mounted path.
 
 ### Standard env vars honoured
 
-In addition to the canopy-specific surface above, canopy MUST respect
+In addition to the bzlhub-specific surface above, bzlhub MUST respect
 the following standard environment variables when its central HTTP
 client makes outbound requests. These exist on every well-behaved Go
-or Linux service; canopy does not reinvent or override them.
+or Linux service; bzlhub does not reinvent or override them.
 
 | Env var | Honoured for | Mechanism |
 |---|---|---|
@@ -626,11 +626,11 @@ or Linux service; canopy does not reinvent or override them.
 | `TZ` | Container time zone (for log timestamps and cron eval) | Standard libc behaviour (`tzdata` is in the runtime image) |
 
 Caveat: these env vars only take effect for outbound HTTP calls that go
-through canopy's central `*http.Client` constructor. Subsystems that
+through bzlhub's central `*http.Client` constructor. Subsystems that
 construct their own `http.Client` literals will silently bypass them.
 Eliminating ad-hoc client construction is the prerequisite refactor
 named in `docs/plans/17-upstream-proxy.md` §4 (`R1`), and it benefits
-canopy even outside the proxy use case (consistent timeouts, retries,
+bzlhub even outside the proxy use case (consistent timeouts, retries,
 observability).
 
 **Design note — array env vars**: the `CANOPY_UPSTREAMS_<N>_*` pattern
@@ -658,7 +658,7 @@ one minor release with a log warning).
 
 These are guidance, not contract. Operators size to their own load.
 
-The contract is: canopy MUST work within the **default** numbers above
+The contract is: bzlhub MUST work within the **default** numbers above
 for a freshly-deployed empty instance with one BCR upstream. If a
 release breaks that, it's a regression.
 
@@ -682,7 +682,7 @@ Updated 2026-05-28 after a direct source audit. Status legend:
 | 3.1 | Boots cleanly with empty `mirror/` and empty `index/` | ✅ | `cascade.go:156` — "Upstreams may be empty — no-op wrapper" |
 | 3.1 | UI degraded state ("rehydrating, X/Y") | ❌ | UX depends on §3.2 self-rehydration which isn't implemented; today UI likely renders as if registry happens to be empty |
 | 3.1 | Cache misses trigger upstream pull-through write to `mirror/` | ⚠️ | Pull-through reads work; the *write* is gated by `CANOPY_PROMOTE_ON_SERVE=true` (off by default — "curated, not greedy") per `serve.go:176` |
-| 3.2 | Self-rehydration goroutine triggers on empty index | ❌ | Not implemented; operator runs `canopy ingest` manually OR enables `cronjobs.ingest` Helm addon |
+| 3.2 | Self-rehydration goroutine triggers on empty index | ❌ | Not implemented; operator runs `bzlhub ingest` manually OR enables `cronjobs.ingest` Helm addon |
 | 3.2 | `eager` / `pullthrough` / `hybrid` strategy selector | ❌ | Single mode today (federation pull-through + opt-in promote-on-serve) |
 | 3.3 | No required external services | ✅ | No S3/Postgres/broker; SQLite-only |
 | 3.4 | All config via env vars | ✅ | Every operational knob has a `CANOPY_*` env var |
@@ -692,16 +692,16 @@ Updated 2026-05-28 after a direct source audit. Status legend:
 | 3.6 | Pluggable snapshot store | 📋 | Not implemented; design in §3.6 |
 | 3.7 | `/healthz` endpoint | ✅ | `internal/server/server.go:217` |
 | 3.7 | `/readyz` endpoint | ✅ | Added 2026-05-28; mirrors `/healthz` today, room to harden later (`internal/server/server.go`). Helm default keeps both probes on `/healthz`; operators can switch `readinessProbe.httpGet.path` to `/readyz` when stricter semantics land. |
-| 3.8 | Helm chart deploys as `StatefulSet` with `replicas: 1` | ✅ | `deploy/helm/canopy/templates/statefulset.yaml:11` |
-| 3.9 | Non-root UID in image | ✅ | `Dockerfile` `USER canopy` (UID 65532) |
+| 3.8 | Helm chart deploys as `StatefulSet` with `replicas: 1` | ✅ | `deploy/helm/bzlhub/templates/statefulset.yaml:11` |
+| 3.9 | Non-root UID in image | ✅ | `Dockerfile` `USER bzlhub` (UID 65532) |
 | 3.9 | Helm `securityContext` complete | ✅ | Reality is *richer* than the contract — `runAsNonRoot`, `readOnlyRootFilesystem`, `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]`, `seccompProfile: RuntimeDefault`, plus `fsGroupChangePolicy: OnRootMismatch` to avoid expensive recursive chowns |
 | 3.10 | Serves plain HTTP only | ✅ | `CANOPY_BIND=0.0.0.0:8090` in Dockerfile |
 | 3.10 | Trusted-edge X-Forwarded-* header handling | ✅ | Reality is *stronger* than the original framing — `CANOPY_TRUSTED_PROXY_CIDR` gates header trust by source IP CIDR. Auth middleware at `internal/server/auth_middleware.go` |
 | 4.1 | `mirror/` and `index/` are separate volumes | ✅ | `values.yaml` has `persistence.mirror` and `persistence.index` as separate PVCs |
 | 5 | Single port, no host networking | ✅ | `containerPort: 8090`, plain ClusterIP service |
 | 6 | All addons off in `values.yaml` defaults | ✅ | `cronjobs.{ingest,drift}.enabled: false`, `ingress.enabled: false`, `gateway.enabled: false` |
-| 7 | Zero sidecars in default chart render | ✅ | Only the `canopy` container in the StatefulSet spec |
-| 9 | Env-var schema documented in code | ⚠️ | Rich flag help-text in `cmd/canopy/serve.go`; no central struct-tag-based docgen |
+| 7 | Zero sidecars in default chart render | ✅ | Only the `bzlhub` container in the StatefulSet spec |
+| 9 | Env-var schema documented in code | ⚠️ | Rich flag help-text in `cmd/bzlhub/serve.go`; no central struct-tag-based docgen |
 
 ### Summary of follow-up implementation work
 
@@ -712,9 +712,9 @@ reality up to the contract. They're small.
 |---|---|---|---|
 | Add `/readyz` HTTP handler | ~10 lines + test | high — K8s probe parity | `internal/server/server.go` |
 | Adopt `*_FILE` env-var convention before first secret-bearing feature | ~20 lines of helper + docs | medium — applies whenever auth/snapshot/litestream lands | new `internal/config/file_env.go` |
-| Implement cold-start self-rehydration with strategy selector | feature work | low until a deployment needs it | `cmd/canopy/serve.go` + new `internal/rehydrate/` |
-| Implement snapshot addon (`canopy snapshot export`/`restore`) | feature work | low; needed only when fast cold-start matters | new CLI subcommand + `internal/snapshot/` |
-| Expand upstream schema to per-upstream typing | feature work | scoped to when git/Artifactory backends land | `cmd/canopy/serve.go` env parsing |
+| Implement cold-start self-rehydration with strategy selector | feature work | low until a deployment needs it | `cmd/bzlhub/serve.go` + new `internal/rehydrate/` |
+| Implement snapshot addon (`bzlhub snapshot export`/`restore`) | feature work | low; needed only when fast cold-start matters | new CLI subcommand + `internal/snapshot/` |
+| Expand upstream schema to per-upstream typing | feature work | scoped to when git/Artifactory backends land | `cmd/bzlhub/serve.go` env parsing |
 
 Until those land, the contract sections above accurately distinguish
 between "MUST" (verified today) and "SHOULD / contract goal"
@@ -726,24 +726,24 @@ between "MUST" (verified today) and "SHOULD / contract goal"
 
 This contract is intentionally narrow. It does NOT cover:
 
-- What canopy *does* — see `README.md`.
+- What bzlhub *does* — see `README.md`.
 - Feature roadmap — covered in the project's internal planning
   documents.
 - Service-level objectives (latency, uptime, scaling) — none claimed.
-- Security review of the canopy binary — covered by a separate
+- Security review of the bzlhub binary — covered by a separate
   corporate-security plan.
 - Deployment instructions for any specific environment — covered by
   per-deployment runbooks alongside the relevant compose / Helm
   artifacts.
-- Backup of canonical state — canopy holds no canonical state today.
+- Backup of canonical state — bzlhub holds no canonical state today.
   When it does, see `addons.litestream` and `addons.snapshot`.
 - Multi-region / active-active — explicitly out of scope; single-replica.
 
 Adjacent work areas that will eventually intersect this contract but
 are tracked separately:
 
-- **MCP-over-HTTP transport.** Today canopy exposes MCP via stdio only
-  (the `canopy mcp` subcommand). An HTTP-served MCP surface is planned
+- **MCP-over-HTTP transport.** Today bzlhub exposes MCP via stdio only
+  (the `bzlhub mcp` subcommand). An HTTP-served MCP surface is planned
   and will, when shipped, share the apex port with the rest of the
   HTTP surface (path-routed). The contract additions needed at that
   point: auth model for unauthenticated agents, rate limiting,

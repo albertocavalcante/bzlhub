@@ -118,12 +118,10 @@ func (p *Provider) CallInternal(thread *starlark.Thread, args starlark.Tuple, kw
 	return &ProviderInstance{provider: p, values: values}, nil
 }
 
-// Attr returns an attribute of the provider.
+// Attr returns an attribute of the provider. Today providers have
+// no accessible attrs; the body exists to satisfy HasAttrs.
 func (p *Provider) Attr(name string) (starlark.Value, error) {
-	switch name {
-	default:
-		return nil, starlark.NoSuchAttrError(fmt.Sprintf("provider has no attribute %q", name))
-	}
+	return nil, starlark.NoSuchAttrError(fmt.Sprintf("provider has no attribute %q", name))
 }
 
 // AttrNames returns the list of attribute names.

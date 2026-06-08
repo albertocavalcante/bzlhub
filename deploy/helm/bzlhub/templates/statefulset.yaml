@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "bzlhub.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "bzlhub.labels" . | nindent 4 }}
+  {{- include "bzlhub.annotations" (dict "ctx" . "specific" .Values.statefulSet.annotations) | nindent 2 }}
+spec:
+  # Single replica is a HARD invariant. bzlhub uses SQLite + a local
+  # filesystem mirror; both are single-writer. Do not change this.
+  replicas: 1
+  serviceName: {{ include "bzlhub.fullname" . }}
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    {{- toYaml .Values.statefulSet.updateStrategy | nindent 4 }}
+  selector:
+    matchLabels: {{- include "bzlhub.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "bzlhub.selectorLabels" . | nindent 8 }}
+        {{- with .Values.statefulSet.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.statefulSet.podAnnotations }}
+      annotations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "bzlhub.serviceAccountName" . }}
+      {{- with (include "bzlhub.imagePullSecrets" .) }}
+      {{- . | nindent 6 }}
+      {{- end }}
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: bzlhub
+          image: {{ include "bzlhub.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+          env:
+            - name: BZLHUB_BIND
+              value: "0.0.0.0:{{ .Values.containerPort }}"
+            - name: BZLHUB_ROOT
+              value: {{ .Values.paths.mirror | quote }}
+            - name: BZLHUB_DB
+              value: {{ printf "%s/bzlhub.db" .Values.paths.index | quote }}
+            {{- range $k, $v := .Values.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- with .Values.envFrom }}
+          envFrom: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe: {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe: {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: mirror
+              mountPath: {{ .Values.paths.mirror }}
+            - name: index
+              mountPath: {{ .Values.paths.index }}
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        # tmp is an emptyDir because readOnlyRootFilesystem=true; the
+        # bzlhub binary writes ingest scratch files under /tmp.
+        - name: tmp
+          emptyDir: {}
+        {{- if not .Values.persistence.mirror.enabled }}
+        - name: mirror
+          emptyDir: {}
+        {{- end }}
+        {{- if not .Values.persistence.index.enabled }}
+        - name: index
+          emptyDir: {}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    {{- if .Values.persistence.mirror.enabled }}
+    - metadata:
+        name: mirror
+        {{- with .Values.persistence.mirror.annotations }}
+        annotations: {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes: {{- toYaml .Values.persistence.mirror.accessModes | nindent 10 }}
+        {{- if .Values.persistence.mirror.storageClass }}
+        storageClassName: {{ .Values.persistence.mirror.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.mirror.size | quote }}
+    {{- end }}
+    {{- if .Values.persistence.index.enabled }}
+    - metadata:
+        name: index
+        {{- with .Values.persistence.index.annotations }}
+        annotations: {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes: {{- toYaml .Values.persistence.index.accessModes | nindent 10 }}
+        {{- if .Values.persistence.index.storageClass }}
+        storageClassName: {{ .Values.persistence.index.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.index.size | quote }}
+    {{- end }}

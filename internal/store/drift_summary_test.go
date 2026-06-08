@@ -27,7 +27,7 @@ func driftSeedVersion(t *testing.T, s *Store, name, version string) {
 func TestDriftSummary_MigrationAddsColumn(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	dbPath := t.TempDir() + "/canopy.db"
+	dbPath := t.TempDir() + "/bzlhub.db"
 
 	// First open: creates schema + applies migration.
 	s1, err := Open(ctx, dbPath)
@@ -60,7 +60,7 @@ func TestDriftSummary_MigrationAddsColumn(t *testing.T) {
 func TestDriftSummary_DefaultIsEmptyObject(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	s, err := Open(ctx, t.TempDir()+"/canopy.db")
+	s, err := Open(ctx, t.TempDir()+"/bzlhub.db")
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestDriftSummary_DefaultIsEmptyObject(t *testing.T) {
 func TestDriftSummary_RoundTrip(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	s, err := Open(ctx, t.TempDir()+"/canopy.db")
+	s, err := Open(ctx, t.TempDir()+"/bzlhub.db")
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestDriftSummary_RoundTrip(t *testing.T) {
 func TestDriftSummary_SetEmptyClearsToDefault(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	s, err := Open(ctx, t.TempDir()+"/canopy.db")
+	s, err := Open(ctx, t.TempDir()+"/bzlhub.db")
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestDriftSummary_SetEmptyClearsToDefault(t *testing.T) {
 func TestDriftSummary_GetMissingRowReturnsDefault(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	s, err := Open(ctx, t.TempDir()+"/canopy.db")
+	s, err := Open(ctx, t.TempDir()+"/bzlhub.db")
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

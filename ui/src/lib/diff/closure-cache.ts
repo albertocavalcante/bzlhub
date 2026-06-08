@@ -8,7 +8,7 @@ export type StoredClosureScan = {
 };
 
 export function closureStorageKey(upstream: string, module: string): string {
-  return `canopy:closureScans:${upstream}:${module}`;
+  return `bzlhub:closureScans:${upstream}:${module}`;
 }
 
 export function storedClosureScan(scan: ClosureDiffReport, now = Date.now()): StoredClosureScan {

@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"context"
 	"errors"
 	"io"
 	"os"
@@ -44,7 +43,7 @@ func seedMirror(t *testing.T) *bcrmirror.Mirror {
 	}
 
 	m := bcrmirror.New(dir, "")
-	if err := m.Open(context.Background()); err != nil {
+	if err := m.Open(t.Context()); err != nil {
 		t.Fatalf("Mirror.Open: %v", err)
 	}
 	return m
@@ -100,7 +99,7 @@ func TestBCRMirror_GetMetadata(t *testing.T) {
 	m := seedMirror(t)
 	b := NewBCRMirror(m)
 
-	rc, err := b.GetMetadata(context.Background(), "foo")
+	rc, err := b.GetMetadata(t.Context(), "foo")
 	got := readAll(t, rc, err)
 	if !strings.Contains(string(got), `"versions"`) {
 		t.Errorf("GetMetadata(foo) = %s; want JSON containing \"versions\"", got)
@@ -114,7 +113,7 @@ func TestBCRMirror_GetMetadataNotFound(t *testing.T) {
 	m := seedMirror(t)
 	b := NewBCRMirror(m)
 
-	_, err := b.GetMetadata(context.Background(), "nonexistent")
+	_, err := b.GetMetadata(t.Context(), "nonexistent")
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("GetMetadata(nonexistent) err = %v; want errors.Is(_, ErrNotFound)", err)
 	}
@@ -125,7 +124,7 @@ func TestBCRMirror_GetModuleBazel(t *testing.T) {
 	m := seedMirror(t)
 	b := NewBCRMirror(m)
 
-	rc, err := b.GetModuleBazel(context.Background(), "foo", "1.0.0")
+	rc, err := b.GetModuleBazel(t.Context(), "foo", "1.0.0")
 	got := readAll(t, rc, err)
 	if !strings.Contains(string(got), "module(") {
 		t.Errorf("GetModuleBazel(foo, 1.0.0) = %s; want module() declaration", got)
@@ -137,7 +136,7 @@ func TestBCRMirror_GetSourceJSON(t *testing.T) {
 	m := seedMirror(t)
 	b := NewBCRMirror(m)
 
-	rc, err := b.GetSourceJSON(context.Background(), "foo", "1.0.0")
+	rc, err := b.GetSourceJSON(t.Context(), "foo", "1.0.0")
 	got := readAll(t, rc, err)
 	if !strings.Contains(string(got), `"url"`) {
 		t.Errorf("GetSourceJSON(foo, 1.0.0) = %s; want url field", got)
@@ -150,7 +149,7 @@ func TestBCRMirror_GetSourceJSONNotFound(t *testing.T) {
 	m := seedMirror(t)
 	b := NewBCRMirror(m)
 
-	_, err := b.GetSourceJSON(context.Background(), "foo", "9.9.9")
+	_, err := b.GetSourceJSON(t.Context(), "foo", "9.9.9")
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("GetSourceJSON(foo, 9.9.9) err = %v; want ErrNotFound", err)
 	}
@@ -162,7 +161,7 @@ func TestBCRMirror_GetPatchNotFound(t *testing.T) {
 	m := seedMirror(t)
 	b := NewBCRMirror(m)
 
-	_, err := b.GetPatch(context.Background(), "foo", "1.0.0", "0001-doesnt-exist.patch")
+	_, err := b.GetPatch(t.Context(), "foo", "1.0.0", "0001-doesnt-exist.patch")
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("GetPatch on missing patch err = %v; want ErrNotFound", err)
 	}
@@ -186,21 +185,21 @@ func TestBCRMirror_PathTraversalReturnsNotFound(t *testing.T) {
 		{
 			name: "GetMetadata with ..",
 			call: func() (io.ReadCloser, error) {
-				return b.GetMetadata(context.Background(), "..")
+				return b.GetMetadata(t.Context(), "..")
 			},
 			expect: "module name with ..",
 		},
 		{
 			name: "GetSourceJSON with slash in module",
 			call: func() (io.ReadCloser, error) {
-				return b.GetSourceJSON(context.Background(), "foo/bar", "1.0.0")
+				return b.GetSourceJSON(t.Context(), "foo/bar", "1.0.0")
 			},
 			expect: "module name with /",
 		},
 		{
 			name: "GetPatch with .. version",
 			call: func() (io.ReadCloser, error) {
-				return b.GetPatch(context.Background(), "foo", "..", "any.patch")
+				return b.GetPatch(t.Context(), "foo", "..", "any.patch")
 			},
 			expect: "version with ..",
 		},
@@ -222,7 +221,7 @@ func TestBCRMirror_GetBazelRegistryJSON(t *testing.T) {
 	m := seedMirror(t)
 	b := NewBCRMirror(m)
 
-	rc, err := b.GetBazelRegistryJSON(context.Background())
+	rc, err := b.GetBazelRegistryJSON(t.Context())
 	got := readAll(t, rc, err)
 	if len(got) == 0 {
 		t.Errorf("GetBazelRegistryJSON returned empty bytes")
@@ -235,7 +234,7 @@ func TestBCRMirror_GetBlob(t *testing.T) {
 	m := seedMirror(t)
 	b := NewBCRMirror(m)
 
-	rc, err := b.GetBlob(context.Background(), "foo-1.0.0.tar.gz")
+	rc, err := b.GetBlob(t.Context(), "foo-1.0.0.tar.gz")
 	got := readAll(t, rc, err)
 	if len(got) == 0 {
 		t.Errorf("GetBlob returned empty bytes")
@@ -247,7 +246,7 @@ func TestBCRMirror_GetBlobNotFound(t *testing.T) {
 	m := seedMirror(t)
 	b := NewBCRMirror(m)
 
-	_, err := b.GetBlob(context.Background(), "nope.tar.gz")
+	_, err := b.GetBlob(t.Context(), "nope.tar.gz")
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("GetBlob on missing blob err = %v; want ErrNotFound", err)
 	}
@@ -260,7 +259,7 @@ func TestBCRMirror_GetBlobRejectsPathTraversal(t *testing.T) {
 	m := seedMirror(t)
 	b := NewBCRMirror(m)
 
-	_, err := b.GetBlob(context.Background(), "../bazel_registry.json")
+	_, err := b.GetBlob(t.Context(), "../bazel_registry.json")
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("GetBlob path traversal err = %v; want ErrNotFound", err)
 	}

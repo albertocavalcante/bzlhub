@@ -23,7 +23,7 @@ import (
 	gobzlmod "github.com/albertocavalcante/go-bzlmod"
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/modulediff"
+	"github.com/albertocavalcante/bzlhub/internal/modulediff"
 )
 
 // Options configures a closure diff.

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/albertocavalcante/canopy/internal/egress"
+	"github.com/albertocavalcante/bzlhub/internal/egress"
 )
 
 // SourceJSON mirrors the wire shape of modules/<n>/<v>/source.json — the
@@ -100,7 +100,7 @@ func NewClient() *Client {
 	// fetch keeps its own AllowedHosts gate (per-instance,
 	// caller-overridable, source-of-truth for the registry
 	// allowlist). The egress policy is permissive here because
-	// canopy serve binds the active profile policy in cmd/canopy/
+	// bzlhub serve binds the active profile policy in cmd/bzlhub/
 	// at startup; this is the composition seam Plan 28 C5
 	// introduces. See internal/egress/client.go for the wrap
 	// semantics.

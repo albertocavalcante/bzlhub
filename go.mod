@@ -1,4 +1,4 @@
-module github.com/albertocavalcante/canopy
+module github.com/albertocavalcante/bzlhub
 
 go 1.26.2
 
@@ -6,19 +6,24 @@ require (
 	github.com/albertocavalcante/bazel-doc-go v0.0.0-00010101000000-000000000000
 	github.com/albertocavalcante/bigorna v0.0.0-00010101000000-000000000000
 	github.com/albertocavalcante/farol v0.0.0-20260521100058-45d811180afb
+	github.com/albertocavalcante/go-bcr-bundle v0.2.0
+	github.com/albertocavalcante/go-bcr-httpstore v0.2.2
 	github.com/albertocavalcante/go-bcr-mirror v0.0.0-00010101000000-000000000000
-	github.com/albertocavalcante/go-bzlmod v0.0.0
+	github.com/albertocavalcante/go-bzlmod v0.0.0-20260531025253-fc2e39f161aa
+	github.com/albertocavalcante/go-bzlmod-ast v0.0.0-20260531042442-dd6779bf1a31
+	github.com/albertocavalcante/go-cdn-purge v0.0.0-00010101000000-000000000000
 	github.com/albertocavalcante/scip-bazel v0.2.0
 	github.com/albertocavalcante/stardoc-go v0.0.0-00010101000000-000000000000
 	github.com/albertocavalcante/starlark-doc-go v0.0.0
-	github.com/albertocavalcante/starlark-go-bazel v0.0.0-00010101000000-000000000000
+	github.com/albertocavalcante/starlark-go-bazel v0.1.0
 	github.com/albertocavalcante/understory v0.3.2
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-git/go-git/v5 v5.19.1
+	github.com/goccy/go-yaml v1.19.2
 	github.com/mark3labs/mcp-go v0.53.0
 	github.com/scip-code/scip/bindings/go/scip v0.7.1
 	github.com/spf13/cobra v1.10.2
-	go.starlark.net v0.0.0-20260326113308-fadfc96def35
+	go.starlark.net v0.0.0-20260522144826-ec58d4b459e2
 	golang.org/x/image v0.41.0
 	google.golang.org/protobuf v1.36.11
 )
@@ -28,6 +33,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
 	github.com/albertocavalcante/bazel-highlight-go v0.1.1 // indirect
+	github.com/albertocavalcante/go-starlark-syntaxutil v0.0.0-20260531035945-c509081c177a // indirect
 	github.com/albertocavalcante/scip-starlark v0.2.0 // indirect
 	github.com/albertocavalcante/starlark-highlight-go v0.2.0 // indirect
 	github.com/albertocavalcante/starlark-syntax-go v0.20260208.0 // indirect
@@ -69,8 +75,8 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
-	golang.org/x/crypto v0.50.0 // indirect
-	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
@@ -79,8 +85,9 @@ require (
 )
 
 require (
-	github.com/albertocavalcante/assay v0.0.0
+	github.com/albertocavalcante/assay v0.1.1-0.20260531234214-afd5b6172f5c
 	github.com/albertocavalcante/bazel-module-summary-go v0.0.0
+	github.com/albertocavalcante/go-bcr-artifactory v0.3.0
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -88,16 +95,12 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	modernc.org/libc v1.72.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.50.1
 )
-
-replace github.com/albertocavalcante/assay => ../assay
-
-replace github.com/albertocavalcante/go-bzlmod => ../go-bzlmod
 
 replace github.com/albertocavalcante/understory => ../understory
 
@@ -106,8 +109,6 @@ replace github.com/albertocavalcante/understory => ../understory
 replace github.com/albertocavalcante/starlark-highlight-go => ../starlark-highlight-go
 
 replace github.com/albertocavalcante/starlark-syntax-go => ../starlark-syntax-go
-
-replace github.com/albertocavalcante/starlark-go-bazel => ../starlark-go-bazel
 
 replace github.com/albertocavalcante/bazel-module-summary-go => ../bazel-module-summary-go
 
@@ -122,3 +123,9 @@ replace github.com/albertocavalcante/farol => ../farol
 replace github.com/albertocavalcante/bigorna => ../bigorna
 
 replace github.com/albertocavalcante/go-bcr-mirror => ../go-bcr-mirror
+
+replace github.com/albertocavalcante/go-bcr-httpstore => ../go-bcr-httpstore
+
+replace github.com/albertocavalcante/go-cdn-purge => ../go-cdn-purge
+
+replace github.com/albertocavalcante/go-bcr-artifactory => ../go-bcr-artifactory

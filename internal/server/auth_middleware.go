@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/albertocavalcante/canopy/internal/auth"
+	"github.com/albertocavalcante/bzlhub/internal/auth"
 )
 
 const (
@@ -50,6 +50,14 @@ const (
 func headerAuth(trustedCIDRs []*net.IPNet) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Bearer middleware (Plan 72 §CC3) runs first and may
+			// have set an identity on ctx already. Bearer wins per
+			// the precedence rule — don't overlay header identity
+			// on top of an existing bearer identity.
+			if existing, ok := auth.FromContext(r.Context()); ok && existing.IsAuthenticated() {
+				next.ServeHTTP(w, r)
+				return
+			}
 			if len(trustedCIDRs) > 0 && sourceIPIsTrusted(r, trustedCIDRs) {
 				if id, ok := identityFromHeaders(r); ok {
 					ctx := auth.WithContext(r.Context(), id)
@@ -113,9 +121,9 @@ func identityFromHeaders(r *http.Request) (auth.Identity, bool) {
 
 // ParseTrustedProxyCIDRs parses a comma-separated CIDR list (the
 // operator-facing config form, e.g., from
-// CANOPY_TRUSTED_PROXY_CIDR). Skips empty entries. Returns an
+// BZLHUB_TRUSTED_PROXY_CIDR). Skips empty entries. Returns an
 // empty slice when the input is empty — that's the "disable header
-// trust" mode. Exported so cmd/canopy/main.go can call it during
+// trust" mode. Exported so cmd/bzlhub/main.go can call it during
 // startup.
 func ParseTrustedProxyCIDRs(raw string) ([]*net.IPNet, error) {
 	out := []*net.IPNet{}

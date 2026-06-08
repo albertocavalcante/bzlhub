@@ -9,7 +9,7 @@ import (
 
 	"github.com/albertocavalcante/stardoc-go"
 
-	"github.com/albertocavalcante/canopy/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/api/paths"
 )
 
 // apiGetReverseDeps returns the modules-that-depend-on-this list:
@@ -77,7 +77,7 @@ func (h *handler) apiGetExampleFiles(w http.ResponseWriter, r *http.Request) {
 // Markdown via stardoc-go and writes it to the response with
 // text/markdown content-type.
 //
-// Same payload as the `canopy export-docs` CLI - different transport.
+// Same payload as the `bzlhub export-docs` CLI - different transport.
 // Designed for external integrators that want docs without an
 // SSH+CLI step (curl + commit to docs site, fetch from CI for drift
 // checks, etc.). Deterministic output makes caching trivial.

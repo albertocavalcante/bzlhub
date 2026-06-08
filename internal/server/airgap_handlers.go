@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api/paths"
 )
 
 func (h *handler) apiGetAirgapDownloaderConfig(w http.ResponseWriter, r *http.Request) {

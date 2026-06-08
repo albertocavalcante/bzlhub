@@ -6,7 +6,7 @@ import (
 
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // Use-extension usages are the cross-module index that lets canopy's

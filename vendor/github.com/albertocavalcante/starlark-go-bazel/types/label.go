@@ -118,7 +118,7 @@ func (l *Label) CompareSameType(op syntax.Token, y starlark.Value, depth int) (b
 // Attr returns an attribute of the label.
 func (l *Label) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "name":
+	case attrName:
 		return starlark.String(l.name), nil
 	case "package":
 		return starlark.String(l.pkg), nil
@@ -136,7 +136,7 @@ func (l *Label) Attr(name string) (starlark.Value, error) {
 
 // AttrNames returns the list of attribute names.
 func (l *Label) AttrNames() []string {
-	return []string{"name", "package", "workspace_name", "workspace_root"}
+	return []string{attrName, "package", "workspace_name", "workspace_root"}
 }
 
 // Repo returns the repository name.
@@ -164,7 +164,7 @@ func LabelBuiltin(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, 
 //   - Bare target names: "target" -> "//currentPkg:target"
 //
 // Reference: bazel/src/main/java/com/google/devtools/build/lib/cmdline/Label.java
-func ParseLabelRelative(s string, currentRepo string, currentPkg string) (*Label, error) {
+func ParseLabelRelative(s, currentRepo, currentPkg string) (*Label, error) {
 	// Handle absolute labels with repo
 	if strings.HasPrefix(s, "@") {
 		return ParseLabel(s)

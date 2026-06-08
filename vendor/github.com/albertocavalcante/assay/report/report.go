@@ -20,8 +20,35 @@ type ModuleReport struct {
 	Macros           []MacroSpec     `json:"macros,omitempty"`
 	Aspects          []AspectSpec    `json:"aspects,omitempty"`
 	Toolchains       []ToolchainSpec `json:"toolchains,omitempty"`
+	ToolchainImpls   []ToolchainImpl `json:"toolchain_impls,omitempty"`
 	RepositoryRules  []RepoRuleSpec  `json:"repository_rules,omitempty"`
 	ModuleExtensions []ModuleExtSpec `json:"module_extensions,omitempty"`
+
+	// Overrides captures every archive_override / git_override /
+	// single_version_override / multiple_version_override /
+	// local_path_override at MODULE.bazel top level. Source order
+	// preserved.
+	Overrides []ModuleOverride `json:"overrides,omitempty"`
+
+	// UsedExtensions captures each `use_extension(...)` call
+	// assigned to a top-level Ident, plus the associated use_repo
+	// imports and `<local>.<tag>(...)` invocations.
+	UsedExtensions []ExtensionUse `json:"used_extensions,omitempty"`
+
+	// RegisteredToolchains lists labels passed positionally to
+	// `register_toolchains(...)` at MODULE.bazel top level. Verbatim,
+	// source order, no deduplication.
+	RegisteredToolchains []string `json:"registered_toolchains,omitempty"`
+
+	// RegisteredExecutionPlatforms is the analogous list for
+	// `register_execution_platforms(...)`.
+	RegisteredExecutionPlatforms []string `json:"registered_execution_platforms,omitempty"`
+
+	// Includes captures `include("//path:fragment.MODULE.bazel")`
+	// statements (Bazel 7.2+). Verbatim labels in source order.
+	// Only root modules and modules with non-registry overrides
+	// can use include(), but assay records them regardless.
+	Includes []string `json:"includes,omitempty"`
 
 	Hermeticity HermeticityProfile `json:"hermeticity"`
 
@@ -81,12 +108,150 @@ type ModuleAssets struct {
 	// at any depth up to a sensible cap. Empty list, not nil, when
 	// none are present.
 	ExampleDirs []string `json:"example_dirs,omitempty"`
+
+	// Changelog is the verbatim text of the module's changelog at
+	// root. Order of preference: CHANGELOG.md, CHANGELOG.markdown,
+	// CHANGELOG.rst, CHANGELOG.txt, CHANGELOG, CHANGES.md, CHANGES,
+	// HISTORY.md, HISTORY. Truncated to 256KB.
+	Changelog string `json:"changelog,omitempty"`
+
+	// ChangelogPath is the relative path of the changelog file we
+	// picked. Empty iff Changelog is empty.
+	ChangelogPath string `json:"changelog_path,omitempty"`
+
+	// HasCI is true when at least one provider's workflow directory
+	// at the module root contains a non-hidden file. Pure
+	// filesystem signal; doesn't validate the YAML or confirm the
+	// workflows actually run.
+	HasCI bool `json:"has_ci,omitempty"`
+
+	// CIProviders lists the providers detected, alphabetized at
+	// emit time. Recognized values: "bazelci", "forgejo", "github".
+	// Empty when HasCI is false.
+	CIProviders []string `json:"ci_providers,omitempty"`
 }
 
-// ModuleKey identifies a module-version pair.
+// ModuleKey identifies a module-version pair, optionally carrying the
+// dev-dependency flag and a repo_name alias when projected from a
+// `bazel_dep(...)` call.
 type ModuleKey struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	Name          string `json:"name"`
+	Version       string `json:"version"`
+	DevDependency bool   `json:"dev_dependency,omitempty"`
+	RepoName      string `json:"repo_name,omitempty"`
+}
+
+// ModuleOverride captures one MODULE.bazel-top-level override statement
+// (archive_override, git_override, single_version_override,
+// multiple_version_override, local_path_override). Kind is the
+// discriminator; the remaining fields are populated only when relevant
+// to that Kind, so consumers can switch on Kind and ignore the rest.
+type ModuleOverride struct {
+	// Kind names the specific override call:
+	// "archive" / "git" / "single_version" / "multiple_version" /
+	// "local_path".
+	Kind string `json:"kind"`
+
+	// ModuleName is the target module being overridden (the
+	// `module_name = "..."` kwarg).
+	ModuleName string `json:"module_name,omitempty"`
+
+	// URLs is populated for archive_override (multi-URL list) and
+	// git_override (the single `remote = "..."` wrapped in a slice for
+	// shape consistency).
+	URLs []string `json:"urls,omitempty"`
+
+	// Integrity is the pinned hash for archive_override.
+	Integrity string `json:"integrity,omitempty"`
+
+	// Commit pins a git_override to a specific revision SHA.
+	Commit string `json:"commit,omitempty"`
+
+	// Path is the local_path_override's target directory.
+	Path string `json:"path,omitempty"`
+
+	// Version is single_version_override's pinned version.
+	Version string `json:"version,omitempty"`
+
+	// Versions is multiple_version_override's allowed set.
+	Versions []string `json:"versions,omitempty"`
+
+	// Patches is the list of patch-file paths (any override that
+	// accepts patches).
+	Patches []string `json:"patches,omitempty"`
+
+	// PatchStrip is the `-p<N>` strip level for `patches`.
+	PatchStrip int `json:"patch_strip,omitempty"`
+
+	// PatchCmds is the list of shell commands run after applying
+	// patches (any override that accepts patch_cmds).
+	PatchCmds []string `json:"patch_cmds,omitempty"`
+
+	Provenance Provenance `json:"provenance"`
+}
+
+// ExtensionUse captures one `use_extension(...)` assignment and the
+// `use_repo(...)` + `<local>.<tag>(...)` calls associated with it.
+//
+// Each top-level `<local> = use_extension(...)` produces one
+// ExtensionUse; subsequent `use_repo(<local>, ...)` and
+// `<local>.<tag>(...)` statements are merged into that entry.
+type ExtensionUse struct {
+	// LocalName is the LHS Ident the use_extension was assigned to
+	// (e.g., `python = use_extension(...)` -> "python").
+	LocalName string `json:"local_name"`
+
+	// BzlFile is use_extension's first positional argument (the
+	// .bzl file path verbatim).
+	BzlFile string `json:"bzl_file"`
+
+	// ExtensionName is use_extension's second positional argument
+	// (the exported symbol name in BzlFile).
+	ExtensionName string `json:"extension_name"`
+
+	// DevDependency captures use_extension's `dev_dependency = True`
+	// kwarg.
+	DevDependency bool `json:"dev_dependency,omitempty"`
+
+	// ImportedRepos lists every repo name passed positionally to
+	// `use_repo(<local>, ...)` calls referencing this LocalName.
+	ImportedRepos []string `json:"imported_repos,omitempty"`
+
+	// RenamedRepos captures the `<alias> = "<remote_repo>"` kwarg
+	// form of use_repo. Key is the local alias the importing module
+	// uses; value is the upstream repo name. Empty when no kwargs
+	// were used.
+	RenamedRepos map[string]string `json:"renamed_repos,omitempty"`
+
+	// TagInvocations records `<local>.<tag>(...)` calls in source
+	// order.
+	TagInvocations []ExtensionTagInvocation `json:"tag_invocations,omitempty"`
+
+	Provenance Provenance `json:"provenance"`
+}
+
+// ExtensionTagInvocation captures one `<local>.<tag>(...)` call
+// alongside a use_extension. Kwarg values are split by Starlark type
+// so canopy can render them with type-aware UI (badges for bools,
+// chips for lists, etc.) without re-parsing strings.
+type ExtensionTagInvocation struct {
+	TagName string `json:"tag_name"`
+
+	// Kwargs holds string-literal-valued kwargs.
+	Kwargs map[string]string `json:"kwargs,omitempty"`
+
+	// KwargLists holds list-of-string-literal-valued kwargs.
+	KwargLists map[string][]string `json:"kwarg_lists,omitempty"`
+
+	// KwargBools holds bool-literal-valued kwargs. Distinct from
+	// "absent" so canopy can show a True/False badge.
+	KwargBools map[string]bool `json:"kwarg_bools,omitempty"`
+
+	// KwargInts holds int-literal-valued kwargs (rare in extension
+	// tags but legal).
+	KwargInts map[string]int64 `json:"kwarg_ints,omitempty"`
+
+	Provenance Provenance `json:"provenance"`
 }
 
 // Provenance records where in the source a finding originated.
@@ -100,12 +265,26 @@ type Provenance struct {
 
 // AttrSpec describes one attribute of a rule or aspect.
 type AttrSpec struct {
-	Name      string   `json:"name"`
-	Type      string   `json:"type,omitempty"` // "string", "label", "label_list", "int", "bool", etc.
-	Doc       string   `json:"doc,omitempty"`
-	Default   string   `json:"default,omitempty"` // textual literal; "" if not set or non-literal
-	Mandatory bool     `json:"mandatory,omitempty"`
-	Providers []string `json:"providers,omitempty"`
+	Name      string `json:"name"`
+	Type      string `json:"type,omitempty"` // "string", "label", "label_list", "int", "bool", etc.
+	Doc       string `json:"doc,omitempty"`
+	Default   string `json:"default,omitempty"` // textual literal; "" if not set or non-literal
+	Mandatory bool   `json:"mandatory,omitempty"`
+
+	// ProviderGroups encodes the disjunction-of-conjunctions shape
+	// of `attr.label(providers = ...)` / `attr.label_list(providers
+	// = ...)`. Each outer slice is an OR alternative; each inner
+	// slice is the set of providers ALL of which must be present
+	// to satisfy that alternative.
+	//
+	// Examples:
+	//   providers = [GoInfo]        -> [[GoInfo]]
+	//   providers = [A, B, C]       -> [[A, B, C]]            (conjunction)
+	//   providers = [[A], [B, C]]   -> [[A], [B, C]]          (disjunction)
+	//
+	// Empty / nil when the attr declaration doesn't pass providers
+	// or when the value isn't a statically-resolvable list.
+	ProviderGroups [][]string `json:"provider_groups,omitempty"`
 }
 
 // AttrsExtractionMethod tags how a rule's attrs slice was produced.
@@ -117,6 +296,11 @@ type AttrSpec struct {
 type AttrsExtractionMethod string
 
 const (
+	// AttrsUnresolved is the zero value: no tier (literal, symbol-fold,
+	// load-resolve, interpreted) was able to recover the attrs slice.
+	// Consumers should treat the attrs as missing rather than empty.
+	AttrsUnresolved AttrsExtractionMethod = ""
+
 	// AttrsLiteral — attrs were read as a literal `attrs = {string-key:
 	// attr.TYPE(...)}` DictExpr. Zero analysis, zero ambiguity.
 	AttrsLiteral AttrsExtractionMethod = "literal"
@@ -189,17 +373,80 @@ type MacroSpec struct {
 
 // AspectSpec describes one aspect() definition.
 type AspectSpec struct {
-	Name              string     `json:"name"`
-	Doc               string     `json:"doc,omitempty"`
-	AttrAspects       []string   `json:"attr_aspects,omitempty"`
-	RequiredProviders []string   `json:"required_providers,omitempty"`
-	Private           bool       `json:"private,omitempty"`
-	Provenance        Provenance `json:"provenance"`
+	Name              string   `json:"name"`
+	Doc               string   `json:"doc,omitempty"`
+	AttrAspects       []string `json:"attr_aspects,omitempty"`
+	RequiredProviders []string `json:"required_providers,omitempty"`
+
+	// Attrs follow the same shape and extraction-tier ladder as
+	// RuleSpec.Attrs (literal / symbol_fold / load_resolve /
+	// interpreted). Per-aspect AttrsExtractionMethod records
+	// which tier resolved them, mirroring RuleSpec's field.
+	Attrs                 []AttrSpec            `json:"attrs,omitempty"`
+	AttrsExtractionMethod AttrsExtractionMethod `json:"attrs_extraction_method,omitempty"`
+
+	// Provides lists the provider names the aspect produces, taken
+	// verbatim from `provides = [...]`. Provider symbols are
+	// Idents in source; non-Ident entries are dropped.
+	Provides []string `json:"provides,omitempty"`
+
+	// Fragments lists configuration fragments the aspect declares
+	// a dependency on (`fragments = ["cpp", "py"]`).
+	Fragments []string `json:"fragments,omitempty"`
+
+	// HostFragments mirrors Fragments for the host configuration.
+	// Rare but Bazel-supported.
+	HostFragments []string `json:"host_fragments,omitempty"`
+
+	// Toolchains lists toolchain_type labels the aspect declares a
+	// dependency on, verbatim from `toolchains = [...]`.
+	Toolchains []string `json:"toolchains,omitempty"`
+
+	// ApplyToGeneratingRules captures the `apply_to_generating_rules`
+	// kwarg — when true the aspect runs on rules that generate
+	// output files rather than the output files themselves.
+	ApplyToGeneratingRules bool `json:"apply_to_generating_rules,omitempty"`
+
+	Private    bool       `json:"private,omitempty"`
+	Provenance Provenance `json:"provenance"`
 }
 
 // ToolchainSpec describes one toolchain_type() declaration.
 type ToolchainSpec struct {
 	Name       string     `json:"name"`
+	Provenance Provenance `json:"provenance"`
+}
+
+// ToolchainImpl describes one `toolchain(...)` registration in a BUILD
+// file — the concrete pairing of a toolchain_type with an
+// implementation target plus platform/setting constraints. Distinct
+// from ToolchainSpec (the toolchain_type declaration) and from
+// ModuleReport.RegisteredToolchains (MODULE.bazel's
+// register_toolchains(...) labels).
+type ToolchainImpl struct {
+	// Name is the local target name (`name = "..."`).
+	Name string `json:"name"`
+
+	// ToolchainType is the typed-target reference
+	// (`toolchain_type = ":x"`). Verbatim — canopy resolves the
+	// label.
+	ToolchainType string `json:"toolchain_type"`
+
+	// ToolchainImpl is the concrete implementation target
+	// (`toolchain = ":impl"`). Verbatim. May be empty when the
+	// registration only sets constraints without a target body —
+	// rare but legal.
+	ToolchainImpl string `json:"toolchain_impl,omitempty"`
+
+	// ExecCompatibleWith / TargetCompatibleWith list platform
+	// constraint labels. Verbatim, string-literal entries only.
+	ExecCompatibleWith   []string `json:"exec_compatible_with,omitempty"`
+	TargetCompatibleWith []string `json:"target_compatible_with,omitempty"`
+
+	// TargetSettings lists config_setting labels constraining when
+	// this toolchain matches.
+	TargetSettings []string `json:"target_settings,omitempty"`
+
 	Provenance Provenance `json:"provenance"`
 }
 
@@ -216,10 +463,38 @@ type RepoRuleSpec struct {
 
 // ModuleExtSpec describes one module_extension() definition.
 type ModuleExtSpec struct {
-	Name       string     `json:"name"`
-	Doc        string     `json:"doc,omitempty"`
-	TagClasses []string   `json:"tag_classes,omitempty"`
-	Private    bool       `json:"private,omitempty"`
+	Name       string         `json:"name"`
+	Doc        string         `json:"doc,omitempty"`
+	TagClasses []TagClassSpec `json:"tag_classes,omitempty"`
+	Private    bool           `json:"private,omitempty"`
+	Provenance Provenance     `json:"provenance"`
+}
+
+// TagClassSpec describes one tag_class() inside a module_extension's
+// tag_classes dict — the registry-surface payload for what
+// `use_extension(...).<name>(...)` invocations accept.
+//
+// Attrs follow the same extraction tier ladder as RuleSpec.Attrs
+// (literal / symbol_fold / load_resolve / interpreted); the
+// per-tag-class AttrsExtractionMethod records which tier resolved
+// them, mirroring RuleSpec's field.
+type TagClassSpec struct {
+	// Name is the tag-class name as it appears in the extension's
+	// tag_classes dict — what users type after the dot in
+	// `use_extension(...).<name>(...)`.
+	Name string `json:"name"`
+
+	// Doc is the tag_class's `doc = "..."` kwarg, if present.
+	Doc string `json:"doc,omitempty"`
+
+	// Attrs follow the same shape as RuleSpec.Attrs.
+	Attrs []AttrSpec `json:"attrs,omitempty"`
+
+	// AttrsExtractionMethod tags how the attrs slice was resolved.
+	AttrsExtractionMethod AttrsExtractionMethod `json:"attrs_extraction_method,omitempty"`
+
+	// Provenance points to the tag_class(...) call site, not the
+	// dict entry that referenced it.
 	Provenance Provenance `json:"provenance"`
 }
 

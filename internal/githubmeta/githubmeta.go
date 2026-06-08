@@ -32,8 +32,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/albertocavalcante/canopy/internal/egress"
-	"github.com/albertocavalcante/canopy/internal/githubapi/token"
+	"github.com/albertocavalcante/bzlhub/internal/egress"
+	"github.com/albertocavalcante/bzlhub/internal/githubapi/token"
 )
 
 // Meta is the canopy-internal shape we persist + render. It's a

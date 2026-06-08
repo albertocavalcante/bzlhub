@@ -1,15 +1,15 @@
 <!--
   InstallSnippet — copyable "use this module" card.
 
-  Two rows: the .bazelrc `--registry` line (so this canopy instance
+  Two rows: the .bazelrc `--registry` line (so this bzlhub instance
   becomes a Bazel-resolvable registry), and the MODULE.bazel
   `bazel_dep(...)` line. Together they answer the conversion-moment
   question on /modules/<m>/<v>: "how do I actually use this module
-  via canopy?" — Plan 19 Idea C.
+  via bzlhub?" — Plan 19 Idea C.
 
   The registry URL is read from window.location.origin so this
   works for any operator-hosted instance (bzlhub.com, an internal
-  canopy.example.com, Harbor-style behind-VPN deployments).
+  bzlhub.example.com, Harbor-style behind-VPN deployments).
   MODULE.bazel format only — Bzlmod is the answer in 2026; we don't
   ship a legacy WORKSPACE snippet.
 -->
@@ -28,7 +28,7 @@
   // default is a placeholder users can spot. Adapter-static + SPA
   // means we always reach this in the browser before the user reads
   // the snippet, so the placeholder is never visible in practice.
-  let origin = $state('https://your-canopy-instance');
+  let origin = $state('https://your-bzlhub-instance');
   onMount(() => {
     origin = window.location.origin;
   });

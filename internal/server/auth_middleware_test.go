@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/auth"
+	"github.com/albertocavalcante/bzlhub/internal/auth"
 )
 
 func mustCIDR(t *testing.T, s string) *net.IPNet {

@@ -97,13 +97,17 @@ func (p Platform) Label() string {
 	return p.OS + "/" + p.Arch
 }
 
-// DefaultPlatforms is the standard six-fork matrix for analysis: the
-// common cross-product of supported OS × architecture.
-var DefaultPlatforms = []Platform{
-	{OS: "linux", Arch: "amd64"},
-	{OS: "linux", Arch: "arm64"},
-	{OS: "darwin", Arch: "amd64"},
-	{OS: "darwin", Arch: "arm64"},
-	{OS: "windows", Arch: "amd64"},
-	{OS: "windows", Arch: "arm64"},
+// DefaultPlatforms returns the standard six-fork matrix for analysis:
+// the common cross-product of supported OS × architecture. Returns a
+// fresh slice on each call so a consumer appending to one return
+// doesn't leak into the next.
+func DefaultPlatforms() []Platform {
+	return []Platform{
+		{OS: "linux", Arch: "amd64"},
+		{OS: "linux", Arch: "arm64"},
+		{OS: "darwin", Arch: "amd64"},
+		{OS: "darwin", Arch: "arm64"},
+		{OS: "windows", Arch: "amd64"},
+		{OS: "windows", Arch: "arm64"},
+	}
 }

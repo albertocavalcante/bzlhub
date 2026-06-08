@@ -12,10 +12,10 @@ import (
 	"github.com/albertocavalcante/assay"
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/external"
-	"github.com/albertocavalcante/canopy/internal/fetch"
-	"github.com/albertocavalcante/canopy/internal/resolve"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/external"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/resolve"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // Analyze runs assay on the module rooted at dir and returns the
@@ -66,7 +66,7 @@ func FromDir(ctx context.Context, s *store.Store, dir string) (*report.ModuleRep
 // whatever placeholder coordinates assay reads from the in-tree
 // MODULE.bazel — registry mirrors are authoritative on naming.
 //
-// The intended consumer is canopy watch's OnCommit handler: after a
+// The intended consumer is bzlhub watch's OnCommit handler: after a
 // `git fetch + reset --hard` lands new commits, the changed
 // modules/<m>/<v>/ paths get fed here to refresh the SQLite index.
 // Idempotent — re-calling for the same (module, version) replaces

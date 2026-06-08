@@ -8,14 +8,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/featureflags"
-	"github.com/albertocavalcante/canopy/internal/server"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/featureflags"
+	"github.com/albertocavalcante/bzlhub/internal/server"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // TestMCPMount_FlagGated verifies plan-64 §4 M1: when
-// CANOPY_MCP_HTTP_ENABLED is off the /mcp path falls through to the
+// BZLHUB_MCP_HTTP_ENABLED is off the /mcp path falls through to the
 // SPA fallback (returning index.html, not the MCP transport); when on
 // it accepts JSON-RPC. Without this guard a typo in the feature-flag
 // glue would silently expose the tool catalogue on every deployment.
@@ -26,7 +26,7 @@ func TestMCPMount_FlagGated(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	svc := canopy.New(s)
+	svc := bzlhub.New(s)
 
 	// --- Flag OFF: explicit mount NOT registered. -------------------
 	// POST /mcp falls through to the SPA NotFound handler, which

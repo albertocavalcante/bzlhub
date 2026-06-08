@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/albertocavalcante/starlark-go-bazel/types"
 	"go.starlark.net/starlark"
+
+	"github.com/albertocavalcante/starlark-go-bazel/types"
 )
 
 // Provider is the Starlark provider() builtin function.

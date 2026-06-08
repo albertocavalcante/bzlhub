@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"go.starlark.net/starlark"
+
+	"github.com/albertocavalcante/starlark-go-bazel/types"
 )
 
 // AspectClass represents a Starlark-defined aspect created by aspect().
@@ -12,22 +14,22 @@ import (
 //
 // Reference: bazel/src/main/java/com/google/devtools/build/lib/packages/StarlarkDefinedAspect.java
 type AspectClass struct {
-	name                    string                     // Assigned when exported
-	implementation          starlark.Callable          // The aspect implementation function
-	attrAspects             []string                   // Attributes to propagate along
-	toolchainsAspects       []starlark.Value           // Toolchain types to propagate to
-	attrs                   map[string]*AttrDescriptor // Aspect's own attributes
-	requiredProviders       []starlark.Value           // Providers that targets must have
-	requiredAspectProviders []starlark.Value           // Providers that other aspects must have
-	provides                []starlark.Value           // Providers this aspect produces
-	requiredAspects         []starlark.Value           // Other aspects that must run first
-	propagationPredicate    starlark.Callable          // Function to filter propagation
-	fragments               []string                   // Required configuration fragments
-	toolchains              []starlark.Value           // Required toolchains
-	applyToGeneratingRules  bool                       // Whether to apply to generating rules
-	execCompatibleWith      []string                   // Execution platform constraints
-	execGroups              map[string]starlark.Value  // Execution groups
-	doc                     string                     // Documentation string
+	name                    string                           // Assigned when exported
+	implementation          starlark.Callable                // The aspect implementation function
+	attrAspects             []string                         // Attributes to propagate along
+	toolchainsAspects       []starlark.Value                 // Toolchain types to propagate to
+	attrs                   map[string]*types.AttrDescriptor // Aspect's own attributes
+	requiredProviders       []starlark.Value                 // Providers that targets must have
+	requiredAspectProviders []starlark.Value                 // Providers that other aspects must have
+	provides                []starlark.Value                 // Providers this aspect produces
+	requiredAspects         []starlark.Value                 // Other aspects that must run first
+	propagationPredicate    starlark.Callable                // Function to filter propagation
+	fragments               []string                         // Required configuration fragments
+	toolchains              []starlark.Value                 // Required toolchains
+	applyToGeneratingRules  bool                             // Whether to apply to generating rules
+	execCompatibleWith      []string                         // Execution platform constraints
+	execGroups              map[string]starlark.Value        // Execution groups
+	doc                     string                           // Documentation string
 	frozen                  bool
 }
 
@@ -70,7 +72,7 @@ func (a *AspectClass) Implementation() starlark.Callable { return a.implementati
 func (a *AspectClass) AttrAspects() []string { return a.attrAspects }
 
 // Attrs returns the aspect's own attribute schemas.
-func (a *AspectClass) Attrs() map[string]*AttrDescriptor { return a.attrs }
+func (a *AspectClass) Attrs() map[string]*types.AttrDescriptor { return a.attrs }
 
 // Aspect is the Starlark aspect() builtin function.
 //
@@ -162,8 +164,12 @@ func Aspect(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs
 		return nil, fmt.Errorf("aspect: attr_aspects must be a list or function, got %s", attrAspects.Type())
 	}
 
-	// Parse attrs
-	attrMap := make(map[string]*AttrDescriptor)
+	// Parse attrs. Values are expected to implement
+	// types.AttrDescriptorHolder — concretely the *attrDescriptorValue
+	// wrappers returned by eval's attr.* module. We pull the canonical
+	// *types.AttrDescriptor out of the holder rather than asserting a
+	// concrete type so producers and consumers can move independently.
+	attrMap := make(map[string]*types.AttrDescriptor)
 	if attrs != nil {
 		for _, item := range attrs.Items() {
 			key, ok := item[0].(starlark.String)
@@ -177,27 +183,25 @@ func Aspect(_ *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs
 				return nil, fmt.Errorf("aspect: attribute name %q is not a valid identifier", name)
 			}
 
-			desc, ok := item[1].(*AttrDescriptor)
+			holder, ok := item[1].(types.AttrDescriptorHolder)
 			if !ok {
 				return nil, fmt.Errorf("aspect: attrs values must be attr objects, got %s for %q", item[1].Type(), name)
 			}
+			desc := holder.Descriptor()
 
 			// Aspect attributes have restrictions:
-			// - Implicit attributes (starting with _) must be label type and have defaults
-			// - Explicit attributes must be string/int/bool type
+			// Implicit attribute (name starts with `_`): must be label
+			// type with a default. Explicit attribute: must be string,
+			// int, or bool.
 			if name[0] == '_' {
-				// Implicit attribute: must be label type with default
-				if desc.attrType != "label" && desc.attrType != "label_list" {
+				if desc.Type != types.AttrTypeLabel && desc.Type != types.AttrTypeLabelList {
 					return nil, fmt.Errorf("aspect: implicit attribute %q must have type label or label_list", name)
 				}
-				if desc.defaultValue == nil || desc.defaultValue == starlark.None {
+				if desc.Default == nil || desc.Default == starlark.None {
 					return nil, fmt.Errorf("aspect: implicit attribute %q has no default value", name)
 				}
-			} else {
-				// Explicit attribute: must be string, int, or bool
-				if desc.attrType != "string" && desc.attrType != "int" && desc.attrType != "bool" {
-					return nil, fmt.Errorf("aspect: explicit attribute %q must have type bool, int, or string", name)
-				}
+			} else if desc.Type != types.AttrTypeString && desc.Type != types.AttrTypeInt && desc.Type != types.AttrTypeBool {
+				return nil, fmt.Errorf("aspect: explicit attribute %q must have type bool, int, or string", name)
 			}
 
 			attrMap[name] = desc

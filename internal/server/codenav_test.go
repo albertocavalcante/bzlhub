@@ -22,9 +22,9 @@ import (
 
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/server"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/server"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 func minimalReport(name, version string) *report.ModuleReport {
@@ -146,7 +146,7 @@ func seedCodeNavFixture(t *testing.T, module, version string) (mirrorRoot, sourc
 // /api/files (a route understory.ui exposes unconditionally).
 func TestCodeNavMount(t *testing.T) {
 	mirrorRoot, sourcesRoot, s := seedCodeNavFixture(t, "foo", "1.0")
-	cs := canopy.New(s)
+	cs := bzlhub.New(s)
 	cs.MirrorRoot = mirrorRoot
 
 	ts := httptest.NewServer(server.NewWithOptions(nil, cs, nil, server.Options{
@@ -186,7 +186,7 @@ func TestCodeNavMount(t *testing.T) {
 // (sets X-Forwarded-Prefix) and understory.ui (rewrites the body).
 func TestCodeNavSPAFallbackRewritesAssets(t *testing.T) {
 	mirrorRoot, sourcesRoot, s := seedCodeNavFixture(t, "foo", "1.0")
-	cs := canopy.New(s)
+	cs := bzlhub.New(s)
 	cs.MirrorRoot = mirrorRoot
 
 	ts := httptest.NewServer(server.NewWithOptions(nil, cs, nil, server.Options{
@@ -227,7 +227,7 @@ func TestCodeNavNotIndexedReturnsFriendlyHTML(t *testing.T) {
 	// Seed a different (module, version) so the resolver is "wired" but
 	// the requested coordinate is missing.
 	mirrorRoot, sourcesRoot, s := seedCodeNavFixture(t, "indexed_mod", "1.0")
-	cs := canopy.New(s)
+	cs := bzlhub.New(s)
 	cs.MirrorRoot = mirrorRoot
 
 	ts := httptest.NewServer(server.NewWithOptions(nil, cs, nil, server.Options{
@@ -267,7 +267,7 @@ func TestCodeNavNotIndexedReturnsFriendlyHTML(t *testing.T) {
 // new contract to keep it from regressing.
 func TestCodeNavUnknownCoordinate(t *testing.T) {
 	mirrorRoot, sourcesRoot, s := seedCodeNavFixture(t, "foo", "1.0")
-	cs := canopy.New(s)
+	cs := bzlhub.New(s)
 	cs.MirrorRoot = mirrorRoot
 
 	ts := httptest.NewServer(server.NewWithOptions(nil, cs, nil, server.Options{
@@ -292,7 +292,7 @@ func TestCodeNavUnknownCoordinate(t *testing.T) {
 
 // TestCodeNavDisabledWhenNoResolver — when the server is built without
 // SourcesCacheDir/MirrorRoot (e.g., --db only), the route registers but
-// returns 503 instead of crashing. Required so canopy serve with a
+// returns 503 instead of crashing. Required so bzlhub serve with a
 // db-only setup doesn't go nil-deref on the route.
 func TestCodeNavDisabledWhenNoResolver(t *testing.T) {
 	s, err := store.Open(context.Background(), ":memory:")
@@ -300,7 +300,7 @@ func TestCodeNavDisabledWhenNoResolver(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	cs := canopy.New(s)
+	cs := bzlhub.New(s)
 
 	ts := httptest.NewServer(server.NewWithOptions(nil, cs, nil, server.Options{}))
 	t.Cleanup(ts.Close)

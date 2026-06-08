@@ -32,14 +32,13 @@ github.com/ProtonMail/go-crypto/openpgp/packet
 github.com/ProtonMail/go-crypto/openpgp/s2k
 github.com/ProtonMail/go-crypto/openpgp/x25519
 github.com/ProtonMail/go-crypto/openpgp/x448
-# github.com/albertocavalcante/assay v0.0.0 => ../assay
+# github.com/albertocavalcante/assay v0.1.1-0.20260531234214-afd5b6172f5c
 ## explicit; go 1.26.0
 github.com/albertocavalcante/assay
 github.com/albertocavalcante/assay/assets
 github.com/albertocavalcante/assay/bzlwalk
 github.com/albertocavalcante/assay/dialect
 github.com/albertocavalcante/assay/hermetic
-github.com/albertocavalcante/assay/internal/syntaxutil
 github.com/albertocavalcante/assay/internal/walkparse
 github.com/albertocavalcante/assay/interp
 github.com/albertocavalcante/assay/interp/external
@@ -65,25 +64,42 @@ github.com/albertocavalcante/bigorna/gitlab
 # github.com/albertocavalcante/farol v0.0.0-20260521100058-45d811180afb => ../farol
 ## explicit; go 1.26
 github.com/albertocavalcante/farol/sdk
+# github.com/albertocavalcante/go-bcr-artifactory v0.3.0 => ../go-bcr-artifactory
+## explicit; go 1.26.0
+github.com/albertocavalcante/go-bcr-artifactory
+# github.com/albertocavalcante/go-bcr-bundle v0.2.0
+## explicit; go 1.26.0
+github.com/albertocavalcante/go-bcr-bundle
+# github.com/albertocavalcante/go-bcr-httpstore v0.2.2 => ../go-bcr-httpstore
+## explicit; go 1.26.0
+github.com/albertocavalcante/go-bcr-httpstore
 # github.com/albertocavalcante/go-bcr-mirror v0.0.0-00010101000000-000000000000 => ../go-bcr-mirror
 ## explicit; go 1.26.0
 github.com/albertocavalcante/go-bcr-mirror
-# github.com/albertocavalcante/go-bzlmod v0.0.0 => ../go-bzlmod
-## explicit; go 1.25
+# github.com/albertocavalcante/go-bzlmod v0.0.0-20260531025253-fc2e39f161aa
+## explicit; go 1.26.0
 github.com/albertocavalcante/go-bzlmod
-github.com/albertocavalcante/go-bzlmod/ast
 github.com/albertocavalcante/go-bzlmod/bazeltools
 github.com/albertocavalcante/go-bzlmod/graph
-github.com/albertocavalcante/go-bzlmod/internal/buildutil
 github.com/albertocavalcante/go-bzlmod/internal/compat
-github.com/albertocavalcante/go-bzlmod/label
 github.com/albertocavalcante/go-bzlmod/lockfile
 github.com/albertocavalcante/go-bzlmod/registry
 github.com/albertocavalcante/go-bzlmod/selection
 github.com/albertocavalcante/go-bzlmod/selection/version
-github.com/albertocavalcante/go-bzlmod/third_party/buildtools/build
-github.com/albertocavalcante/go-bzlmod/third_party/buildtools/labels
-github.com/albertocavalcante/go-bzlmod/third_party/buildtools/tables
+# github.com/albertocavalcante/go-bzlmod-ast v0.0.0-20260531042442-dd6779bf1a31
+## explicit; go 1.26.0
+github.com/albertocavalcante/go-bzlmod-ast
+github.com/albertocavalcante/go-bzlmod-ast/buildutil
+github.com/albertocavalcante/go-bzlmod-ast/label
+github.com/albertocavalcante/go-bzlmod-ast/third_party/buildtools/build
+github.com/albertocavalcante/go-bzlmod-ast/third_party/buildtools/labels
+github.com/albertocavalcante/go-bzlmod-ast/third_party/buildtools/tables
+# github.com/albertocavalcante/go-cdn-purge v0.0.0-00010101000000-000000000000 => ../go-cdn-purge
+## explicit; go 1.26.0
+github.com/albertocavalcante/go-cdn-purge
+# github.com/albertocavalcante/go-starlark-syntaxutil v0.0.0-20260531035945-c509081c177a
+## explicit; go 1.26.0
+github.com/albertocavalcante/go-starlark-syntaxutil
 # github.com/albertocavalcante/scip-bazel v0.2.0
 ## explicit; go 1.26.2
 github.com/albertocavalcante/scip-bazel/pkg/bzlmod
@@ -97,7 +113,7 @@ github.com/albertocavalcante/stardoc-go
 # github.com/albertocavalcante/starlark-doc-go v0.0.0 => ../starlark-doc-go
 ## explicit; go 1.25.0
 github.com/albertocavalcante/starlark-doc-go
-# github.com/albertocavalcante/starlark-go-bazel v0.0.0-00010101000000-000000000000 => ../starlark-go-bazel
+# github.com/albertocavalcante/starlark-go-bazel v0.1.0
 ## explicit; go 1.24
 github.com/albertocavalcante/starlark-go-bazel/builtins
 github.com/albertocavalcante/starlark-go-bazel/bzl
@@ -231,6 +247,17 @@ github.com/go-logr/logr/funcr
 # github.com/go-logr/stdr v1.2.2
 ## explicit; go 1.16
 github.com/go-logr/stdr
+# github.com/goccy/go-yaml v1.19.2
+## explicit; go 1.21.0
+github.com/goccy/go-yaml
+github.com/goccy/go-yaml/ast
+github.com/goccy/go-yaml/internal/errors
+github.com/goccy/go-yaml/internal/format
+github.com/goccy/go-yaml/lexer
+github.com/goccy/go-yaml/parser
+github.com/goccy/go-yaml/printer
+github.com/goccy/go-yaml/scanner
+github.com/goccy/go-yaml/token
 # github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 ## explicit; go 1.20
 github.com/golang/groupcache/lru
@@ -412,7 +439,7 @@ go.opentelemetry.io/proto/otlp/logs/v1
 go.opentelemetry.io/proto/otlp/metrics/v1
 go.opentelemetry.io/proto/otlp/resource/v1
 go.opentelemetry.io/proto/otlp/trace/v1
-# go.starlark.net v0.0.0-20260326113308-fadfc96def35
+# go.starlark.net v0.0.0-20260522144826-ec58d4b459e2
 ## explicit; go 1.25.0
 go.starlark.net/internal/compile
 go.starlark.net/internal/spell
@@ -420,7 +447,7 @@ go.starlark.net/resolve
 go.starlark.net/starlark
 go.starlark.net/starlarkstruct
 go.starlark.net/syntax
-# golang.org/x/crypto v0.50.0
+# golang.org/x/crypto v0.51.0
 ## explicit; go 1.25.0
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
@@ -447,9 +474,11 @@ golang.org/x/image/font/opentype
 golang.org/x/image/font/sfnt
 golang.org/x/image/math/fixed
 golang.org/x/image/vector
-# golang.org/x/net v0.53.0
+# golang.org/x/net v0.55.0
 ## explicit; go 1.25.0
 golang.org/x/net/context
+golang.org/x/net/html
+golang.org/x/net/html/atom
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
@@ -460,7 +489,7 @@ golang.org/x/net/internal/socks
 golang.org/x/net/internal/timeseries
 golang.org/x/net/proxy
 golang.org/x/net/trace
-# golang.org/x/sys v0.43.0
+# golang.org/x/sys v0.45.0
 ## explicit; go 1.25.0
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs
@@ -642,12 +671,9 @@ modernc.org/memory
 modernc.org/sqlite
 modernc.org/sqlite/lib
 modernc.org/sqlite/vtab
-# github.com/albertocavalcante/assay => ../assay
-# github.com/albertocavalcante/go-bzlmod => ../go-bzlmod
 # github.com/albertocavalcante/understory => ../understory
 # github.com/albertocavalcante/starlark-highlight-go => ../starlark-highlight-go
 # github.com/albertocavalcante/starlark-syntax-go => ../starlark-syntax-go
-# github.com/albertocavalcante/starlark-go-bazel => ../starlark-go-bazel
 # github.com/albertocavalcante/bazel-module-summary-go => ../bazel-module-summary-go
 # github.com/albertocavalcante/starlark-doc-go => ../starlark-doc-go
 # github.com/albertocavalcante/stardoc-go => ../stardoc-go
@@ -655,3 +681,6 @@ modernc.org/sqlite/vtab
 # github.com/albertocavalcante/farol => ../farol
 # github.com/albertocavalcante/bigorna => ../bigorna
 # github.com/albertocavalcante/go-bcr-mirror => ../go-bcr-mirror
+# github.com/albertocavalcante/go-bcr-httpstore => ../go-bcr-httpstore
+# github.com/albertocavalcante/go-cdn-purge => ../go-cdn-purge
+# github.com/albertocavalcante/go-bcr-artifactory => ../go-bcr-artifactory

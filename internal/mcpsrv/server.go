@@ -22,24 +22,24 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/verify"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/verify"
 )
 
-// Verifier is the slice of canopy functionality that the canopy_verify
+// Verifier is the slice of canopy functionality that the bzlhub_verify
 // MCP tool needs. Lives separately from api.Canopy because the verify
 // package imports store, store imports api, and folding Verify onto
 // api.Canopy would close an import cycle. The concrete implementation
-// (canopy.Service) satisfies both interfaces independently.
+// (bzlhub.Service) satisfies both interfaces independently.
 type Verifier interface {
 	Verify(ctx context.Context, opts verify.Options) (*verify.Report, error)
 }
 
 // Serve runs the MCP server over stdio. Blocks until stdin closes or
-// ctx is cancelled. If v is non-nil, canopy_verify is registered
+// ctx is cancelled. If v is non-nil, bzlhub_verify is registered
 // alongside the others. Stdio implies local trust — the operator
 // started the binary themselves and the agent runs in-process — so
-// write tools (canopy_ingest_recursive, canopy_bump) are always
+// write tools (bzlhub_ingest_recursive, bzlhub_bump) are always
 // registered. HTTP callers should use registerTools directly and
 // pass writeEnabled=false for anonymous-read deployments.
 func Serve(ctx context.Context, c api.Canopy, v Verifier, version string) error {
@@ -60,8 +60,8 @@ func Serve(ctx context.Context, c api.Canopy, v Verifier, version string) error 
 // domain keeps the AddTool spec + handler co-located so adding a new
 // tool touches one file, not three.
 //
-// writeEnabled gates the mutation tools (canopy_ingest_recursive,
-// canopy_bump). The HTTP transport on a public-read instance
+// writeEnabled gates the mutation tools (bzlhub_ingest_recursive,
+// bzlhub_bump). The HTTP transport on a public-read instance
 // (bzlhub.com) passes false so anonymous visitors can't ingest or
 // bump via tools/call; stdio and trusted-internal HTTP deployments
 // pass true.

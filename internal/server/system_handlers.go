@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/backend"
-	"github.com/albertocavalcante/canopy/internal/bcrprobe"
-	"github.com/albertocavalcante/canopy/internal/version"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/backend"
+	"github.com/albertocavalcante/bzlhub/internal/bcrprobe"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub/health"
+	"github.com/albertocavalcante/bzlhub/internal/version"
 )
 
 // apiFeatures publishes the UI-safe feature-flag snapshot.
@@ -111,7 +112,7 @@ func (h *handler) apiEvents(w http.ResponseWriter, r *http.Request) {
 
 // apiVersion returns build metadata populated via -ldflags. Stable
 // JSON shape: {"version","commit","built_at"}. Carries no service
-// deps; always routed even when both backend and canopy.Service are
+// deps; always routed even when both backend and bzlhub.Service are
 // nil (useful for liveness probes / deploy verification).
 func (h *handler) apiVersion(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
@@ -181,6 +182,16 @@ func (h *handler) apiStatus(w http.ResponseWriter, r *http.Request) {
 				ModulesYankedUpstream: yanked,
 			}
 		}
+
+		// Optional interface — implementations without a Mirror
+		// (mocks, File-backed) skip.
+		if mh, ok := h.c.(api.MirrorHeader); ok {
+			sha, lastSync := mh.MirrorHead(r.Context())
+			status.Mirror.HeadSHA = sha
+			if !lastSync.IsZero() {
+				status.Mirror.LastSyncAt = lastSync.UTC().Format(time.RFC3339)
+			}
+		}
 	}
 
 	// Federation snapshot — same data source as /api/v1/upstreams,
@@ -221,6 +232,13 @@ func (h *handler) apiStatus(w http.ResponseWriter, r *http.Request) {
 		Litestream:         false,
 		MCPHTTP:            h.opts.Flags.MCPHTTPEnabled,
 	}
+
+	// Server-derived instant state. Computed AFTER every source
+	// field is populated so the verdict reflects the same payload
+	// the wire carries. Thresholds live in internal/canopy/health
+	// — single source of truth for both /status (UI) and `canopy
+	// status` (CLI).
+	status.Computed = health.Derive(status, time.Now())
 
 	w.Header().Set("Cache-Control", "no-store, must-revalidate")
 	writeJSON(w, http.StatusOK, status)

@@ -1,0 +1,29 @@
+# go-cdn-purge portfolio recipes.
+# Run `just` to list available recipes.
+
+default:
+    @just --list
+
+check: fmt-check vet test build
+    @echo "all checks passed"
+
+fmt-check:
+    test -z "$(gofmt -l .)"
+
+vet:
+    go vet ./...
+
+lint:
+    @echo "(lint: not yet wired)"
+
+test:
+    go test -race -count=1 ./...
+
+build:
+    go build ./...
+
+fmt:
+    gofmt -w .
+
+mod:
+    go mod tidy

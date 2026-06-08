@@ -210,7 +210,7 @@ func buildDeepFixture(t *testing.T, ruleNames ...string) (*fakeMirror, moduleKey
 	// Open a store and seed it by extracting+assaying the blob, then
 	// storing the result. This produces a "correct" stored report; the
 	// test then mutates it to model a tamper.
-	dbPath := filepath.Join(t.TempDir(), "canopy.db")
+	dbPath := filepath.Join(t.TempDir(), "bzlhub.db")
 	fm := &fakeMirror{root: root, dbPath: dbPath}
 	openStore(t, fm)
 

@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"iter"
 	"time"
 )
 
 // ModuleVersion is one indexed (module, version) row, used by callers
-// that need to walk the whole index (e.g. `canopy verify`).
+// that need to walk the whole index (e.g. `bzlhub verify`).
 //
 // IngestedAt is the wall-clock time the row was first written to the
 // versions table — surfaces "how fresh is the data in this registry?"
@@ -30,7 +31,7 @@ type VersionRow struct {
 }
 
 // ListAllVersions returns every (module, version) row in the index,
-// sorted by module ASC then version ASC. Built for `canopy verify`'s
+// sorted by module ASC then version ASC. Built for `bzlhub verify`'s
 // index-vs-mirror agreement check, which needs the full set rather
 // than a per-name lookup. Stable ordering keeps reports diffable.
 func (s *Store) ListAllVersions(ctx context.Context) ([]ModuleVersion, error) {
@@ -57,6 +58,56 @@ func (s *Store) ListAllVersions(ctx context.Context) ([]ModuleVersion, error) {
 		out = append(out, mv)
 	}
 	return out, rows.Err()
+}
+
+// ModuleVersionDrift bundles a versions row with its drift payload
+// for the single-query backfill / status walkers — eliminates the
+// N+1 of ListAllVersions + per-row GetDriftSummary.
+type ModuleVersionDrift struct {
+	Module      string
+	Version     string
+	DriftRaw    []byte // raw drift_summary_json column; "{}" when unset
+	IngestedAt  time.Time
+}
+
+// AllVersionsWithDrift streams every (module, version) row paired
+// with its drift_summary_json blob, sorted by module then version.
+// One SQL round-trip in place of len(rows)+1 GetDriftSummary calls.
+//
+// Streaming via iter.Seq2 means ctx cancellation stops the SQL
+// fetch mid-stream (not just the consumer's processing), and the
+// underlying *sql.Rows is closed automatically when the range
+// loop ends — break, return, panic, or completion. Callers MUST
+// check the per-row error before reading the row value.
+func (s *Store) AllVersionsWithDrift(ctx context.Context) iter.Seq2[ModuleVersionDrift, error] {
+	return func(yield func(ModuleVersionDrift, error) bool) {
+		rows, err := s.db.QueryContext(ctx,
+			`SELECT module_name, version, drift_summary_json, ingested_at
+			 FROM versions ORDER BY module_name, version`)
+		if err != nil {
+			yield(ModuleVersionDrift{}, err)
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var mvd ModuleVersionDrift
+			var driftStr, ingested string
+			if err := rows.Scan(&mvd.Module, &mvd.Version, &driftStr, &ingested); err != nil {
+				yield(ModuleVersionDrift{}, err)
+				return
+			}
+			mvd.DriftRaw = []byte(driftStr)
+			if t, err := time.Parse(time.DateTime, ingested); err == nil {
+				mvd.IngestedAt = t.UTC()
+			}
+			if !yield(mvd, nil) {
+				return
+			}
+		}
+		if err := rows.Err(); err != nil {
+			yield(ModuleVersionDrift{}, err)
+		}
+	}
 }
 
 // SetTarballSize persists the compressed-tarball size for an

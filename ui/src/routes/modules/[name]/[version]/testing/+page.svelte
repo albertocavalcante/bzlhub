@@ -20,7 +20,7 @@
 
 <svelte:head>
   <title>
-    {report ? `${report.name}@${report.version}` : 'module'} · testing — canopy
+    {report ? `${report.name}@${report.version}` : 'module'} · testing — bzlhub
   </title>
 </svelte:head>
 

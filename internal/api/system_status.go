@@ -1,5 +1,10 @@
 package api
 
+import (
+	"context"
+	"time"
+)
+
 // SystemStatus is the wire shape for GET /api/v1/system/status.
 //
 // Drives the /status page (plan-65 v2 §Part 3) and any external
@@ -23,6 +28,61 @@ type SystemStatus struct {
 	Federation FederationStatus `json:"federation"`
 	Drift      DriftStatusInfo  `json:"drift"`
 	Addons     AddonsStatus     `json:"addons"`
+
+	// Computed carries server-derived signals shaped for the UI's
+	// instant-state pill and the `bzlhub status` CLI verdict. The
+	// SOURCE fields above are the inputs; Computed is the
+	// canonical conclusion. Populating happens in
+	// internal/canopy/health.Derive — see plan-65 §State rules.
+	Computed ComputedStatus `json:"computed"`
+}
+
+// ComputedStatus is the wire shape for server-derived health
+// signals. It lives next to the source fields so a JSON reader
+// sees inputs and conclusion together. Extending this block
+// (e.g., per-signal breakdown) is additive — additional fields
+// can be added with omitempty without breaking existing clients.
+type ComputedStatus struct {
+	// InstantState is "healthy", "degraded", or "unhealthy" —
+	// the worst-contributing signal classification at request
+	// time. The browser applies hysteresis on top to smooth
+	// flapping (a render concern), but the WIRE state is what
+	// the server believes RIGHT NOW.
+	InstantState string `json:"instant_state"`
+
+	// Signals is the unordered list of every threshold check
+	// that contributed to a non-healthy InstantState. Each
+	// signal carries its own Level, so a UI rendering a
+	// breakdown can colour individual rows without re-deriving;
+	// CLI ops scripts can pipe `.signals[] | select(.level ==
+	// "unhealthy")` to alert on red conditions only. Empty (or
+	// omitted) when InstantState is "healthy" — no contributing
+	// signals to report.
+	Signals []Signal `json:"signals,omitempty"`
+}
+
+// Signal is one contributing reason behind ComputedStatus.InstantState.
+//
+// Stability: Kind values are part of the public schema (UI and
+// ops scripts switch on them); adding new Kinds is non-breaking,
+// renaming or removing is. Level mirrors StateLevel ("degraded"
+// or "unhealthy" — never "healthy" since healthy signals
+// wouldn't appear in this list). Detail is operator-facing
+// prose explaining the specific value that tripped the
+// threshold, suitable for direct display.
+type Signal struct {
+	Kind   string `json:"kind"`
+	Level  string `json:"level"`
+	Detail string `json:"detail"`
+}
+
+// MirrorHeader is an optional interface canopy implementations may
+// satisfy to surface their Mirror's HEAD + LastSync on
+// /api/v1/system/status. Decoupled from api.Canopy so mock
+// implementations and File-backed deployments don't need to wire
+// anything Mirror-shaped.
+type MirrorHeader interface {
+	MirrorHead(ctx context.Context) (sha string, lastSync time.Time)
 }
 
 // MirrorStatus is the local mirror snapshot: how much we hold and
@@ -35,6 +95,16 @@ type MirrorStatus struct {
 	SizeBytes             int64  `json:"size_bytes,omitempty"`
 	LastIngestAt          string `json:"last_ingest_at,omitempty"`
 	PromoteOnServeEnabled bool   `json:"promote_on_serve_enabled"`
+
+	// HeadSHA is the BCR clone's current HEAD. Empty for
+	// File-backed installs.
+	HeadSHA string `json:"head_sha,omitempty"`
+
+	// LastSyncAt is the RFC3339 timestamp of the Mirror's last
+	// upstream contact, distinct from LastIngestAt (which is
+	// per-module ingest into canopy's index, not the upstream
+	// pull).
+	LastSyncAt string `json:"last_sync_at,omitempty"`
 }
 
 // FederationStatus mirrors the federation reachability snapshot

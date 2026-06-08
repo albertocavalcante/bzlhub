@@ -75,7 +75,7 @@ type memFileInfo struct {
 
 func (fi *memFileInfo) Name() string       { return fi.name }
 func (fi *memFileInfo) Size() int64        { return fi.size }
-func (fi *memFileInfo) Mode() fs.FileMode  { return 0644 }
+func (fi *memFileInfo) Mode() fs.FileMode  { return 0o644 }
 func (fi *memFileInfo) ModTime() time.Time { return time.Time{} }
 func (fi *memFileInfo) IsDir() bool        { return false }
 func (fi *memFileInfo) Sys() any           { return nil }

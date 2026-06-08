@@ -28,16 +28,26 @@ type Flags struct {
 	// gate. This is the master kill-switch — flip it off without a
 	// deploy by editing compose env + `docker compose up -d`.
 	//
-	// SECURITY-TODO: Cloudflare Access is not yet in front of canopy.
-	// Until it is, the safety story for ingest-write is:
+	// Safety story for direct-exposure deployments (no Cloudflare
+	// Access / no reverse-proxy AuthN in front):
 	//   (1) this flag defaults to false
-	//   (2) the production canonical URL is assumed to be not
-	//       well-known (security by minor obscurity, NOT a real
-	//       defense — useful only as a brief interim)
+	//   (2) when true, RequireFrontProxy demands a configured
+	//       BZLHUB_TRUSTED_PROXY_CIDR — see CheckSafeStartup
 	//   (3) per-IP rate limit + global concurrency semaphore
-	// Once Access lands, the per-IP allowlist below should become a
-	// per-user allowlist and the (2) assumption goes away.
 	IngestWriteEnabled bool
+
+	// RequireFrontProxy gates an at-boot refusal to start in unsafe
+	// ingest-write configurations.
+	//
+	// When true (the safe default), CheckSafeStartup refuses to
+	// proceed if IngestWriteEnabled=true AND no trusted-proxy CIDR is
+	// configured — the combination exposes write endpoints to every
+	// reachable client. Operators who genuinely want direct exposure
+	// (testing, dev, intentional honeypot) set
+	// BZLHUB_REQUIRE_FRONT_PROXY=false to acknowledge the risk.
+	//
+	// Env: BZLHUB_REQUIRE_FRONT_PROXY (default: true).
+	RequireFrontProxy bool
 
 	// RegistryURL is the default upstream BCR-shape registry used by
 	// ingest when the request body does not (or is not allowed to)
@@ -101,10 +111,10 @@ type Flags struct {
 	MCPHTTPEnabled bool
 
 	// MCPWriteToolsEnabled gates the registration of WRITE-side MCP
-	// tools (canopy_ingest_recursive, canopy_bump) on the HTTP
+	// tools (bzlhub_ingest_recursive, bzlhub_bump) on the HTTP
 	// transport. Default off — the public bzlhub.com instance and
 	// any other anonymous-read deployment should NOT advertise write
-	// tools in tools/list. The stdio transport (cmd/canopy/mcp.go)
+	// tools in tools/list. The stdio transport (cmd/bzlhub/mcp.go)
 	// always registers write tools because stdio implies local trust:
 	// the operator started the binary themselves and the agent is
 	// running in-process.
@@ -123,32 +133,66 @@ func Parse() (Flags, error) {
 	var f Flags
 	var errs []error
 
-	f.IngestWriteEnabled = envBool("CANOPY_INGEST_WRITE_ENABLED", false, &errs)
-	f.RegistryURL = strings.TrimSpace(os.Getenv("CANOPY_REGISTRY_URL"))
+	f.IngestWriteEnabled = envBool("BZLHUB_INGEST_WRITE_ENABLED", false, &errs)
+	f.RegistryURL = strings.TrimSpace(os.Getenv("BZLHUB_REGISTRY_URL"))
 	if f.RegistryURL == "" {
 		f.RegistryURL = "https://bcr.bazel.build"
 	}
-	f.IngestAllowCustomUpstream = envBool("CANOPY_INGEST_ALLOW_CUSTOM_UPSTREAM", false, &errs)
-	f.IngestRateLimitPerMin = envInt("CANOPY_INGEST_RATE_LIMIT_PER_MIN", 5, &errs)
-	f.IngestMaxConcurrent = envInt("CANOPY_INGEST_MAX_CONCURRENT", 1, &errs)
-	f.IngestRateBypassIPs = envCSV("CANOPY_INGEST_RATE_BYPASS_IPS")
-	f.AttrsInterpret = envBool("CANOPY_ATTRS_INTERPRET", false, &errs)
-	f.DemoMode = envBool("CANOPY_DEMO_MODE", false, &errs)
-	f.DemoBanner = strings.TrimSpace(os.Getenv("CANOPY_DEMO_BANNER"))
-	f.MCPHTTPEnabled = envBool("CANOPY_MCP_HTTP_ENABLED", false, &errs)
-	f.MCPWriteToolsEnabled = envBool("CANOPY_MCP_WRITE_TOOLS_ENABLED", false, &errs)
+	f.IngestAllowCustomUpstream = envBool("BZLHUB_INGEST_ALLOW_CUSTOM_UPSTREAM", false, &errs)
+	f.IngestRateLimitPerMin = envInt("BZLHUB_INGEST_RATE_LIMIT_PER_MIN", 5, &errs)
+	f.IngestMaxConcurrent = envInt("BZLHUB_INGEST_MAX_CONCURRENT", 1, &errs)
+	f.IngestRateBypassIPs = envCSV("BZLHUB_INGEST_RATE_BYPASS_IPS")
+	f.AttrsInterpret = envBool("BZLHUB_ATTRS_INTERPRET", false, &errs)
+	f.DemoMode = envBool("BZLHUB_DEMO_MODE", false, &errs)
+	f.DemoBanner = strings.TrimSpace(os.Getenv("BZLHUB_DEMO_BANNER"))
+	f.MCPHTTPEnabled = envBool("BZLHUB_MCP_HTTP_ENABLED", false, &errs)
+	f.MCPWriteToolsEnabled = envBool("BZLHUB_MCP_WRITE_TOOLS_ENABLED", false, &errs)
+	f.RequireFrontProxy = envBool("BZLHUB_REQUIRE_FRONT_PROXY", true, &errs)
 
 	if f.IngestRateLimitPerMin < 0 {
-		errs = append(errs, fmt.Errorf("CANOPY_INGEST_RATE_LIMIT_PER_MIN must be >= 0, got %d", f.IngestRateLimitPerMin))
+		errs = append(errs, fmt.Errorf("BZLHUB_INGEST_RATE_LIMIT_PER_MIN must be >= 0, got %d", f.IngestRateLimitPerMin))
 	}
 	if f.IngestMaxConcurrent < 0 {
-		errs = append(errs, fmt.Errorf("CANOPY_INGEST_MAX_CONCURRENT must be >= 0, got %d", f.IngestMaxConcurrent))
+		errs = append(errs, fmt.Errorf("BZLHUB_INGEST_MAX_CONCURRENT must be >= 0, got %d", f.IngestMaxConcurrent))
 	}
 
 	if len(errs) > 0 {
 		return Flags{}, errors.Join(errs...)
 	}
 	return f, nil
+}
+
+// ErrUnsafeStartup signals that the parsed flags + the runtime
+// front-proxy posture combine into a configuration the safety gate
+// refuses to start in. See Flags.CheckSafeStartup.
+var ErrUnsafeStartup = errors.New("featureflags: unsafe startup configuration")
+
+// CheckSafeStartup returns ErrUnsafeStartup when ingest-write is on
+// without a trusted-proxy CIDR and RequireFrontProxy is true. The
+// caller (cmd/bzlhub/serve.go boot path) should bail out of boot
+// with the wrapped error so operators see the diagnostic before
+// they reach for a deploy log.
+//
+// hasTrustedProxy is "did we successfully parse at least one CIDR
+// from BZLHUB_TRUSTED_PROXY_CIDR?" The check is intentionally not
+// reading the env var itself — keeping the gate purely a function of
+// already-resolved state makes it cheap to unit-test and impossible
+// to bypass via env-var rewriting after parse.
+//
+// Override path: BZLHUB_REQUIRE_FRONT_PROXY=false. Operators get a
+// hard message naming the override knob in the error string, so the
+// "I know what I'm doing" path is obvious without reading source.
+func (f Flags) CheckSafeStartup(hasTrustedProxy bool) error {
+	if !f.RequireFrontProxy {
+		return nil
+	}
+	if !f.IngestWriteEnabled {
+		return nil
+	}
+	if hasTrustedProxy {
+		return nil
+	}
+	return fmt.Errorf("%w: BZLHUB_INGEST_WRITE_ENABLED=true with no BZLHUB_TRUSTED_PROXY_CIDR — set BZLHUB_REQUIRE_FRONT_PROXY=false to override (acknowledges direct-exposure risk)", ErrUnsafeStartup)
 }
 
 // IsRateBypassIP reports whether remoteAddr is on the bypass list.

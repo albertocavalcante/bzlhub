@@ -32,11 +32,11 @@ func (t *TagClass) String() string {
 	return "<tag_class>"
 }
 
-func (t *TagClass) Type() string                       { return "tag_class" }
-func (t *TagClass) Freeze()                            { t.frozen = true }
-func (t *TagClass) Truth() starlark.Bool               { return true }
-func (t *TagClass) Hash() (uint32, error)              { return 0, fmt.Errorf("unhashable: tag_class") }
-func (t *TagClass) Name() string                       { return t.name }
-func (t *TagClass) SetName(name string)                { t.name = name }
-func (t *TagClass) Attrs() map[string]starlark.Value   { return t.attrs }
-func (t *TagClass) Doc() string                        { return t.doc }
+func (t *TagClass) Type() string                     { return "tag_class" }
+func (t *TagClass) Freeze()                          { t.frozen = true }
+func (t *TagClass) Truth() starlark.Bool             { return true }
+func (t *TagClass) Hash() (uint32, error)            { return 0, fmt.Errorf("unhashable: tag_class") }
+func (t *TagClass) Name() string                     { return t.name }
+func (t *TagClass) SetName(name string)              { t.name = name }
+func (t *TagClass) Attrs() map[string]starlark.Value { return t.attrs }
+func (t *TagClass) Doc() string                      { return t.doc }

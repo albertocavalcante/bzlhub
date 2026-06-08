@@ -184,24 +184,26 @@ func (c *Ctx) SetField(name string, val starlark.Value) error {
 // Attr returns an attribute or method of ctx.
 // Source: StarlarkRuleContextApi.java defines all ctx attributes and methods
 func (c *Ctx) Attr(name string) (starlark.Value, error) {
-	if c.frozen {
-		// After analysis, most fields become inaccessible
-		// Source: StarlarkRuleContext.checkMutable()
-	}
+	// SCAFFOLD: post-analysis freeze (c.frozen) is captured on the
+	// struct but doesn't gate Attr() reads yet. The Bazel
+	// StarlarkRuleContext.checkMutable() pattern returns an error
+	// from setters and mutators when frozen; analogous error
+	// returns will land here as the analysis-mode pipeline gets
+	// wired in M5.
 
 	switch name {
 	// Core identity (StarlarkRuleContextApi.getLabel)
-	case "label":
+	case attrLabel:
 		return c.label, nil
 
 	// Attribute access (StarlarkRuleContextApi.getAttr, getFiles, getFile, getExecutable)
-	case "attr":
+	case attrAttr:
 		return c.attr, nil
-	case "files":
+	case attrFiles:
 		return c.files, nil
 	case "file":
 		return c.file, nil
-	case "executable":
+	case attrExecutable:
 		return c.executable, nil
 
 	// Outputs (StarlarkRuleContextApi.outputs)
@@ -212,7 +214,7 @@ func (c *Ctx) Attr(name string) (starlark.Value, error) {
 		return c.outputs, nil
 
 	// Actions (StarlarkRuleContextApi.actions)
-	case "actions":
+	case attrActions:
 		return c.actions, nil
 
 	// Directory roots (StarlarkRuleContextApi.getBinDirectory, getGenfilesDirectory)
@@ -633,8 +635,8 @@ func tokenizeShell(s string) []string {
 	quoteChar := rune(0)
 
 	for _, r := range s {
-		switch {
-		case r == '"' || r == '\'':
+		switch r {
+		case '"', '\'':
 			if inQuote && r == quoteChar {
 				inQuote = false
 				quoteChar = 0
@@ -644,7 +646,7 @@ func tokenizeShell(s string) []string {
 			} else {
 				current.WriteRune(r)
 			}
-		case r == ' ' || r == '\t':
+		case ' ', '\t':
 			if inQuote {
 				current.WriteRune(r)
 			} else if current.Len() > 0 {
@@ -783,7 +785,7 @@ var _ starlark.Value = (*emptyStruct)(nil)
 var _ starlark.HasAttrs = (*emptyStruct)(nil)
 
 func (e *emptyStruct) String() string        { return "struct()" }
-func (e *emptyStruct) Type() string          { return "struct" }
+func (e *emptyStruct) Type() string          { return attrStruct }
 func (e *emptyStruct) Freeze()               { e.frozen = true }
 func (e *emptyStruct) Truth() starlark.Bool  { return true }
 func (e *emptyStruct) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable: struct") }

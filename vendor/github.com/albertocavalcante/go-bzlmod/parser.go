@@ -13,8 +13,8 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/albertocavalcante/go-bzlmod/internal/buildutil"
-	"github.com/albertocavalcante/go-bzlmod/third_party/buildtools/build"
+	"github.com/albertocavalcante/go-bzlmod-ast/buildutil"
+	"github.com/albertocavalcante/go-bzlmod-ast/third_party/buildtools/build"
 )
 
 // bazelCompatibilityPattern validates bazel_compatibility entries.

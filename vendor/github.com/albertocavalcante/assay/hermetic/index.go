@@ -4,8 +4,8 @@ package hermetic
 // moduleSymbolIndex but specialized for hermetic's needs — only
 // tracks all-literal dicts (for integrity-hash resolution) and
 // load() statements. The shared load shape (local-name -> import
-// descriptor) lives in internal/syntaxutil; hermetic only owns the
-// pinned-dict-specific data.
+// descriptor) lives in go-starlark-syntaxutil; hermetic only owns
+// the pinned-dict-specific data.
 //
 // Why a separate index? hermetic and bzlwalk both walk the same
 // tree and parse the same .bzl files (roadmap C3 — merged-walks —
@@ -14,8 +14,8 @@ package hermetic
 // keeps the two packages decoupled.
 
 import (
-	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/internal/walkparse"
+	syntaxutil "github.com/albertocavalcante/go-starlark-syntaxutil"
 )
 
 // fileIndex is the per-file slice of the hermetic-wide index.
@@ -41,7 +41,7 @@ type hermeticIndex struct {
 //
 // Only files with Kind == "bzl" contribute. BUILD/MODULE files don't
 // host integrity-hash dicts; including them would just inflate the
-// index without changing behaviour.
+// index without changing behavior.
 func buildHermeticIndexFromFiles(files []walkparse.File) *hermeticIndex {
 	idx := &hermeticIndex{perFile: map[string]fileIndex{}}
 	for _, f := range files {

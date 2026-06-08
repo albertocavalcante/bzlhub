@@ -40,7 +40,7 @@ func checkBlobIntegrity(s *state) []Finding {
 				Version:  k.version,
 				Path:     "blobs/" + m.expectedBlobHex,
 				Message:  fmt.Sprintf("blob %s referenced by source.json is not on disk", m.expectedBlobHex),
-				Fix:      "re-ingest the module (canopy ingest ...) or restore the blob from backup",
+				Fix:      "re-ingest the module (bzlhub ingest ...) or restore the blob from backup",
 				Details: map[string]any{
 					"expected_sha256_hex": m.expectedBlobHex,
 					"source_url":          m.source.URL,
@@ -76,7 +76,7 @@ func checkBlobIntegrity(s *state) []Finding {
 				Version:  k.version,
 				Path:     "blobs/" + m.expectedBlobHex,
 				Message:  "blob hash mismatch (computed != source.json integrity)",
-				Fix:      "re-ingest with `canopy ingest --from <upstream> <m>@<v> --mirror-to <root>`, or restore from backup",
+				Fix:      "re-ingest with `bzlhub ingest --from <upstream> <m>@<v> --mirror-to <root>`, or restore from backup",
 				Details: map[string]any{
 					"expected_sha256_hex": m.expectedBlobHex,
 					"actual_sha256_hex":   actualHex,

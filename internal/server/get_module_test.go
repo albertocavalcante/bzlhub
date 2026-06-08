@@ -10,11 +10,11 @@ import (
 
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/api/paths"
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/server"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/server"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // TestGetModule_HappyPath checks the per-module endpoint returns
@@ -35,7 +35,7 @@ func TestGetModule_HappyPath(t *testing.T) {
 		t.Fatalf("WriteReport: %v", err)
 	}
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.ModuleDetail("rules_x"))
@@ -69,7 +69,7 @@ func TestGetModule_404ForUnknownName(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	ts := httptest.NewServer(server.New(nil, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(nil, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.ModuleDetail("nope"))

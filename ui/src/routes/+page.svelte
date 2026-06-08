@@ -205,7 +205,7 @@
   // display-side reshape the "thin frontend" rule explicitly
   // allows when the input is already in the response.
   // Prefer server-shipped stats; fall back to local derivation for
-  // backends that haven't shipped corpus_stats yet (older canopy).
+  // backends that haven't shipped corpus_stats yet (older bzlhub).
   const totalModules = $derived(corpusStats?.modules ?? modules.length);
   const totalVersions = $derived(
     corpusStats?.versions ?? modules.reduce((acc, m) => acc + (m.version_count ?? 0), 0),
@@ -222,7 +222,7 @@
 </script>
 
 <svelte:head>
-  <title>canopy — search</title>
+  <title>bzlhub — search</title>
 </svelte:head>
 
 <div class="mx-auto w-full max-w-3xl flex flex-col gap-6 pt-8 md:pt-16">
@@ -279,7 +279,7 @@
       <div class="text-center py-16 text-fg-dim">
         <p class="font-mono text-sm">no hits for <span class="text-fg">{query}</span></p>
         <p class="text-xs mt-2">
-          try a different term, or run <kbd>canopy ingest &lt;module-dir&gt;</kbd> first
+          try a different term, or run <kbd>bzlhub ingest &lt;module-dir&gt;</kbd> first
         </p>
       </div>
     {:else if results}
@@ -324,7 +324,7 @@
             Corpus stats strip. Counters + a "drift →" link pointing
             to the operator dashboard. Documented-symbols tile only
             renders when the server actually shipped the value (so
-            backwards-compat with older canopy backends works).
+            backwards-compat with older bzlhub backends works).
           -->
           <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[12px] font-mono">
             <a

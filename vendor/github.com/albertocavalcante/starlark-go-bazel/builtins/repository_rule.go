@@ -3,22 +3,23 @@ package builtins
 import (
 	"fmt"
 
-	"github.com/albertocavalcante/starlark-go-bazel/types"
 	"go.starlark.net/starlark"
+
+	"github.com/albertocavalcante/starlark-go-bazel/types"
 )
 
 // RepositoryRule implements the repository_rule() Bazel builtin.
 // Kwargs match the Bazel surface (verified at
 // StarlarkRepositoryModule.java:57):
 //
-//   implementation: callable, required
-//   attrs:          dict<string, attr.*>, default None
-//   local:          bool, default False
-//   environ:        list<string>, default [] — DEPRECATED, migrate to
-//                   repository_ctx.getenv
-//   configure:      bool, default False
-//   remotable:      bool, default False — experimental
-//   doc:            string, default None
+//	implementation: callable, required
+//	attrs:          dict<string, attr.*>, default None
+//	local:          bool, default False
+//	environ:        list<string>, default [] — DEPRECATED, migrate to
+//	                repository_ctx.getenv
+//	configure:      bool, default False
+//	remotable:      bool, default False — experimental
+//	doc:            string, default None
 //
 // Returns a *types.RepositoryRuleClass.
 func RepositoryRule(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

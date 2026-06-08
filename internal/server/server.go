@@ -16,23 +16,25 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/api/paths"
-	"github.com/albertocavalcante/canopy/internal/backend"
-	"github.com/albertocavalcante/canopy/internal/bcrprobe"
-	"github.com/albertocavalcante/canopy/internal/codenav"
-	"github.com/albertocavalcante/canopy/internal/embed"
-	"github.com/albertocavalcante/canopy/internal/featureflags"
-	"github.com/albertocavalcante/canopy/internal/fetch"
-	"github.com/albertocavalcante/canopy/internal/mcpsrv"
-	"github.com/albertocavalcante/canopy/internal/ratelimit"
-	"github.com/albertocavalcante/canopy/internal/server/headtags"
-	"github.com/albertocavalcante/canopy/internal/server/sitemap"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/auth"
+	"github.com/albertocavalcante/bzlhub/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/backend"
+	"github.com/albertocavalcante/bzlhub/internal/bcrprobe"
+	"github.com/albertocavalcante/bzlhub/internal/codenav"
+	"github.com/albertocavalcante/bzlhub/internal/embed"
+	"github.com/albertocavalcante/bzlhub/internal/featureflags"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/mcpsrv"
+	"github.com/albertocavalcante/bzlhub/internal/policy"
+	"github.com/albertocavalcante/bzlhub/internal/ratelimit"
+	"github.com/albertocavalcante/bzlhub/internal/server/headtags"
+	"github.com/albertocavalcante/bzlhub/internal/server/sitemap"
 )
 
 // originFromRequest reconstructs the scheme+host the client used to
 // reach us. Honours X-Forwarded-Proto from configured trusted edges
-// (CANOPY_TRUSTED_PROXY_CIDR — same gate as the auth middleware uses)
+// (BZLHUB_TRUSTED_PROXY_CIDR — same gate as the auth middleware uses)
 // so SEO canonical URLs reflect the public origin, not the internal
 // http:// the reverse proxy talks to us on.
 func originFromRequest(r *http.Request) string {
@@ -79,7 +81,7 @@ type Options struct {
 	// 503 — code-nav requires both MirrorRoot (for tarball blobs) and
 	// this cache directory.
 	//
-	// Compile-time defaults live in cmd/canopy/main.go; tests pass a
+	// Compile-time defaults live in cmd/bzlhub/main.go; tests pass a
 	// t.TempDir() here. Not a CLI flag: operators tune via the deploy
 	// volume layout, not a runtime knob.
 	SourcesCacheDir string
@@ -100,13 +102,13 @@ type Options struct {
 	// Helper supplies the read-side queries that don't live on the
 	// cross-transport api.Canopy contract (per-row metadata,
 	// adoption counts, GitHub-meta). Wired by main from
-	// *canopy.Service. Nil disables every augmentation cleanly —
+	// *bzlhub.Service. Nil disables every augmentation cleanly —
 	// the responses degrade to "plain report" shape rather than
 	// erroring, matching pre-helper behavior.
 	Helper ReadHelper
 
-	// Verifier is the implementation of the canopy_verify MCP tool.
-	// Wired by serve.go from *canopy.Service (the same value passed
+	// Verifier is the implementation of the bzlhub_verify MCP tool.
+	// Wired by serve.go from *bzlhub.Service (the same value passed
 	// as the api.Canopy argument; one concrete satisfies both
 	// interfaces — see the Verifier doc-comment in mcpsrv for why
 	// they don't fuse). May be nil; when nil and MCPHTTPEnabled,
@@ -117,7 +119,37 @@ type Options struct {
 	// or "dev") surfaced over the MCP transport's `serverInfo`
 	// initialize response. Cosmetic; tools work regardless.
 	Version string
+
+	// BearerRegistry is the bearer-token → Identity lookup table
+	// loaded from BZLHUB_IDENTITY_FILE at boot. May be nil — the
+	// bearer middleware then no-ops (all requests stay anonymous
+	// w.r.t. bearer auth; header-based identity still works).
+	//
+	// Per Plan 72 §C3: bearer wins over X-Forwarded-* when both
+	// present (warn-log emitted).
+	BearerRegistry *auth.IdentityRegistry
+
+	// RequestStore enables the procurement endpoints
+	// (POST /api/v1/requests, future list/approve/deny). When nil
+	// the routes aren't registered — the deployment runs without
+	// procurement, which is the right shape for the personal-canopy
+	// install or the public bzlhub.com node.
+	RequestStore RequestStore
+
+	// Policy returns the current effective policy. nil-returning
+	// (or nil-fn) opts out of policy gating; procurement handlers
+	// don't wire in that case. The getter shape lets serve.go swap
+	// the underlying *Policy atomically on SIGHUP without
+	// reconstructing handlers.
+	Policy policy.Snapshot
 }
+
+// RequestStore is the slice of the canopy store consumed by the
+// procurement HTTP handlers. *store.Store satisfies it.
+// Exposing it as an interface keeps the server pkg testable
+// without spinning up SQLite and documents the seam for any
+// future "procurement runs in a sidecar" refactor.
+type RequestStore = requestStore
 
 // New constructs an http.Handler. Either b or c can be nil for partial
 // deployments; the corresponding routes are simply not registered.
@@ -143,6 +175,16 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 	h.bcrFetch = fetch.NewClient()
 	r := chi.NewRouter()
 	r.Use(accessLog(logger))
+	// Bearer-token auth runs FIRST in the middleware chain
+	// (Plan 72 §CC3). When a valid token is presented its identity
+	// is attached to the request context BEFORE headerAuth gets a
+	// chance to overlay headers; bearer wins on collision and the
+	// middleware warn-logs the collision so the operator can
+	// investigate (typically a misconfigured reverse proxy).
+	//
+	// No-op when BearerRegistry is nil (operator hasn't wired
+	// BZLHUB_IDENTITY_FILE).
+	r.Use(bearerAuth(opts.BearerRegistry, logger))
 	// Header-based auth scaffold. No-op when TrustedProxyCIDRs is
 	// empty (default for personal-canopy installs). When configured,
 	// reads X-Forwarded-User/Email/Groups from requests originating
@@ -230,6 +272,42 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 				r.Get("/history", h.apiHistory)
 				r.Get("/events", h.apiEvents)
 			})
+
+			// Procurement endpoints (Plan 67, Plan 72 §C4). Registered
+			// only when the operator has wired both a RequestStore and
+			// a Policy — deployments without procurement (the public
+			// bzlhub.com node, personal canopy) skip the routes entirely
+			// rather than serving 503 placeholders.
+			if opts.RequestStore != nil && opts.Policy != nil {
+				rh := &requestHandlers{
+					store:    opts.RequestStore,
+					policy:   opts.Policy,
+					log:      logger,
+					userRate: ratelimit.NewUserLimiter(),
+				}
+				r.Route("/requests", func(r chi.Router) {
+					r.Post("/", rh.apiSubmitRequest)
+					r.Get("/", rh.apiListRequests)
+					r.Get("/{id}", rh.apiGetRequest)
+					r.Post("/{id}/approve", rh.apiApproveRequest)
+					r.Post("/{id}/deny", rh.apiDenyRequest)
+				})
+
+				// Maintainer management — Plan 73 slice 1D. The
+				// matching policy gates (grant_maintainer +
+				// view_maintainers) ship in every profile baseline.
+				r.Route("/modules/{module}/maintainers", func(r chi.Router) {
+					r.Get("/", rh.apiListMaintainers)
+					r.Post("/", rh.apiGrantMaintainer)
+					r.Delete("/{email}", rh.apiRevokeMaintainer)
+				})
+
+				// Per-caller view of the policy gate. Powers UI
+				// button visibility — anonymous gets the
+				// anonymous-allowed map; authenticated users get
+				// their effective permissions.
+				r.Get("/policy/effective", rh.apiPolicyEffective)
+			}
 		})
 	}
 
@@ -365,7 +443,7 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 	// that contract because the MCP handler still receives every
 	// non-browser request.
 	//
-	// When CANOPY_MCP_HTTP_ENABLED is off, no mount is registered and
+	// When BZLHUB_MCP_HTTP_ENABLED is off, no mount is registered and
 	// /mcp falls through to the NotFound SPA path below (which still
 	// serves the setup page; the /mcp page's onMount JSON probe then
 	// surfaces "MCP-over-HTTP is not enabled on this instance"

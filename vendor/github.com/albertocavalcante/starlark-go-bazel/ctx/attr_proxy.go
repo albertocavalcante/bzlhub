@@ -35,7 +35,7 @@ func (a *AttrProxy) String() string {
 }
 
 // Type returns "struct" (like Bazel's ctx.attr).
-func (a *AttrProxy) Type() string { return "struct" }
+func (a *AttrProxy) Type() string { return attrStruct }
 
 // Freeze marks the proxy as frozen.
 func (a *AttrProxy) Freeze() {
@@ -111,7 +111,7 @@ func (f *FilesProxy) String() string {
 }
 
 // Type returns "struct".
-func (f *FilesProxy) Type() string { return "struct" }
+func (f *FilesProxy) Type() string { return attrStruct }
 
 // Freeze marks the proxy as frozen.
 func (f *FilesProxy) Freeze() { f.frozen = true }
@@ -177,7 +177,7 @@ func (f *FileProxy) String() string {
 }
 
 // Type returns "struct".
-func (f *FileProxy) Type() string { return "struct" }
+func (f *FileProxy) Type() string { return attrStruct }
 
 // Freeze marks the proxy as frozen.
 func (f *FileProxy) Freeze() { f.frozen = true }
@@ -242,7 +242,7 @@ func (e *ExecutableProxy) String() string {
 }
 
 // Type returns "struct".
-func (e *ExecutableProxy) Type() string { return "struct" }
+func (e *ExecutableProxy) Type() string { return attrStruct }
 
 // Freeze marks the proxy as frozen.
 func (e *ExecutableProxy) Freeze() { e.frozen = true }
@@ -408,9 +408,9 @@ func (t *TargetProxy) Hash() (uint32, error) {
 // Attr returns an attribute of the target.
 func (t *TargetProxy) Attr(name string) (starlark.Value, error) {
 	switch name {
-	case "label":
+	case attrLabel:
 		return t.label, nil
-	case "files":
+	case attrFiles:
 		// Return a depset of files
 		items := make([]starlark.Value, len(t.files))
 		for i, f := range t.files {

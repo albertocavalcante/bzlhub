@@ -310,7 +310,7 @@ func PolicyFromContext(ctx context.Context) Policy {
 //
 // This is the entry point called from every refactored HTTP caller
 // in commits C5–C8 (Plan 28). Production wiring binds the policy
-// once at startup in cmd/canopy/serve.go.
+// once at startup in cmd/bzlhub/serve.go.
 func Client(ctx context.Context) *http.Client {
 	return NewHTTPClient(PolicyFromContext(ctx))
 }

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/albertocavalcante/assay/report"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // buildFakeMirror writes a small synthetic BCR-shape mirror tree under
@@ -81,7 +81,7 @@ func buildFakeMirror(t *testing.T, layout mirrorLayout) *fakeMirror {
 		return fm
 	}
 
-	dbPath := filepath.Join(t.TempDir(), "canopy.db")
+	dbPath := filepath.Join(t.TempDir(), "bzlhub.db")
 	s, err := store.Open(context.Background(), dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)

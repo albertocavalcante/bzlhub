@@ -1,0 +1,159 @@
+# bzlhub: containerized build for RHEL9-family runtimes.
+#
+# Sibling to Dockerfile (alpine flavor). Use this one when the
+# deployment target mandates a Red Hat-compatible base — RHEL 9,
+# CentOS Stream 9, Rocky Linux 9, AlmaLinux 9, or any
+# corporate-internal UBI9 derivative. The runtime base defaults
+# to the Red Hat Universal Base Image (UBI9-minimal), which is
+# freely redistributable and binary-compatible with RHEL 9.
+#
+# Same three-stage shape as Dockerfile:
+#   1) ui-builder — pnpm builds the SvelteKit bundle
+#   2) go-builder — go build links UI + binary statically
+#   3) runtime    — UBI9-minimal with the binary, non-root user,
+#                   /var/lib/bzlhub/{mirror,index} data dirs
+#
+# CGO is disabled — bzlhub.s SQLite driver is the pure-Go
+# modernc.org/sqlite path — so the same static binary that the
+# alpine flavor produces runs on a glibc-family runtime
+# unchanged. No musl-vs-glibc juggling.
+#
+# Corporate-base-image overrides
+# ------------------------------
+# All three stage bases are parameterized via `ARG` so corporate
+# environments that mandate internal hardened images can swap any
+# stage without forking this file. Example:
+#
+#   docker build -f Dockerfile.rhel9 \
+#     --build-arg UI_BUILDER_BASE=registry.corp.example.com/blessed/node:22 \
+#     --build-arg GO_BUILDER_BASE=registry.corp.example.com/blessed/golang:1.26 \
+#     --build-arg RUNTIME_BASE=registry.corp.example.com/blessed/ubi9-minimal:9.4 \
+#     -t bzlhub:corp-rhel9 .
+#
+# The override runtime image must satisfy the stage's
+# requirements: dnf or microdnf available, glibc-family (since we
+# stick to the static-binary contract — any glibc image works).
+ARG UI_BUILDER_BASE=node:22-alpine
+ARG GO_BUILDER_BASE=golang:1.26-alpine
+ARG RUNTIME_BASE=registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+# -------- ui-builder --------------------------------------------------------
+#
+# The UI build is identical across runtimes — the output is plain
+# JS/HTML/CSS files copied into the embedded FS. We default to the
+# alpine-based node image because it's smaller; corp envs that
+# require UBI for ALL stages override UI_BUILDER_BASE explicitly.
+FROM ${UI_BUILDER_BASE} AS ui-builder
+WORKDIR /src
+
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+
+COPY ui/package.json ui/pnpm-lock.yaml ./ui/
+RUN cd ui && pnpm install --frozen-lockfile
+
+COPY ui/ ./ui/
+RUN cd ui && pnpm run build
+
+# -------- go-builder --------------------------------------------------------
+#
+# Same vendor-based static build as Dockerfile. CGO disabled means
+# the resulting binary runs on either musl (alpine) or glibc (UBI9
+# / RHEL / etc.) without recompilation.
+FROM ${GO_BUILDER_BASE} AS go-builder
+WORKDIR /src
+ENV CGO_ENABLED=0
+ENV GOFLAGS="-trimpath -mod=vendor"
+
+COPY . .
+COPY --from=ui-builder /src/ui/build/ ./internal/embed/ui/
+
+RUN test -d vendor || (echo "ERROR: bzlhub/vendor/ missing — run 'go mod vendor' first" >&2 && exit 1)
+RUN test -f internal/embed/ui/index.html || (echo "ERROR: internal/embed/ui/index.html missing — ui-builder stage didn't produce it" >&2 && exit 1)
+
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILT_AT=unknown
+
+RUN go build \
+      -ldflags="-s -w \
+        -X github.com/albertocavalcante/bzlhub/internal/version.Version=${VERSION} \
+        -X github.com/albertocavalcante/bzlhub/internal/version.Commit=${COMMIT} \
+        -X github.com/albertocavalcante/bzlhub/internal/version.BuiltAt=${BUILT_AT}" \
+      -o /out/bzlhub \
+      ./cmd/bzlhub
+
+# -------- runtime -----------------------------------------------------------
+#
+# UBI9-minimal uses microdnf (a small dnf reimplementation) rather
+# than full dnf. The package names are identical — what differs is
+# the binary name. Operators overriding RUNTIME_BASE to a full UBI9
+# or RHEL9 image can either keep the microdnf call (microdnf is
+# typically installed on full UBI9 too) or rewrite to `dnf install`.
+#
+# git is required by the procurement admit pipeline:
+# internal/publish/GitDirectPublisher shells out to git commit + push
+# to land approved modules into the registry repo. Deployments that
+# don't enable procurement (no BZLHUB_POLICY_FILE) never invoke it;
+# the small footprint cost is the right floor to pay.
+#
+# Why tzdata is omitted: RHEL-family images ship the IANA timezone
+# database as part of glibc-common, so no separate install is needed.
+FROM ${RUNTIME_BASE}
+
+LABEL org.opencontainers.image.title="bzlhub" \
+      org.opencontainers.image.description="Bazel-first self-hosted module registry (RHEL9-family runtime)" \
+      org.opencontainers.image.source="https://github.com/albertocavalcante/bzlhub" \
+      org.opencontainers.image.licenses="MIT"
+
+# microdnf install: ca-certificates for outbound HTTPS (fetch,
+# webhook delivery), wget for the healthcheck probe, git for the
+# admit publisher. `microdnf clean all` strips the metadata cache
+# so we don't carry it into the final layer.
+RUN microdnf install -y --setopt=tsflags=nodocs ca-certificates wget git \
+ && microdnf clean all \
+ && rm -rf /var/cache/yum /var/cache/dnf
+
+# UID/GID pinned to 65532 (de-facto "nonroot" convention used by
+# distroless + the alpine flavor of this image). Data dirs are
+# chown'd to 65532:0 with g+rwX so the image runs cleanly under
+# three identity models:
+#   - vanilla k8s with podSecurityContext.runAsUser=65532/fsGroup=65532
+#   - OpenShift SCC, which assigns a random UID per namespace and
+#     always runs containers with supplementary GID 0
+#   - rootless Podman, which maps host UID into the container
+# The group-writable bit on data dirs is the OpenShift contract; it
+# isn't a security relaxation because GID 0 inside an unprivileged
+# container is not the same as host root.
+#
+# RHEL's useradd/groupadd are stricter than alpine's adduser — `-r`
+# creates a system account (UID below 1000) without a /etc/skel
+# copy or password aging fields. `--no-log-init` skips lastlog
+# allocation, which on some kernels with sparse-file weirdness
+# would balloon the image by GBs.
+RUN groupadd -g 65532 -r bzlhub \
+ && useradd -u 65532 -r --no-log-init -g bzlhub -d /var/lib/bzlhub -s /sbin/nologin bzlhub \
+ && mkdir -p /var/lib/bzlhub/mirror /var/lib/bzlhub/index /var/lib/bzlhub/sources \
+ && chown -R 65532:0 /var/lib/bzlhub \
+ && chmod -R g+rwX  /var/lib/bzlhub
+
+COPY --from=go-builder /out/bzlhub /usr/local/bin/bzlhub
+
+COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod 0755 /usr/local/bin/entrypoint.sh
+
+USER bzlhub
+WORKDIR /var/lib/bzlhub
+
+ENV BZLHUB_BIND=0.0.0.0:8090
+ENV BZLHUB_ROOT=/var/lib/bzlhub/mirror
+ENV BZLHUB_DB=/var/lib/bzlhub/index/bzlhub.db
+ENV BZLHUB_MIRROR_BASE_URL=
+
+EXPOSE 8090
+
+# bzlhub.s /healthz is unconditional 200 — both BCR-only and DB-only
+# deployments answer it. wget is in the dnf install above.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -q -O- http://127.0.0.1:8090/healthz >/dev/null 2>&1 || exit 1
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

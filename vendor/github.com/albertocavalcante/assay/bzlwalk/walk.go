@@ -26,9 +26,9 @@ import (
 	"go.starlark.net/syntax"
 
 	"github.com/albertocavalcante/assay/dialect"
-	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/internal/walkparse"
 	"github.com/albertocavalcante/assay/report"
+	syntaxutil "github.com/albertocavalcante/go-starlark-syntaxutil"
 )
 
 // WalkOption configures Walk.
@@ -157,6 +157,14 @@ type visitor struct {
 	// file. Each candidate carries everything needed to emit the
 	// macro without revisiting the AST node.
 	pendingMacros []pendingMacroCandidate
+
+	// tagClassBindings holds the per-file `IDENT = tag_class(...)`
+	// bindings discovered during scanFile's pre-pass. Populated
+	// before the main statement loop so module_extension can
+	// resolve its tag_classes dict regardless of where the
+	// bindings appear in the file (Starlark module-scope
+	// resolution is order-independent). Repopulated per file.
+	tagClassBindings map[string]*syntax.CallExpr
 }
 
 // pendingMacroCandidate is a def that may yet be classified as a macro
@@ -206,6 +214,7 @@ func (v *visitor) scanFile(f *syntax.File, relPath string) {
 	v.symbols = collectSymbols(f)
 	v.macroCtx = collectMacroContext(f, v.dialect)
 	v.loads = syntaxutil.CollectLoads(f)
+	v.tagClassBindings = collectTagClassBindings(f, v.dialect)
 	// relPath already comes in slash-form from walkparse.File.Path.
 	v.currentFile = relPath
 	// Persist per-file state so the Phase B fixpoint can re-evaluate

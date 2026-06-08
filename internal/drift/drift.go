@@ -20,7 +20,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/albertocavalcante/canopy/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
 )
 
 // Status is the high-level state of one module entry in the report.

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/albertocavalcante/canopy/internal/version"
+	"github.com/albertocavalcante/bzlhub/internal/version"
 )
 
 // Tiny subprocess wrappers for `git` shared by GitDirectPublisher and
@@ -48,7 +48,7 @@ func gitOutput(ctx context.Context, workTree string, args ...string) (string, er
 // Committer (-c user.name/email) and req.Requester as Author
 // (--author). Returns the new HEAD SHA on success.
 func commitWith(ctx context.Context, workTree string, bot Identity, req PublishRequest) (string, error) {
-	msgFile, err := writeTempFile("", "canopy-commit-msg-*", []byte(buildCommitMessage(req)))
+	msgFile, err := writeTempFile("", "bzlhub-commit-msg-*", []byte(buildCommitMessage(req)))
 	if err != nil {
 		return "", err
 	}
@@ -73,7 +73,7 @@ func commitWith(ctx context.Context, workTree string, bot Identity, req PublishR
 }
 
 // buildCommitMessage produces the conventional-commits subject +
-// provenance trailers used by every canopy-mediated commit.
+// provenance trailers used by every bzlhub-mediated commit.
 func buildCommitMessage(req PublishRequest) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "feat(%s): add version %s\n\n", req.Module, req.Version)
@@ -90,7 +90,7 @@ func buildCommitMessage(req PublishRequest) string {
 	// recognizes it as trailers, not as message body.
 	b.WriteByte('\n')
 	fmt.Fprintf(&b, "Requested-by: %s\n", req.Requester.String())
-	fmt.Fprintf(&b, "Published-via: canopy %s\n", version.Version)
+	fmt.Fprintf(&b, "Published-via: bzlhub %s\n", version.Version)
 	fmt.Fprintf(&b, "Resolved-at: %s\n", time.Now().UTC().Format(time.RFC3339))
 	return b.String()
 }

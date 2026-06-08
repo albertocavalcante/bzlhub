@@ -1,6 +1,8 @@
 package stub
 
 import (
+	"maps"
+
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 )
@@ -29,10 +31,8 @@ func LoaderFor(symbolsByModule map[string][]string, tryReal func(module string) 
 		}
 		out := starlark.StringDict{}
 		if tryReal != nil {
-			if real, ok := tryReal(module); ok {
-				for k, v := range real {
-					out[k] = v
-				}
+			if resolved, ok := tryReal(module); ok {
+				maps.Copy(out, resolved)
 			}
 		}
 		for _, sym := range symbolsByModule[module] {
@@ -52,6 +52,9 @@ func LoaderFor(symbolsByModule map[string][]string, tryReal func(module string) 
 // permissive loader which names need stubbing.
 func ScanLoads(f *syntax.File) map[string][]string {
 	out := map[string][]string{}
+	if f == nil {
+		return out
+	}
 	for _, stmt := range f.Stmts {
 		ls, ok := stmt.(*syntax.LoadStmt)
 		if !ok {

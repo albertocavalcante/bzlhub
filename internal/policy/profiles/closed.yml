@@ -1,0 +1,42 @@
+# closed profile — Plan 71.
+#
+# Auth required everywhere; banks / paranoid corp; arbitrary
+# repository-rule code rejected outright; attestations required.
+version: 1
+profile: closed
+
+auth:
+  actions:
+    view_modules:        authenticated
+    view_module_report:  authenticated
+    view_requests:       authenticated
+    view_audit:          authenticated
+    view_maintainers:    authenticated
+    view_user_profile:   authenticated
+    submit_request:      group:engineers
+    approve_request:     group:procurement
+    deny_request:        group:procurement
+    maintain_module:     maintainer
+    grant_maintainer:    group:procurement
+    use_mcp_read:        authenticated
+    use_mcp_write:       group:procurement
+
+admission:
+  license:
+    require_license:  true
+    unknown_verdict:  deny
+  hermeticity:
+    pure-starlark:                 pass
+    prebuilt-binaries-pinned:      pass
+    build-from-source:             pass
+    network-fetch-pinned:          pass
+    network-fetch-unpinned:        review
+    requires-system-tools:         deny
+    repository-rule-arbitrary-code: deny
+  review:
+    timeout_days: 30
+    auto_pass_on_already_in_upstream: false
+
+mcp:
+  http_enabled:        false
+  write_tools_enabled: false

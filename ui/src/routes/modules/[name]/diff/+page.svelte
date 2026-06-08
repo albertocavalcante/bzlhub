@@ -241,12 +241,12 @@
 </script>
 
 <svelte:head>
-  <title>{report ? `${report.module} ${report.from} → ${report.to}` : 'diff'} — canopy</title>
+  <title>{report ? `${report.module} ${report.from} → ${report.to}` : 'diff'} — bzlhub</title>
 </svelte:head>
 
 <div class="flex flex-col gap-6">
   <nav class="text-[11px] text-fg-dim font-mono flex items-center gap-1.5" aria-label="breadcrumb">
-    <a href="/" class="hover:text-fg transition-colors">canopy</a>
+    <a href="/" class="hover:text-fg transition-colors">bzlhub</a>
     <span class="text-fg-dim/60">/</span>
     <span class="text-fg-mute">modules</span>
     <span class="text-fg-dim/60">/</span>

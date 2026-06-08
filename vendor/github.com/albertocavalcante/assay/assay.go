@@ -147,10 +147,10 @@ func Analyze(ctx context.Context, moduleDir string, opts ...Option) (*report.Mod
 	}
 
 	// Tier-3 fallback runs AFTER Tier 0-2 have populated the report so
-	// it only touches rules that need it (AttrsExtractionMethod == "").
-	// Hydrate is a no-op when the option is off; the import is kept
-	// unconditional so callers don't pay a different build cost based
-	// on whether they enable interpretation.
+	// it only touches rules whose AttrsExtractionMethod is still
+	// report.AttrsUnresolved. Hydrate is a no-op when the option is off;
+	// the import is kept unconditional so callers don't pay a different
+	// build cost based on whether they enable interpretation.
 	if o.InterpreterFallback {
 		interp.Hydrate(ctx, moduleDir, r)
 	}

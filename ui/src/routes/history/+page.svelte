@@ -2,7 +2,7 @@
   import { paths } from '$lib/api/paths';
   // /history — audit log table.
   //
-  // Surfaces every write operation that canopy recorded: bump_success /
+  // Surfaces every write operation that bzlhub recorded: bump_success /
   // bump_failure / ingest_recursive_success / ingest_recursive_failure
   // and similar. Reads are deliberately not in this table.
   //
@@ -128,7 +128,7 @@
 </script>
 
 <svelte:head>
-  <title>history — canopy</title>
+  <title>history — bzlhub</title>
 </svelte:head>
 
 <div class="flex flex-col gap-4">
@@ -137,7 +137,7 @@
       <div class="flex items-baseline gap-3 flex-wrap">
         <h1 class="font-mono text-2xl text-fg tracking-tight">history</h1>
         <p class="text-[12px] text-fg-mute">
-          every write operation canopy ran — bumps and closure ingests across all surfaces
+          every write operation bzlhub ran — bumps and closure ingests across all surfaces
         </p>
       </div>
       <ShareLink />

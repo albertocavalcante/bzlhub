@@ -3,14 +3,15 @@ package builtins
 import (
 	"fmt"
 
-	"github.com/albertocavalcante/starlark-go-bazel/types"
 	"go.starlark.net/starlark"
+
+	"github.com/albertocavalcante/starlark-go-bazel/types"
 )
 
 // TagClass implements the tag_class() Bazel builtin. Kwargs:
 //
-//   attrs: dict<string, attr.*>, default {}
-//   doc:   string, default None
+//	attrs: dict<string, attr.*>, default {}
+//	doc:   string, default None
 //
 // Returns a *types.TagClass. The class is given its identifier name
 // at module_extension registration time (when the dict key it's

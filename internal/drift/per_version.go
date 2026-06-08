@@ -1,7 +1,7 @@
 package drift
 
 import (
-	"github.com/albertocavalcante/canopy/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
 )
 
 // VersionStatus is the per-(module, version) outcome returned by

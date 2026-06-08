@@ -1,0 +1,44 @@
+{{- if .Values.cronjobs.drift.enabled -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "bzlhub.cronName" (dict "root" . "suffix" "drift") }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "bzlhub.labels" . | nindent 4 }}
+  {{- include "bzlhub.annotations" (dict "ctx" . "specific" (dict)) | nindent 2 }}
+spec:
+  schedule: {{ .Values.cronjobs.drift.schedule | quote }}
+  concurrencyPolicy: {{ .Values.cronjobs.drift.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.cronjobs.drift.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjobs.drift.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels: {{- include "bzlhub.selectorLabels" . | nindent 12 }}
+          {{- with .Values.cronjobs.drift.podAnnotations }}
+          annotations: {{- toYaml . | nindent 12 }}
+          {{- end }}
+        spec:
+          restartPolicy: OnFailure
+          {{- with (include "bzlhub.imagePullSecrets" .) }}
+          {{- . | nindent 10 }}
+          {{- end }}
+          securityContext: {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: drift
+              image: {{ include "bzlhub.image" . | quote }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              securityContext: {{- toYaml .Values.securityContext | nindent 16 }}
+              resources: {{- toYaml .Values.cronjobs.drift.resources | nindent 16 }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  ENDPOINT="http://{{ include "bzlhub.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}/api/drift?upstream={{ .Values.cronjobs.drift.upstream | urlquery }}"
+                  echo "==> GET $ENDPOINT"
+                  wget -q -O - --tries=1 --timeout=120 "$ENDPOINT"
+                  echo
+{{- end }}

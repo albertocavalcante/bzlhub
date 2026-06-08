@@ -1,6 +1,7 @@
 package featureflags
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -45,16 +46,16 @@ func TestParse_Defaults(t *testing.T) {
 
 func TestParse_OverridesViaEnv(t *testing.T) {
 	withEnv(t, map[string]string{
-		"CANOPY_INGEST_WRITE_ENABLED":         "true",
-		"CANOPY_REGISTRY_URL":                 "https://registry.example/",
-		"CANOPY_INGEST_ALLOW_CUSTOM_UPSTREAM": "true",
-		"CANOPY_INGEST_RATE_LIMIT_PER_MIN":    "30",
-		"CANOPY_INGEST_MAX_CONCURRENT":        "4",
-		"CANOPY_INGEST_RATE_BYPASS_IPS":       "1.2.3.4, 5.6.7.8 ,",
-		"CANOPY_DEMO_MODE":                    "true",
-		"CANOPY_DEMO_BANNER":                  " public demo ",
-		"CANOPY_MCP_HTTP_ENABLED":             "true",
-		"CANOPY_MCP_WRITE_TOOLS_ENABLED":      "true",
+		"BZLHUB_INGEST_WRITE_ENABLED":         "true",
+		"BZLHUB_REGISTRY_URL":                 "https://registry.example/",
+		"BZLHUB_INGEST_ALLOW_CUSTOM_UPSTREAM": "true",
+		"BZLHUB_INGEST_RATE_LIMIT_PER_MIN":    "30",
+		"BZLHUB_INGEST_MAX_CONCURRENT":        "4",
+		"BZLHUB_INGEST_RATE_BYPASS_IPS":       "1.2.3.4, 5.6.7.8 ,",
+		"BZLHUB_DEMO_MODE":                    "true",
+		"BZLHUB_DEMO_BANNER":                  " public demo ",
+		"BZLHUB_MCP_HTTP_ENABLED":             "true",
+		"BZLHUB_MCP_WRITE_TOOLS_ENABLED":      "true",
 	})
 	f, err := Parse()
 	if err != nil {
@@ -99,18 +100,18 @@ func TestParse_OverridesViaEnv(t *testing.T) {
 }
 
 func TestParse_BadBoolErrors(t *testing.T) {
-	withEnv(t, map[string]string{"CANOPY_INGEST_WRITE_ENABLED": "yes-please"})
+	withEnv(t, map[string]string{"BZLHUB_INGEST_WRITE_ENABLED": "yes-please"})
 	_, err := Parse()
 	if err == nil {
 		t.Fatal("Parse: want error for bad bool, got nil")
 	}
-	if !strings.Contains(err.Error(), "CANOPY_INGEST_WRITE_ENABLED") {
+	if !strings.Contains(err.Error(), "BZLHUB_INGEST_WRITE_ENABLED") {
 		t.Errorf("error doesn't mention var name: %v", err)
 	}
 }
 
 func TestParse_NegativeRateRejected(t *testing.T) {
-	withEnv(t, map[string]string{"CANOPY_INGEST_RATE_LIMIT_PER_MIN": "-1"})
+	withEnv(t, map[string]string{"BZLHUB_INGEST_RATE_LIMIT_PER_MIN": "-1"})
 	_, err := Parse()
 	if err == nil {
 		t.Fatal("Parse: want error for negative rate, got nil")
@@ -156,21 +157,69 @@ func TestPublic_OmitsServerOnlyFields(t *testing.T) {
 	_ = pub
 }
 
-// withEnv clears CANOPY_* and sets the given vars for the test only.
+func TestParse_RequireFrontProxyDefaultsTrue(t *testing.T) {
+	withEnv(t, nil)
+	f, err := Parse()
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if !f.RequireFrontProxy {
+		t.Error("RequireFrontProxy default = false, want true (safe default)")
+	}
+}
+
+func TestCheckSafeStartup_OkWhenIngestWriteOff(t *testing.T) {
+	f := Flags{RequireFrontProxy: true, IngestWriteEnabled: false}
+	if err := f.CheckSafeStartup(false); err != nil {
+		t.Errorf("CheckSafeStartup: %v, want nil (ingest-write off is always safe)", err)
+	}
+}
+
+func TestCheckSafeStartup_OkWhenTrustedProxyPresent(t *testing.T) {
+	f := Flags{RequireFrontProxy: true, IngestWriteEnabled: true}
+	if err := f.CheckSafeStartup(true); err != nil {
+		t.Errorf("CheckSafeStartup: %v, want nil (front proxy configured)", err)
+	}
+}
+
+func TestCheckSafeStartup_DisabledWhenRequireFalse(t *testing.T) {
+	f := Flags{RequireFrontProxy: false, IngestWriteEnabled: true}
+	if err := f.CheckSafeStartup(false); err != nil {
+		t.Errorf("CheckSafeStartup: %v, want nil (operator opted out of gate)", err)
+	}
+}
+
+func TestCheckSafeStartup_RejectsUnsafeCombo(t *testing.T) {
+	f := Flags{RequireFrontProxy: true, IngestWriteEnabled: true}
+	err := f.CheckSafeStartup(false)
+	if err == nil {
+		t.Fatal("CheckSafeStartup: nil, want ErrUnsafeStartup (write enabled + no trusted proxy)")
+	}
+	if !errors.Is(err, ErrUnsafeStartup) {
+		t.Errorf("error %v does not wrap ErrUnsafeStartup", err)
+	}
+	if !strings.Contains(err.Error(), "BZLHUB_REQUIRE_FRONT_PROXY=false") {
+		t.Errorf("error message %q does not mention the override knob", err.Error())
+	}
+}
+
+// withEnv clears BZLHUB_* and sets the given vars for the test only.
 // Using t.Setenv ensures restore at test end.
 func withEnv(t *testing.T, vars map[string]string) {
 	t.Helper()
 	for _, k := range []string{
-		"CANOPY_INGEST_WRITE_ENABLED",
-		"CANOPY_REGISTRY_URL",
-		"CANOPY_INGEST_ALLOW_CUSTOM_UPSTREAM",
-		"CANOPY_INGEST_RATE_LIMIT_PER_MIN",
-		"CANOPY_INGEST_MAX_CONCURRENT",
-		"CANOPY_INGEST_RATE_BYPASS_IPS",
-		"CANOPY_DEMO_MODE",
-		"CANOPY_DEMO_BANNER",
-		"CANOPY_MCP_HTTP_ENABLED",
-		"CANOPY_MCP_WRITE_TOOLS_ENABLED",
+		"BZLHUB_INGEST_WRITE_ENABLED",
+		"BZLHUB_REGISTRY_URL",
+		"BZLHUB_INGEST_ALLOW_CUSTOM_UPSTREAM",
+		"BZLHUB_INGEST_RATE_LIMIT_PER_MIN",
+		"BZLHUB_INGEST_MAX_CONCURRENT",
+		"BZLHUB_INGEST_RATE_BYPASS_IPS",
+		"BZLHUB_DEMO_MODE",
+		"BZLHUB_DEMO_BANNER",
+		"BZLHUB_MCP_HTTP_ENABLED",
+		"BZLHUB_MCP_WRITE_TOOLS_ENABLED",
+		"BZLHUB_REQUIRE_FRONT_PROXY",
+		"BZLHUB_ATTRS_INTERPRET",
 	} {
 		t.Setenv(k, "")
 	}

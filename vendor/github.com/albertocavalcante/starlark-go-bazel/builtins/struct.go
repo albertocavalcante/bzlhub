@@ -171,7 +171,7 @@ func (s *Struct) toJSON(_ *starlark.Thread, _ *starlark.Builtin, args starlark.T
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(fmt.Sprintf("%q: ", k))
+		fmt.Fprintf(&sb, "%q: ", k)
 		if err := writeJSON(&sb, s.fields[k]); err != nil {
 			return nil, err
 		}
@@ -218,9 +218,9 @@ func writeJSON(sb *strings.Builder, v starlark.Value) error {
 	case starlark.Int:
 		sb.WriteString(val.String())
 	case starlark.Float:
-		sb.WriteString(fmt.Sprintf("%g", float64(val)))
+		fmt.Fprintf(sb, "%g", float64(val))
 	case starlark.String:
-		sb.WriteString(fmt.Sprintf("%q", string(val)))
+		fmt.Fprintf(sb, "%q", string(val))
 	case *starlark.List:
 		sb.WriteString("[")
 		for i := range val.Len() {
@@ -255,7 +255,7 @@ func writeJSON(sb *strings.Builder, v starlark.Value) error {
 			if !ok {
 				return fmt.Errorf("to_json: dict keys must be strings, got %s", item[0].Type())
 			}
-			sb.WriteString(fmt.Sprintf("%q: ", string(key)))
+			fmt.Fprintf(sb, "%q: ", string(key))
 			if err := writeJSON(sb, item[1]); err != nil {
 				return err
 			}
@@ -272,7 +272,7 @@ func writeJSON(sb *strings.Builder, v starlark.Value) error {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(fmt.Sprintf("%q: ", k))
+			fmt.Fprintf(sb, "%q: ", k)
 			if err := writeJSON(sb, val.fields[k]); err != nil {
 				return err
 			}
@@ -294,16 +294,16 @@ func writeProto(sb *strings.Builder, name string, v starlark.Value, indent int) 
 		return nil
 	case starlark.Bool:
 		if val {
-			sb.WriteString(fmt.Sprintf("%s%s: true\n", prefix, name))
+			fmt.Fprintf(sb, "%s%s: true\n", prefix, name)
 		} else {
-			sb.WriteString(fmt.Sprintf("%s%s: false\n", prefix, name))
+			fmt.Fprintf(sb, "%s%s: false\n", prefix, name)
 		}
 	case starlark.Int:
-		sb.WriteString(fmt.Sprintf("%s%s: %s\n", prefix, name, val.String()))
+		fmt.Fprintf(sb, "%s%s: %s\n", prefix, name, val.String())
 	case starlark.Float:
-		sb.WriteString(fmt.Sprintf("%s%s: %g\n", prefix, name, float64(val)))
+		fmt.Fprintf(sb, "%s%s: %g\n", prefix, name, float64(val))
 	case starlark.String:
-		sb.WriteString(fmt.Sprintf("%s%s: %q\n", prefix, name, string(val)))
+		fmt.Fprintf(sb, "%s%s: %q\n", prefix, name, string(val))
 	case *starlark.List:
 		for i := range val.Len() {
 			if err := writeProto(sb, name, val.Index(i), indent); err != nil {
@@ -317,7 +317,7 @@ func writeProto(sb *strings.Builder, name string, v starlark.Value, indent int) 
 			}
 		}
 	case *starlark.Dict:
-		sb.WriteString(fmt.Sprintf("%s%s {\n", prefix, name))
+		fmt.Fprintf(sb, "%s%s {\n", prefix, name)
 		for _, item := range val.Items() {
 			key, ok := item[0].(starlark.String)
 			if !ok {
@@ -327,9 +327,9 @@ func writeProto(sb *strings.Builder, name string, v starlark.Value, indent int) 
 				return err
 			}
 		}
-		sb.WriteString(fmt.Sprintf("%s}\n", prefix))
+		fmt.Fprintf(sb, "%s}\n", prefix)
 	case *Struct:
-		sb.WriteString(fmt.Sprintf("%s%s {\n", prefix, name))
+		fmt.Fprintf(sb, "%s%s {\n", prefix, name)
 		keys := make([]string, 0, len(val.fields))
 		for k := range val.fields {
 			keys = append(keys, k)
@@ -340,7 +340,7 @@ func writeProto(sb *strings.Builder, name string, v starlark.Value, indent int) 
 				return err
 			}
 		}
-		sb.WriteString(fmt.Sprintf("%s}\n", prefix))
+		fmt.Fprintf(sb, "%s}\n", prefix)
 	default:
 		return fmt.Errorf("to_proto: cannot convert %s to proto", v.Type())
 	}

@@ -23,7 +23,7 @@ package token
 import (
 	"context"
 
-	"github.com/albertocavalcante/canopy/internal/secrets"
+	"github.com/albertocavalcante/bzlhub/internal/secrets"
 )
 
 // Provider returns a bearer token for GitHub API requests, or ""
@@ -57,7 +57,7 @@ func (Anonymous) Token(_ context.Context) (string, error) { return "", nil }
 type PAT struct {
 	// Env is the env var name to read. Convention is the GitHub-
 	// standard `GITHUB_TOKEN`, but operators can choose another
-	// (e.g., `CANOPY_GITHUB_TOKEN`) when sharing a host with
+	// (e.g., `BZLHUB_GITHUB_TOKEN`) when sharing a host with
 	// other tools.
 	Env string
 }

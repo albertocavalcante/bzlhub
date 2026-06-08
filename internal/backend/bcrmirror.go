@@ -13,42 +13,21 @@ import (
 )
 
 // BCRMirror is a Backend backed by a git-aware BCR clone via the
-// go-bcr-mirror library. The library handles Clone, Sync, and
-// drift-aware reads (LogChanges, MetadataAt); the adapter just
-// re-shapes the read API into canopy's Backend contract.
-//
-// BCR-shape reads (Metadata, ModuleBazel, SourceJSON, Patch) are
-// delegated to bcrmirror.Mirror, which enforces module/version/patch
-// name validation as a load-bearing path-traversal boundary. Errors
-// from bcrmirror — ErrModuleNotFound, ErrVersionNotFound,
-// ErrPatchNotFound, ErrInvalidName — are translated to
-// backend.ErrNotFound so HTTP handlers render 404 uniformly. Any 5xx
-// surface would leak the rejection back to the caller as "something
-// interesting happened here" and is therefore avoided.
-//
-// Files that sit outside the validated BCR-shape (bazel_registry.json
-// at root, blobs/<key>, overlay paths) are read straight from
-// Mirror.Path with the same byte-key + traversal hardening that the
-// File backend uses, since bcrmirror's public API doesn't cover them.
-//
-// BCRMirror does NOT itself manage the Mirror lifecycle: the caller
-// supplies an already-Open()ed Mirror. The canopy sync runner owns
-// Clone + Sync; the HTTP server consumes reads.
+// go-bcr-mirror library. BCR-shape reads delegate to bcrmirror
+// (which enforces name validation as a path-traversal boundary);
+// files outside that shape (bazel_registry.json, blobs/, overlay/)
+// read straight from Mirror.Path. bcrmirror's read-side errors
+// translate to backend.ErrNotFound so handlers render 404, never
+// 5xx. The caller supplies an already-Open'd Mirror.
 type BCRMirror struct {
 	mirror *bcrmirror.Mirror
 }
 
-// Mirror exposes the underlying bcrmirror.Mirror so callers (e.g.
-// the canopy Service's drift backfill) can drive its drift-aware
-// reads — LogChanges, MetadataAt — without dropping the Backend
-// abstraction at the HTTP layer.
+// Mirror exposes the underlying bcrmirror.Mirror.
 func (b *BCRMirror) Mirror() *bcrmirror.Mirror { return b.mirror }
 
-// NewBCRMirror constructs a Backend wrapping an already-opened Mirror.
-// Callers are expected to have called Open or Clone before handing
-// the Mirror to NewBCRMirror; the read methods will surface
-// bcrmirror.ErrNoMirror (translated to a wrapped ErrNotFound) if the
-// Mirror is detached.
+// NewBCRMirror constructs a Backend wrapping an already-opened
+// Mirror.
 func NewBCRMirror(m *bcrmirror.Mirror) *BCRMirror { return &BCRMirror{mirror: m} }
 
 func (b *BCRMirror) GetBazelRegistryJSON(_ context.Context) (io.ReadCloser, error) {
@@ -88,11 +67,6 @@ func (b *BCRMirror) GetPatch(ctx context.Context, module, version, filename stri
 }
 
 func (b *BCRMirror) GetOverlay(_ context.Context, module, version, path string) (io.ReadCloser, error) {
-	// Overlay isn't part of bcrmirror's public read API (yet), but
-	// it lives at a deterministic path under the working tree.
-	// Apply the same traversal hardening File uses for overlay
-	// paths, and validate the module/version segments via bcrmirror's
-	// rules to keep the surface uniform.
 	if err := validateBCRSegment(module); err != nil {
 		return nil, ErrNotFound
 	}
@@ -113,12 +87,8 @@ func (b *BCRMirror) GetBlob(_ context.Context, key string) (io.ReadCloser, error
 	return openFile(filepath.Join(b.mirror.Path, "blobs", key))
 }
 
-// translateBCRMirrorErr maps the library's read-side sentinels into
-// the backend contract. Anything that signals "not in the registry"
-// (module/version/patch missing) OR "invalid name" (path-traversal
-// attempt) becomes ErrNotFound. Other errors pass through with the
-// original wrapping intact so server-side logs still see the root
-// cause.
+// translateBCRMirrorErr maps the library's read-side sentinels to
+// backend.ErrNotFound; other errors pass through.
 func translateBCRMirrorErr(err error) error {
 	switch {
 	case err == nil:
@@ -134,11 +104,11 @@ func translateBCRMirrorErr(err error) error {
 	}
 }
 
-// validateBCRSegment is a thin shim that calls bcrmirror's validator
-// via the cheapest public path: route through ReadModuleMetadata-like
-// semantics. We can't reach the package-private validateNameSegment,
-// so we replicate the same surface checks here for the overlay and
-// any future non-API paths the adapter serves directly.
+// validateBCRSegment mirrors the rejection rules bcrmirror's own
+// validateNameSegment applies — empty, leading dot, path separator,
+// ".." sequence, NUL byte. The library doesn't export the validator,
+// and the overlay path doesn't go through bcrmirror's read API, so
+// the checks live here too.
 func validateBCRSegment(s string) error {
 	if s == "" || strings.HasPrefix(s, ".") {
 		return errors.New("invalid segment")

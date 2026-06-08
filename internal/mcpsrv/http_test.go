@@ -12,9 +12,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/mcpsrv"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/mcpsrv"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // jsonrpcResp is the minimal wire shape we decode in these tests.
@@ -37,7 +37,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	svc := canopy.New(s)
+	svc := bzlhub.New(s)
 
 	// version string is cosmetic for MCP serverInfo; pin to a known
 	// literal so a future test can assert on it if needed.
@@ -110,11 +110,11 @@ func TestHTTP_ToolsList(t *testing.T) {
 	// (e.g. accidentally dropping the search registrar from the dispatcher)
 	// fails loud rather than silently halving the count.
 	wantPresent := []string{
-		"canopy_search",
-		"canopy_module_report",
-		"canopy_drift",
-		"canopy_lookup_symbol",
-		"canopy_verify",
+		"bzlhub_search",
+		"bzlhub_module_report",
+		"bzlhub_drift",
+		"bzlhub_lookup_symbol",
+		"bzlhub_verify",
 	}
 	have := make(map[string]bool, len(payload.Tools))
 	for _, t := range payload.Tools {
@@ -128,13 +128,13 @@ func TestHTTP_ToolsList(t *testing.T) {
 }
 
 // TestHTTP_ToolsCall exercises one read-side tool end-to-end via the
-// HTTP transport. canopy_search against an empty store is the cheapest
+// HTTP transport. bzlhub_search against an empty store is the cheapest
 // "did the dispatcher wire correctly?" check — no fixtures required,
 // and the result type is well-typed JSON.
 func TestHTTP_ToolsCall(t *testing.T) {
 	ts := newTestServer(t)
 	body := `{"jsonrpc":"2.0","method":"tools/call","id":2,
-		"params":{"name":"canopy_search","arguments":{"query":"nothing"}}}`
+		"params":{"name":"bzlhub_search","arguments":{"query":"nothing"}}}`
 	resp := postJSONRPC(t, ts, body)
 
 	// Result shape is {content: [{type:"text", text:"..."}], ...}.
@@ -151,10 +151,10 @@ func TestHTTP_ToolsCall(t *testing.T) {
 		t.Fatalf("decode tools/call result: %v raw=%s", err, resp.Result)
 	}
 	if payload.IsError {
-		t.Errorf("canopy_search reported tool error: %s", resp.Result)
+		t.Errorf("bzlhub_search reported tool error: %s", resp.Result)
 	}
 	if len(payload.Content) == 0 {
-		t.Errorf("canopy_search returned empty content array")
+		t.Errorf("bzlhub_search returned empty content array")
 	}
 }
 
@@ -178,7 +178,7 @@ func TestHTTP_ConcurrentIsolation(t *testing.T) {
 			defer wg.Done()
 			body := fmt.Sprintf(
 				`{"jsonrpc":"2.0","method":"tools/call","id":%d,
-				"params":{"name":"canopy_search","arguments":{"query":"q%d"}}}`,
+				"params":{"name":"bzlhub_search","arguments":{"query":"q%d"}}}`,
 				id, id,
 			)
 			req, err := http.NewRequest(http.MethodPost, ts.URL,
@@ -237,8 +237,8 @@ func TestHTTP_GETReturns405(t *testing.T) {
 
 // TestHTTP_WriteTools_GatedByFlag is the security regression gate
 // for the audit pass: when writeEnabled=false the public tools/list
-// MUST NOT advertise mutation tools (canopy_ingest_recursive,
-// canopy_bump). A typo in the dispatcher or an accidentally-true
+// MUST NOT advertise mutation tools (bzlhub_ingest_recursive,
+// bzlhub_bump). A typo in the dispatcher or an accidentally-true
 // default would silently expose write surface to anonymous /mcp
 // callers; this test fails loudly in that case.
 //
@@ -252,10 +252,10 @@ func TestHTTP_WriteTools_GatedByFlag(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	svc := canopy.New(s)
+	svc := bzlhub.New(s)
 
 	// writeEnabled=false — public anonymous-read deployment shape
-	// (matches the production CANOPY_MCP_WRITE_TOOLS_ENABLED=false
+	// (matches the production BZLHUB_MCP_WRITE_TOOLS_ENABLED=false
 	// default on bzlhub.com).
 	h := mcpsrv.NewHTTPHandler(svc, svc, "test-version", false)
 	ts := httptest.NewServer(h)
@@ -276,7 +276,7 @@ func TestHTTP_WriteTools_GatedByFlag(t *testing.T) {
 	}
 
 	// The two tools that mutate the mirror. Both must be absent.
-	for _, banned := range []string{"canopy_ingest_recursive", "canopy_bump"} {
+	for _, banned := range []string{"bzlhub_ingest_recursive", "bzlhub_bump"} {
 		if have[banned] {
 			t.Errorf("write tool %q is exposed when writeEnabled=false (security regression); have=%v",
 				banned, mapKeys(have))
@@ -285,7 +285,7 @@ func TestHTTP_WriteTools_GatedByFlag(t *testing.T) {
 
 	// Sanity: the read tools should still be present so we know the
 	// dispatcher didn't accidentally skip everything.
-	for _, want := range []string{"canopy_search", "canopy_drift", "canopy_external_surface"} {
+	for _, want := range []string{"bzlhub_search", "bzlhub_drift", "bzlhub_external_surface"} {
 		if !have[want] {
 			t.Errorf("read tool %q missing — dispatcher broken?", want)
 		}

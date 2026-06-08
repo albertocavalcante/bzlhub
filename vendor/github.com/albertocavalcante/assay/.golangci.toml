@@ -1,0 +1,96 @@
+## golangci-lint v2 configuration for assay.
+##
+## Keep this list small and outcome-oriented: assay is a
+## static-analysis library, not a sprawling service. Linters that
+## generate noise on legitimate AST-walking patterns (gocognit,
+## funlen, gocritic's hugeParam) are off by default; turn them on
+## per-package if a specific quality problem motivates it.
+
+version = "2"
+
+[run]
+timeout = "5m"
+tests = true
+# Vendor mode so the lint pass resolves dependencies through the
+# committed vendor/ tree rather than chasing the `replace` directives
+# in go.mod that point at sibling working copies which CI doesn't
+# have.
+modules-download-mode = "vendor"
+
+# vendor/ is committed for CI hermeticity until the sibling libs all
+# ship stable tags. Skip it for all linters.
+[issues]
+exclude-dirs = ["vendor"]
+
+[linters]
+default = "standard"
+enable = [
+  "errcheck",
+  "govet",
+  "staticcheck",
+  "unused",
+  "ineffassign",
+  "misspell",
+  "unconvert",
+  "unparam",
+  "whitespace",
+  "copyloopvar",
+  "intrange",
+  "gosec",
+]
+
+# Linters we deliberately don't run:
+#   - wrapcheck: assay returns errors verbatim through library
+#     boundaries on purpose. Wrapping policy is per-package.
+#   - exhaustruct: report.* structs have many optional fields by
+#     design (omitempty). Forcing every literal to fill every field
+#     is noise.
+#   - varnamelen: short receiver names (`v *visitor`) and short
+#     local idents in tight AST-walk loops are deliberate.
+#   - gocognit / funlen / gocyclo: AST visitor methods are
+#     unavoidably long. Splitting them just for the linter hurts
+#     readability.
+disable = [
+  "wrapcheck",
+  "exhaustruct",
+  "varnamelen",
+  "gocognit",
+  "funlen",
+  "gocyclo",
+]
+
+[linters.settings.errcheck]
+check-type-assertions = false
+check-blank = false
+
+[linters.settings.govet]
+enable-all = true
+# fieldalignment fights with the reports/ struct layouts that are
+# tuned for readability (logical field grouping) over byte packing.
+disable = ["fieldalignment"]
+
+[linters.settings.misspell]
+locale = "US"
+
+[linters.settings.staticcheck]
+# SA1019: deprecated-API warnings. We pull these in via go vet's
+# staticcheck-equivalents already; suppressing here avoids the
+# duplicate flag when a transitively-deprecated symbol leaks
+# through go-bzlmod's API.
+checks = ["all", "-SA1019"]
+
+[linters.settings.gosec]
+# G104 (errcheck duplicate), G115 (int conversion overflow — false
+# positives on AST col/row int64 math) — both already covered by
+# narrower checks or otherwise noisy in this codebase.
+excludes = ["G104", "G115"]
+
+[linters.exclusions]
+generated = "lax"
+
+# Test files get more rope — fixtures, table-driven loops, and
+# helper closures legitimately repeat shapes that would trip
+# golint-ier linters elsewhere.
+[[linters.exclusions.rules]]
+path = "_test\\.go"
+linters = ["gosec", "errcheck"]

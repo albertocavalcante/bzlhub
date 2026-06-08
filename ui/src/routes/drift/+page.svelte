@@ -7,7 +7,7 @@
   // expandable per-module details. Power-user density over hand-holding.
   //
   // Errors are surfaced inline (not toasts) because the 409 "not configured"
-  // case is informative ("you started canopy without --root"), not transient.
+  // case is informative ("you started bzlhub without --root"), not transient.
 
   import {
     getDrift,
@@ -360,7 +360,7 @@
     void load();
   });
 
-  // Live progress: when canopy publishes a high rate of module_indexed
+  // Live progress: when bzlhub publishes a high rate of module_indexed
   // events (a recursive ingest in flight), surface a banner counting
   // them. The banner fades 2s after the burst stops. Single events
   // (e.g., a one-off bump) still trigger a drift refresh via the
@@ -403,7 +403,7 @@
 </script>
 
 <svelte:head>
-  <title>drift — canopy</title>
+  <title>drift — bzlhub</title>
 </svelte:head>
 
 <div class="flex flex-col gap-6">
@@ -411,7 +411,7 @@
     <div class="flex items-baseline gap-3 flex-wrap">
       <h1 class="font-mono text-2xl text-fg tracking-tight">drift</h1>
       <p class="text-[12px] text-fg-mute">
-        compare canopy's local mirror against an upstream BCR-shape registry
+        compare bzlhub's local mirror against an upstream BCR-shape registry
       </p>
     </div>
     <form
@@ -449,7 +449,7 @@
     <div class="rounded-md border border-warn/30 bg-warn/5 px-4 py-3 text-[13px] flex flex-col gap-2">
       <p class="text-warn font-medium">drift requires a mirror root</p>
       <p class="text-fg-mute leading-relaxed">
-        Start canopy with <code class="text-fg-mute">--root &lt;path-to-mirror&gt;</code>
+        Start bzlhub with <code class="text-fg-mute">--root &lt;path-to-mirror&gt;</code>
         pointing at a BCR-shape directory tree. Then refresh this page.
       </p>
       <p class="text-[11px] text-fg-dim">{error}</p>

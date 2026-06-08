@@ -3,7 +3,7 @@
   //
   // /modules/<m>/<v>/consumers/<name> — every call site of the
   // named rule / provider / macro / repo_rule / module_extension
-  // across canopy's indexed corpus. Backed by Service.LookupConsumers
+  // across bzlhub's indexed corpus. Backed by Service.LookupConsumers
   // (which resolves the user-facing name to a SCIP symbol via the
   // defining module's ModuleReport and walks every blob).
   //
@@ -103,7 +103,7 @@
 </script>
 
 <svelte:head>
-  <title>Consumers of {display.name} — canopy</title>
+  <title>Consumers of {display.name} — bzlhub</title>
 </svelte:head>
 
 <div class="flex flex-col gap-4">
@@ -167,10 +167,10 @@
     {#if result.consumers.length === 0}
       <div class="rounded border border-line bg-bg-elev/40 px-4 py-3 text-[13px] text-fg-mute">
         {#if !includeSelf}
-          No call sites in canopy's indexed corpus outside the defining module.
+          No call sites in bzlhub's indexed corpus outside the defining module.
           Toggle "include self" to also see {result.module}'s own references.
         {:else}
-          No call sites in canopy's indexed corpus. Ingest more modules to populate cross-corpus consumer data.
+          No call sites in bzlhub's indexed corpus. Ingest more modules to populate cross-corpus consumer data.
         {/if}
       </div>
     {:else}

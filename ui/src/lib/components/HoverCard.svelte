@@ -268,7 +268,7 @@
         </a>
       {:else if loadState.kind === 'notfound'}
         <div class="text-fg-mute">
-          <span class="font-mono text-fg">{moduleName}</span> isn't indexed in this canopy.
+          <span class="font-mono text-fg">{moduleName}</span> isn't indexed in this bzlhub.
         </div>
       {:else if loadState.kind === 'error'}
         <div class="text-err text-[11px]" title={loadState.message}>

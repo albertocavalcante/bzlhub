@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/modulediff"
+	"github.com/albertocavalcante/bzlhub/internal/modulediff"
 )
 
 // renderShell produces nothing when no finding carries a codemod —

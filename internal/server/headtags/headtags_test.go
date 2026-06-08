@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/server/headtags"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/server/headtags"
 )
 
 func TestCompose_RootPath(t *testing.T) {

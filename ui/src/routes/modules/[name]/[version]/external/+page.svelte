@@ -310,7 +310,7 @@
           Tag instances that consumers of this ruleset pin on its
           <code class="text-fg">module_extension</code>s. Use this when
           deciding which versions/platforms to mirror — these are what
-          your canopy-indexed ecosystem actually fetches, not just the
+          your bzlhub-indexed ecosystem actually fetches, not just the
           ruleset's declared defaults.
         </div>
         {#each surface.corpus_usages as cu (cu.extension_file + '%' + cu.extension_name)}

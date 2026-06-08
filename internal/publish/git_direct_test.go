@@ -66,7 +66,7 @@ func TestGitDirect_RoundTrip(t *testing.T) {
 
 	pub, err := NewGitDirect(GitDirectConfig{
 		WorkTree:    workTree,
-		BotIdentity: Identity{Name: "canopy-bot", Email: "canopy@example.com"},
+		BotIdentity: Identity{Name: "bzlhub-bot", Email: "bzlhub@example.com"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -136,7 +136,7 @@ func TestGitDirect_RoundTrip(t *testing.T) {
 		t.Fatalf("author: %q", author)
 	}
 	committer := runOutput(t, check, "git", "log", "-1", "--pretty=%cn <%ce>", "HEAD")
-	if committer != "canopy-bot <canopy@example.com>" {
+	if committer != "bzlhub-bot <bzlhub@example.com>" {
 		t.Fatalf("committer: %q", committer)
 	}
 
@@ -152,7 +152,7 @@ func TestGitDirect_RoundTrip(t *testing.T) {
 		"Source: https://example.com/foo-1.0.0.tar.gz",
 		"Integrity: " + ref.Integrity,
 		"Requested-by: Alberto Cavalcante <alberto@example.com>",
-		"Published-via: canopy ",
+		"Published-via: bzlhub ",
 		"Resolved-at:",
 	} {
 		if !strings.Contains(body, want) {

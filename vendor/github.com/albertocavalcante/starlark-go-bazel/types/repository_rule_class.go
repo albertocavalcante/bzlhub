@@ -3,8 +3,9 @@ package types
 import (
 	"fmt"
 
-	"github.com/albertocavalcante/starlark-go-bazel/taint"
 	"go.starlark.net/starlark"
+
+	"github.com/albertocavalcante/starlark-go-bazel/taint"
 )
 
 // RepositoryRuleClass is the captured definition of a Starlark
@@ -50,9 +51,13 @@ func NewRepositoryRuleClass(impl starlark.Callable, attrs map[string]starlark.Va
 // RepositoryRuleOption configures optional kwargs.
 type RepositoryRuleOption func(*RepositoryRuleClass)
 
-func WithLocal(v bool) RepositoryRuleOption     { return func(r *RepositoryRuleClass) { r.local = v } }
-func WithConfigure(v bool) RepositoryRuleOption { return func(r *RepositoryRuleClass) { r.configure = v } }
-func WithRemotable(v bool) RepositoryRuleOption { return func(r *RepositoryRuleClass) { r.remotable = v } }
+func WithLocal(v bool) RepositoryRuleOption { return func(r *RepositoryRuleClass) { r.local = v } }
+func WithConfigure(v bool) RepositoryRuleOption {
+	return func(r *RepositoryRuleClass) { r.configure = v }
+}
+func WithRemotable(v bool) RepositoryRuleOption {
+	return func(r *RepositoryRuleClass) { r.remotable = v }
+}
 func WithRepoEnviron(env []string) RepositoryRuleOption {
 	return func(r *RepositoryRuleClass) { r.environ = env }
 }
@@ -65,19 +70,21 @@ func (r *RepositoryRuleClass) String() string {
 	return "<repository_rule>"
 }
 
-func (r *RepositoryRuleClass) Type() string             { return "repository_rule" }
-func (r *RepositoryRuleClass) Freeze()                  { r.frozen = true }
-func (r *RepositoryRuleClass) Truth() starlark.Bool     { return true }
-func (r *RepositoryRuleClass) Hash() (uint32, error)    { return 0, fmt.Errorf("unhashable: repository_rule") }
-func (r *RepositoryRuleClass) Name() string             { return r.name }
-func (r *RepositoryRuleClass) SetName(name string)      { r.name = name }
+func (r *RepositoryRuleClass) Type() string         { return "repository_rule" }
+func (r *RepositoryRuleClass) Freeze()              { r.frozen = true }
+func (r *RepositoryRuleClass) Truth() starlark.Bool { return true }
+func (r *RepositoryRuleClass) Hash() (uint32, error) {
+	return 0, fmt.Errorf("unhashable: repository_rule")
+}
+func (r *RepositoryRuleClass) Name() string                      { return r.name }
+func (r *RepositoryRuleClass) SetName(name string)               { r.name = name }
 func (r *RepositoryRuleClass) Implementation() starlark.Callable { return r.implementation }
-func (r *RepositoryRuleClass) Attrs() map[string]starlark.Value { return r.attrs }
-func (r *RepositoryRuleClass) Local() bool              { return r.local }
-func (r *RepositoryRuleClass) Configure() bool          { return r.configure }
-func (r *RepositoryRuleClass) Remotable() bool          { return r.remotable }
-func (r *RepositoryRuleClass) Environ() []string        { return r.environ }
-func (r *RepositoryRuleClass) Doc() string              { return r.doc }
+func (r *RepositoryRuleClass) Attrs() map[string]starlark.Value  { return r.attrs }
+func (r *RepositoryRuleClass) Local() bool                       { return r.local }
+func (r *RepositoryRuleClass) Configure() bool                   { return r.configure }
+func (r *RepositoryRuleClass) Remotable() bool                   { return r.remotable }
+func (r *RepositoryRuleClass) Environ() []string                 { return r.environ }
+func (r *RepositoryRuleClass) Doc() string                       { return r.doc }
 
 // CallInternal records the instantiation into the thread-local sink
 // established by InvokeModuleExtension. When called outside an

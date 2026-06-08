@@ -33,8 +33,8 @@ import (
 
 	"go.starlark.net/syntax"
 
-	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/report"
+	syntaxutil "github.com/albertocavalcante/go-starlark-syntaxutil"
 )
 
 // ─────────────────────────────────────────────────────────────────────
@@ -336,16 +336,7 @@ func dictEntriesToAttrs(entries []*syntax.DictEntry) []report.AttrSpec {
 		if !ok {
 			continue
 		}
-		spec := report.AttrSpec{Name: key}
-		if valCall, ok := e.Value.(*syntax.CallExpr); ok {
-			spec.Type = attrTypeFromCall(valCall)
-			spec.Doc = syntaxutil.StringKeywordArg(valCall, "doc")
-			spec.Mandatory = syntaxutil.BoolKeywordArg(valCall, "mandatory")
-			if def := syntaxutil.KeywordArg(valCall, "default"); def != nil {
-				spec.Default = literalAsText(def)
-			}
-		}
-		out = append(out, spec)
+		out = append(out, attrSpecFromCall(key, e.Value))
 	}
 	return out
 }

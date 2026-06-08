@@ -226,9 +226,9 @@ func (ri *RuleInstance) Attr(name string) (starlark.Value, error) {
 			return ri.label, nil
 		}
 		return starlark.None, nil
-	case "kind":
+	case attrKind:
 		return starlark.String(ri.ruleClass.name), nil
-	case "name":
+	case attrName:
 		return starlark.String(ri.name), nil
 	}
 
@@ -252,7 +252,7 @@ func (ri *RuleInstance) Attr(name string) (starlark.Value, error) {
 // AttrNames returns the list of attribute names.
 func (ri *RuleInstance) AttrNames() []string {
 	// Include pseudo-attributes
-	names := []string{"label", "kind", "name"}
+	names := []string{"label", attrKind, attrName}
 
 	// Add all attributes from the rule class
 	for name := range ri.ruleClass.attrs {
@@ -397,10 +397,10 @@ func (ri *RuleInstance) Validate() error {
 // DebugString returns a detailed string representation for debugging.
 func (ri *RuleInstance) DebugString() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("RuleInstance(%s):\n", ri.name))
-	sb.WriteString(fmt.Sprintf("  rule_class: %s\n", ri.ruleClass.name))
+	fmt.Fprintf(&sb, "RuleInstance(%s):\n", ri.name)
+	fmt.Fprintf(&sb, "  rule_class: %s\n", ri.ruleClass.name)
 	if ri.label != nil {
-		sb.WriteString(fmt.Sprintf("  label: %s\n", ri.label.String()))
+		fmt.Fprintf(&sb, "  label: %s\n", ri.label.String())
 	}
 	sb.WriteString("  attrs:\n")
 
@@ -413,7 +413,7 @@ func (ri *RuleInstance) DebugString() string {
 
 	for _, name := range names {
 		v := ri.attrValues[name]
-		sb.WriteString(fmt.Sprintf("    %s = %s\n", name, v.String()))
+		fmt.Fprintf(&sb, "    %s = %s\n", name, v.String())
 	}
 	return sb.String()
 }

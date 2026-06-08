@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/albertocavalcante/canopy/internal/mirror"
+	"github.com/albertocavalcante/bzlhub/internal/mirror"
 )
 
 // FilesystemPublisher writes BCR-shape entries directly to a destination

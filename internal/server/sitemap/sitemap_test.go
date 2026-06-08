@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/server/sitemap"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/server/sitemap"
 )
 
 func TestStream_NilCanopy_StaticOnly(t *testing.T) {
@@ -85,6 +85,49 @@ func TestStream_WithCanopy_EmitsModuleAndVersion(t *testing.T) {
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in output:\n%s", want, out)
+		}
+	}
+}
+
+// Sentinel/stub versions ("0.0.0", "HEAD", etc.) are persisted for
+// cross-reference bookkeeping when a module is named via bazel_deps
+// but never ingested for real. They render empty pages and shouldn't
+// be advertised to crawlers — the sitemap must skip them.
+func TestStream_SkipsStubVersions(t *testing.T) {
+	c := &fakeCanopy{
+		mods: []api.ModuleSummary{
+			{Name: "rules_oci", LatestVersion: "2.0.1"},
+			{Name: "gazelle", LatestVersion: "0.40.0"},
+		},
+		versions: map[string][]string{
+			"rules_oci": {"2.0.1", "0.0.0"},                     // 0.0.0 = synthetic floor
+			"gazelle":   {"0.40.0", "0.36.0", "HEAD"},           // HEAD = git-shaped placeholder
+		},
+	}
+	var buf bytes.Buffer
+	if err := sitemap.Stream(context.Background(), c, "https://bzlhub.com", &buf); err != nil {
+		t.Fatalf("Stream: %v", err)
+	}
+	out := buf.String()
+
+	// Real versions present.
+	for _, want := range []string{
+		"<loc>https://bzlhub.com/modules/rules_oci/2.0.1</loc>",
+		"<loc>https://bzlhub.com/modules/gazelle/0.40.0</loc>",
+		"<loc>https://bzlhub.com/modules/gazelle/0.36.0</loc>",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("real-version %q missing:\n%s", want, out)
+		}
+	}
+
+	// Stubs filtered.
+	for _, banned := range []string{
+		"/modules/rules_oci/0.0.0",
+		"/modules/gazelle/HEAD",
+	} {
+		if strings.Contains(out, banned) {
+			t.Errorf("stub version %q should not appear in sitemap:\n%s", banned, out)
 		}
 	}
 }

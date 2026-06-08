@@ -17,10 +17,10 @@ import (
 // on a local git working tree, pushes the branch to the configured
 // remote, and opens a pull request via Forge. The default base
 // branch is "main"; the feature branch name follows the convention
-// `canopy/add-<module>-<version>`.
+// `bzlhub/add-<module>-<version>`.
 //
 // The worktree must already exist with .git initialized and a remote
-// configured. As with GitDirectPublisher, the worktree is canopy-owned
+// configured. As with GitDirectPublisher, the worktree is bzlhub-owned
 // — local changes are discarded on each publish.
 type GitPRPublisher struct {
 	workTree   string
@@ -59,7 +59,7 @@ type GitPRConfig struct {
 	// Forge is the API surface used to OpenPR. Required.
 	Forge bigorna.Forge
 
-	// Labels are applied to every opened PR (e.g., {"canopy/auto"}).
+	// Labels are applied to every opened PR (e.g., {"bzlhub/auto"}).
 	// The forge impl is responsible for translating these to its
 	// native marker — branch-prefix on Bitbucket DC, real labels on
 	// GitHub.
@@ -227,11 +227,11 @@ func (p *GitPRPublisher) stage(ctx context.Context, module string) error {
 	)
 }
 
-// BranchName builds the canopy branch convention. Action is "add",
+// BranchName builds the bzlhub branch convention. Action is "add",
 // "yank", "auto-bump", or "request"; module + version are slug-safe.
 //
 // This convention is shared across forges. Bitbucket DC has no PR
-// labels, so the branch prefix is its only marker for canopy-mediated
+// labels, so the branch prefix is its only marker for bzlhub-mediated
 // PRs.
 func BranchName(action, module, version string) string {
 	slug := func(s string) string {
@@ -242,7 +242,7 @@ func BranchName(action, module, version string) string {
 		s = strings.ReplaceAll(s, " ", "-")
 		return s
 	}
-	return fmt.Sprintf("canopy/%s-%s-%s", action, slug(module), slug(version))
+	return fmt.Sprintf("bzlhub/%s-%s-%s", action, slug(module), slug(version))
 }
 
 // buildPRBody is the minimal G3 PR body. Future phases (G5 surfaces
@@ -252,7 +252,7 @@ func BranchName(action, module, version string) string {
 func buildPRBody(req PublishRequest, headSHA string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "## Add `%s@%s`\n\n", req.Module, req.Version)
-	fmt.Fprintf(&b, "Prepared by **canopy** at the request of **%s**.\n\n", req.Requester.String())
+	fmt.Fprintf(&b, "Prepared by **bzlhub** at the request of **%s**.\n\n", req.Requester.String())
 	if req.SourceURL != "" {
 		fmt.Fprintf(&b, "- **Source:** %s\n", req.SourceURL)
 	}
@@ -267,7 +267,7 @@ func buildPRBody(req PublishRequest, headSHA string) string {
 }
 
 // ensureGitignoreBlobs ensures the worktree's .gitignore excludes
-// blobs/ — canopy's local serving cache is not part of the BCR shape.
+// blobs/ — bzlhub.s local serving cache is not part of the BCR shape.
 // Lives at package scope so both git publishers reuse it.
 func ensureGitignoreBlobs(workTree string) error {
 	path := filepath.Join(workTree, ".gitignore")
@@ -281,7 +281,7 @@ func ensureGitignoreBlobs(workTree string) error {
 	if len(b) > 0 && b[len(b)-1] != '\n' {
 		b = append(b, '\n')
 	}
-	b = append(b, []byte("# canopy: serving cache, not part of the BCR shape\nblobs/\n")...)
+	b = append(b, []byte("# bzlhub: serving cache, not part of the BCR shape\nblobs/\n")...)
 	return os.WriteFile(path, b, 0o644)
 }
 

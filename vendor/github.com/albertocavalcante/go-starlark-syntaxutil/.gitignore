@@ -1,0 +1,23 @@
+# Build artifacts.
+*.test
+*.exe
+
+# Dev/CI tool binaries built from tools.go.mod (golangci-lint,
+# gotestsum, shfmt) — installed via `just sync-tools`. Per-repo
+# convention: built under ./bin/, gitignored.
+/bin/
+
+# Test artifacts.
+/coverage.out
+/profile.out
+
+# Editor / OS.
+.DS_Store
+.idea/
+.vscode/
+
+# vendor/ — NOT committed here.
+#
+# Per the lib-carveout plan (decision 11): no vendor/ on this repo.
+# Single external dep is go.starlark.net which has tagged releases.
+/vendor/

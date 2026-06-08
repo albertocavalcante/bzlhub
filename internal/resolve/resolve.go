@@ -25,8 +25,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/albertocavalcante/canopy/internal/archive"
-	"github.com/albertocavalcante/canopy/internal/fetch"
+	"github.com/albertocavalcante/bzlhub/internal/archive"
+	"github.com/albertocavalcante/bzlhub/internal/fetch"
 )
 
 // Materialized describes the on-disk state of a freshly-resolved module.

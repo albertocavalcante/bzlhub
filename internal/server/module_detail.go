@@ -9,10 +9,10 @@ import (
 
 	bazeldoc "github.com/albertocavalcante/bazel-doc-go"
 	bzlsummary "github.com/albertocavalcante/bazel-module-summary-go"
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/api/paths"
-	"github.com/albertocavalcante/canopy/internal/docview"
-	"github.com/albertocavalcante/canopy/internal/githubmeta"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/docview"
+	"github.com/albertocavalcante/bzlhub/internal/githubmeta"
 	doc "github.com/albertocavalcante/starlark-doc-go"
 )
 

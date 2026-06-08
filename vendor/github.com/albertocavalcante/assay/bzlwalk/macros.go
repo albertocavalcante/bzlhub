@@ -47,8 +47,8 @@ import (
 	"go.starlark.net/syntax"
 
 	"github.com/albertocavalcante/assay/dialect"
-	"github.com/albertocavalcante/assay/internal/syntaxutil"
 	"github.com/albertocavalcante/assay/report"
+	syntaxutil "github.com/albertocavalcante/go-starlark-syntaxutil"
 )
 
 // fileMacroContext is the per-file set of names that, when called from

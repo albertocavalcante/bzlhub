@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/albertocavalcante/canopy/internal/api"
-	"github.com/albertocavalcante/canopy/internal/api/paths"
-	"github.com/albertocavalcante/canopy/internal/backend"
-	"github.com/albertocavalcante/canopy/internal/canopy"
-	"github.com/albertocavalcante/canopy/internal/server"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/backend"
+	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
+	"github.com/albertocavalcante/bzlhub/internal/server"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // Plan 16 F3 — /api/v1/upstreams reports federation state.
@@ -32,7 +32,7 @@ func TestUpstreams_NoFederationReportsLocalPrimary(t *testing.T) {
 	t.Cleanup(func() { _ = s.Close() })
 
 	bk := backend.NewFile("/tmp/canopy-test")
-	ts := httptest.NewServer(server.New(bk, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(bk, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.Upstreams())
@@ -113,7 +113,7 @@ func TestUpstreams_FederationReportsEachUpstream(t *testing.T) {
 		_ = cascade.ProbeUpstream(ctx, up) // ignore err — we want the side-effect on Upstream.mu
 	}
 
-	ts := httptest.NewServer(server.New(cascade, canopy.New(s), nil))
+	ts := httptest.NewServer(server.New(cascade, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
 	res, err := http.Get(ts.URL + paths.Upstreams())

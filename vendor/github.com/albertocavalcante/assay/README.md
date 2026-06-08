@@ -4,15 +4,28 @@ Static introspection of Bazel modules. Given a module's source tree, produce a s
 
 ## What it does
 
-- Parses `MODULE.bazel` via [`go-bzlmod`](https://github.com/albertocavalcante/go-bzlmod).
+- Parses `MODULE.bazel` via [`go-bzlmod-ast`](https://github.com/albertocavalcante/go-bzlmod-ast) and surfaces:
+  - `module()` declaration with `bazel_compatibility` constraints
+  - `bazel_dep(...)` entries with `dev_dependency` + `repo_name` annotations
+  - `use_extension(...)` chains, including `use_repo` imports + renames
+    and per-tag `<local>.<tag>(...)` invocations with typed kwargs
+  - All `*_override(...)` forms (single_version, multiple_version, git, archive, local_path)
+  - `register_toolchains(...)` and `register_execution_platforms(...)`
+  - `include(...)` labels (Bazel 7.2+)
 - Walks every `.bzl` and `BUILD`/`BUILD.bazel` file with `go.starlark.net/syntax`, extracts:
   - `rule()` definitions with attribute schemas
+    (including `attr.label(providers = [...])` provider-group constraints)
   - `provider()` and `aspect()` definitions
+    (full aspect surface: attrs, attr_aspects, required_providers, provides,
+    fragments, host_fragments, toolchains, apply_to_generating_rules)
   - `macro()` definitions (top-level exported `def`s)
-  - `repository_rule()` and `module_extension()` calls
-  - `toolchain_type()` declarations
-- Classifies the module's **hermeticity profile** — `pure-starlark` / `prebuilt-binaries-pinned` / `build-from-source` / `network-fetch-required` / `requires-system-tools` / `repository-rule-arbitrary-code`. Each finding carries provenance (file path + line range).
-- Emits a single `ModuleReport` struct (JSON-serializable).
+  - `repository_rule()` definitions
+  - `module_extension()` calls with their `tag_class(...)` schemas
+  - `toolchain_type()` declarations and concrete `toolchain(...)` registrations
+    (pairings of toolchain_type with implementation targets)
+- Classifies the module's **hermeticity profile** — `pure-starlark` / `prebuilt-binaries-pinned` / `build-from-source` / `network-fetch-pinned` / `network-fetch-unpinned` / `requires-system-tools` / `repository-rule-arbitrary-code`. Each finding carries provenance (file path + line range).
+- Surfaces module assets: README, LICENSE (+ heuristic SPDX name), CHANGELOG path, and CI presence + provider list (`.github/workflows/`, `.forgejo/workflows/`, `.bazelci/`).
+- Emits a single `ModuleReport` struct (JSON-serializable; JSON Schema available via `assay schema`).
 
 ## Why
 
@@ -63,16 +76,16 @@ assay --version                                          # version + VCS revisio
 
 ## Performance
 
-Indicative numbers on an Apple M4 (warm OS file cache, `count=10`, `benchtime=10x`):
+Indicative numbers on an Apple M4 (warm OS file cache, `count=10`, `benchtime=10x`; baseline re-recorded 2026-05-31 after Rounds D-F + Phase 0):
 
 | Module | Files | sec/op | Allocs/op |
 |---|---:|---:|---:|
-| testdata/tiny-module | 4 | 0.5ms ±13% | 957 |
-| rules_lint | ~500 | 53ms ±2% | 114k |
-| rules_go | ~1000 | 73ms ±7% | 143k |
-| rules_python | ~2000 | 213ms ±2% | 424k |
+| testdata/tiny-module | 4 | 0.6ms ±11% | 999 |
+| rules_lint | ~500 | 48ms ±3% | 114k |
+| rules_go | ~1000 | 74ms ±7% | 144k |
+| rules_python | ~2000 | 211ms ±5% | 424k |
 
-The merged-walks refactor (`internal/walkparse`) brought a 4× speedup over the v0.1 per-package walks; benchmarks lock that in. Full baseline (raw benchstat-compatible output + reproducibility recipe + comparison workflow) lives in [`docs/benchmarks.md`](docs/benchmarks.md). To silence the default stderr noise when embedding as a library or in benchmarks, pass `assay.WithParseErrorHandler(fn)`.
+The merged-walks refactor (`internal/walkparse`) brought a 4× speedup over the v0.1 per-package walks; benchmarks lock that in. Corpus-scale modules sit at or under the v0.1 baseline post-D-F; the synthetic tiny fixture absorbs the per-module fixed costs from CI presence detection + CHANGELOG read. Full baseline (raw benchstat-compatible output + reproducibility recipe + comparison workflow) lives in [`docs/benchmarks.md`](docs/benchmarks.md). To silence the default stderr noise when embedding as a library or in benchmarks, pass `assay.WithParseErrorHandler(fn)`.
 
 ## Deterministic vs heuristic
 
@@ -81,6 +94,15 @@ Every output field is either an exact AST extraction (deterministic) or a patter
 ## Naming
 
 `assay` = to determine the composition or quality of something (chemistry/metallurgy). The library determines the composition of a Bazel module. Working name; rename is cheap (single Go module path).
+
+## Two parsers, by design
+
+assay parses Starlark through two distinct libraries because Bazel itself does:
+
+- **MODULE.bazel** goes through [`go-bzlmod-ast`](https://github.com/albertocavalcante/go-bzlmod-ast), a Go port of `bazelbuild/buildtools`. MODULE.bazel is a strictly-typed declarative file Bazel reads through buildtools — same parser, same Span shape, same `<var>.<tag>(...)` extension-call semantics. assay's `modulefile/` package projects the parsed tree onto `report.ModuleReport` through go-bzlmod-ast's `Handler` interface in a single walk.
+- **`.bzl` / `BUILD` / `BUILD.bazel`** go through [`go.starlark.net/syntax`](https://pkg.go.dev/go.starlark.net/syntax), the canonical Go Starlark parser. Helpers shared across `bzlwalk/` and `hermetic/` live in the [`go-starlark-syntaxutil`](https://github.com/albertocavalcante/go-starlark-syntaxutil) sibling library (kwarg/ident/load/topdict/path utilities).
+
+The split is intentional — each parser is purpose-built for the file flavor it handles. assay's job is to bridge them: one ModuleReport, two underlying grammars.
 
 ## Further reading
 

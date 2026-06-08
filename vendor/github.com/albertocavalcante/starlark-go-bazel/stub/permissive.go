@@ -10,6 +10,18 @@
 // downside: any URL derived through a Permissive is opaque, which is
 // why taint.Marker is embedded into the value's String() output.
 //
+// # Known limitations
+//
+//   - Permissive.Hash() returns an error, so a Permissive value used
+//     as a dict key aborts the surrounding (per-platform) fork. The
+//     caller's eval.ForkError surfaces the aborted platform; the
+//     other platforms continue. Tracked under plan 01 §06 Q5 —
+//     trade-off was "keep unhashable, surface via ForkError" over
+//     "sentinel hash that lets dict semantics get weird."
+//   - Permissive.Truth() returns True; ruleset code that branches on
+//     `if not value:` will take the truthy branch even when the value
+//     was loaded-but-unset. Adjust on real-corpus evidence.
+//
 // See docs/plans/01-bazel-builtins-emulation/04-permissive-and-taint.md
 // for the full semantic contract.
 package stub
@@ -17,9 +29,10 @@ package stub
 import (
 	"fmt"
 
-	"github.com/albertocavalcante/starlark-go-bazel/taint"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+
+	"github.com/albertocavalcante/starlark-go-bazel/taint"
 )
 
 // Permissive is the universal-stub Starlark value. Returned for

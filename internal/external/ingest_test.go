@@ -8,8 +8,8 @@ import (
 
 	"github.com/albertocavalcante/assay/report"
 
-	"github.com/albertocavalcante/canopy/internal/external"
-	"github.com/albertocavalcante/canopy/internal/store"
+	"github.com/albertocavalcante/bzlhub/internal/external"
+	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
 // End-to-end: synthesize a workspace with a single .bzl that defines a

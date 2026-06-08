@@ -106,7 +106,7 @@ func FilterExports(globals starlark.StringDict) starlark.StringDict {
 	exports := make(starlark.StringDict)
 	for name, value := range globals {
 		// Skip private names
-		if len(name) > 0 && name[0] == '_' {
+		if name != "" && name[0] == '_' {
 			continue
 		}
 		exports[name] = value

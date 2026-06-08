@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -20,7 +19,7 @@ import (
 func TestNewFromRoot_FileForPlainDir(t *testing.T) {
 	dir := t.TempDir()
 
-	bk, err := NewFromRoot(context.Background(), dir)
+	bk, err := NewFromRoot(t.Context(), dir)
 	if err != nil {
 		t.Fatalf("NewFromRoot: %v", err)
 	}
@@ -31,7 +30,7 @@ func TestNewFromRoot_FileForPlainDir(t *testing.T) {
 
 // TestNewFromRoot_MirrorForGitDir asserts a git-initialised root
 // yields a BCRMirror. This is the "operator cloned the registry,
-// then ran canopy serve --root <clone-path>" path.
+// then ran bzlhub serve --root <clone-path>" path.
 func TestNewFromRoot_MirrorForGitDir(t *testing.T) {
 	dir := t.TempDir()
 	repo, err := git.PlainInit(dir, false)
@@ -55,7 +54,7 @@ func TestNewFromRoot_MirrorForGitDir(t *testing.T) {
 		t.Fatalf("Commit: %v", err)
 	}
 
-	bk, err := NewFromRoot(context.Background(), dir)
+	bk, err := NewFromRoot(t.Context(), dir)
 	if err != nil {
 		t.Fatalf("NewFromRoot: %v", err)
 	}
@@ -69,7 +68,7 @@ func TestNewFromRoot_MirrorForGitDir(t *testing.T) {
 // the other. The operator's --root typo shouldn't manifest as
 // "every read 404s."
 func TestNewFromRoot_ErrorForNonexistent(t *testing.T) {
-	_, err := NewFromRoot(context.Background(), "/this/path/does/not/exist")
+	_, err := NewFromRoot(t.Context(), "/this/path/does/not/exist")
 	if err == nil {
 		t.Fatalf("NewFromRoot on missing dir returned nil; expected error")
 	}

@@ -13,7 +13,7 @@ import { paths } from './paths';
 export { renderSnippet } from '../search/snippet';
 
 /**
- * API client for canopy's /api/* endpoints. Path strings live in
+ * API client for bzlhub's /api/* endpoints. Path strings live in
  * ./paths (mirror of internal/api/paths/paths.go); this client wraps
  * them with fetch + JSON handling. Every method takes an optional
  * AbortSignal so the caller can cancel in-flight requests on prop
@@ -150,25 +150,28 @@ export type DriftStatus =
 /**
  * DriftSummary mirrors internal/api/DriftSummary. Carried on every
  * ModuleSummary so listing pages render drift badges without a
- * separate /api/v1/drift roundtrip. The empty object {} is the
- * canonical "unknown" payload; the UI treats both an absent .status
- * and 'unknown' the same way (silent chip).
+ * separate /api/v1/drift roundtrip. Empty object {} is the canonical
+ * "unknown" payload; the UI treats absent .status and 'unknown' the
+ * same (silent chip).
  *
- * computed_at is optional — present once a drift source has
- * populated this row. Drives the "as of <when>" hover affordance
- * (Plan 21 honest-staleness).
+ * computed_at: when the verdict was last evaluated.
+ * synced_at: when the upstream snapshot used for the verdict was
+ * fetched. Distinct from computed_at — a drift refresh between
+ * syncs advances computed_at but leaves synced_at older.
  */
 export interface DriftSummary {
   status?: DriftStatus;
   behind?: number;
   latest_upstream?: string;
   computed_at?: string;
+  upstream_sha?: string;
+  synced_at?: string;
 }
 
 /**
  * Corpus-overview API: one summary per indexed module. Used by the
  * /modules SvelteKit route to render a browse surface for users who
- * land on canopy without knowing what to search for.
+ * land on bzlhub without knowing what to search for.
  */
 export interface ModuleSummary {
   name: string;
@@ -181,18 +184,18 @@ export interface ModuleSummary {
   // to keep users out of a misleading empty file tree.
   has_source_index: boolean;
   // Registry metadata lifted from mirror/modules/<m>/metadata.json
-  // by canopy.Service.ListModules. Counts (not full lists) keep the
+  // by bzlhub.Service.ListModules. Counts (not full lists) keep the
   // listing payload flat across hundreds of modules.
   homepage?: string;
   maintainer_count?: number;
   // Short "owner/repo" display label for the source repository
-  // (when canopy could extract one from metadata.repository or a
+  // (when bzlhub could extract one from metadata.repository or a
   // github.com homepage URL). Preferred over the raw hostname for
   // listing-card display because "github.com" is identical for
   // nearly every BCR module.
   repo_label?: string;
   // RFC3339 timestamp when the latest version was first written
-  // to this canopy's index. Drives the "X ago" freshness badge.
+  // to this bzlhub's index. Drives the "X ago" freshness badge.
   latest_ingested_at?: string;
   // Server-computed: first-version-only module ingested in the
   // last 7 days. Drives the "NEW" badge on cards.
@@ -231,7 +234,7 @@ export async function listModules(
  * entry of listModules would return.
  *
  * Throws ModuleSummaryNotFoundError on HTTP 404 (module not
- * indexed in this canopy). Other transport failures throw a
+ * indexed in this bzlhub). Other transport failures throw a
  * generic Error.
  */
 export async function getModuleSummary(
@@ -246,7 +249,7 @@ export async function getModuleSummary(
 
 export class ModuleSummaryNotFoundError extends Error {
   constructor(public module: string) {
-    super(`module ${module} not indexed in this canopy`);
+    super(`module ${module} not indexed in this bzlhub`);
     this.name = 'ModuleSummaryNotFoundError';
   }
 }
@@ -350,7 +353,7 @@ export async function bumpModule(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Canopy-Source': 'drift-ui',
+      'X-Bzlhub-Source': 'drift-ui',
     },
     body: JSON.stringify(params),
     signal,
@@ -398,7 +401,7 @@ export async function ingestRecursive(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Canopy-Source': 'drift-ui',
+      'X-Bzlhub-Source': 'drift-ui',
     },
     body: JSON.stringify(params),
     signal,
@@ -835,6 +838,125 @@ export async function compatCheck(
     const text = await res.text();
     throw new Error(`${paths.actions.compatCheck()}: HTTP ${res.status} — ${text}`);
   }
+  return res.json();
+}
+
+// ---- procurement ---------------------------------------------------
+
+import type {
+  Request as ProcRequest,
+  RequestState,
+  RequestsResult,
+  PolicyEffective,
+} from './types';
+import { auth } from '$lib/auth/auth.svelte';
+import { applyAuthHeader } from '$lib/auth/token';
+
+// authed wraps fetch's RequestInit with Authorization when the
+// user is signed in. Procurement endpoints route through this;
+// anonymous-read endpoints (search, modules listing, etc.) keep
+// using raw fetch since they don't need credentials.
+function authed(init: RequestInit = {}): RequestInit {
+  return applyAuthHeader(init, auth.get());
+}
+
+// check401 detects an expired/revoked bearer and clears local
+// auth state so the UI flips back to "sign in" without manual
+// intervention. Header-auth users never reach this branch — their
+// requests have no Authorization header to be wrong about. Bearer
+// users see a brief "signed in → signed out" transition; the
+// caller still receives the error (we re-throw via the normal
+// !res.ok path), so loud failure surfaces too.
+function check401(res: Response): void {
+  if (res.status === 401 && auth.get() !== null) {
+    auth.signOut();
+  }
+}
+
+export interface ListRequestsParams {
+  states?: RequestState[];
+  submitter?: string;
+  limit?: number;
+}
+
+export async function listRequests(
+  params: ListRequestsParams = {},
+  signal?: AbortSignal,
+): Promise<ProcRequest[]> {
+  const url = new URL(paths.requests(), window.location.origin);
+  for (const s of params.states ?? []) url.searchParams.append('state', s);
+  if (params.submitter) url.searchParams.set('submitter', params.submitter);
+  if (params.limit) url.searchParams.set('limit', String(params.limit));
+  const res = await fetch(url, authed({ signal }));
+  check401(res);
+  if (!res.ok) throw new Error(`${paths.requests()}: HTTP ${res.status}`);
+  const body = (await res.json()) as RequestsResult;
+  return body.requests ?? [];
+}
+
+export async function getRequest(id: number, signal?: AbortSignal): Promise<ProcRequest> {
+  const res = await fetch(`${BASE}${paths.requestDetail(id)}`, authed({ signal }));
+  check401(res);
+  if (res.status === 404) throw new Error('request not found');
+  if (!res.ok) throw new Error(`${paths.requestDetail(id)}: HTTP ${res.status}`);
+  return res.json();
+}
+
+export interface SubmitRequestBody {
+  module: string;
+  version: string;
+  source_url?: string;
+  notes?: string;
+}
+
+export interface SubmitRequestResult {
+  id: number;
+  state: RequestState;
+  dedup?: boolean;
+}
+
+export async function submitRequest(
+  body: SubmitRequestBody,
+  signal?: AbortSignal,
+): Promise<SubmitRequestResult> {
+  const res = await fetch(`${BASE}${paths.requests()}`, authed({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal,
+  }));
+  check401(res);
+  if (!res.ok) throw new Error(`${paths.requests()}: HTTP ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+export async function approveRequest(id: number, signal?: AbortSignal): Promise<SubmitRequestResult> {
+  const res = await fetch(`${BASE}${paths.requestApprove(id)}`, authed({ method: 'POST', signal }));
+  check401(res);
+  if (!res.ok) throw new Error(`${paths.requestApprove(id)}: HTTP ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+export async function denyRequest(
+  id: number,
+  reason: string,
+  signal?: AbortSignal,
+): Promise<SubmitRequestResult> {
+  const res = await fetch(`${BASE}${paths.requestDeny(id)}`, authed({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+    signal,
+  }));
+  check401(res);
+  if (!res.ok) throw new Error(`${paths.requestDeny(id)}: HTTP ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+export async function getPolicyEffective(signal?: AbortSignal): Promise<PolicyEffective> {
+  const res = await fetch(`${BASE}${paths.policyEffective()}`, authed({ signal }));
+  check401(res);
+  if (!res.ok) throw new Error(`${paths.policyEffective()}: HTTP ${res.status}`);
   return res.json();
 }
 
