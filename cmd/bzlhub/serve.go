@@ -391,6 +391,7 @@ func newServeCmd() *cobra.Command {
 			policySnap := policy.Snapshot(func() *policy.Policy { return policyAtom.Load() })
 
 			handler := server.NewWithOptions(bk, svc, log, server.Options{
+				Ctx:               cmd.Context(),
 				MirrorBaseURL:     mirrorBaseURL,
 				MirrorRoot:        rootDir,
 				SourcesCacheDir:   defaultSourcesCacheDir(),

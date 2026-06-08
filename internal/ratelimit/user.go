@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,9 +15,11 @@ import (
 // SIGHUP-driven policy reload) without rebuilding the limiter — the
 // next Allow call uses the new rate immediately.
 //
-// Stale buckets accumulate in memory; for v0.1 the growth is bounded
-// by the active reviewer pool (a few hundred at most). When the user
-// population grows large enough to matter, add a periodic GC sweep.
+// Bucket population GC: call StartGC after construction to sweep
+// stale entries periodically. Without GC, buckets accumulate one per
+// distinct user_id seen across the process lifetime. For v0.1
+// reviewer pools (a few hundred) the growth is bounded; long-running
+// instances with a large user surface should run GC.
 //
 // Safe for concurrent use after construction.
 type UserLimiter struct {
@@ -50,20 +53,91 @@ func (l *UserLimiter) allowAt(user string, count int, per time.Duration, now tim
 	l.mu.Lock()
 	b, ok := l.buckets[user]
 	if !ok {
-		b = &userBucket{tokens: float64(count), lastFill: now}
+		b = &userBucket{tokens: float64(count), lastFill: now, lastSeen: now}
 		l.buckets[user] = b
 	}
 	l.mu.Unlock()
-	return b.consume(now, count, per)
+	allow, retry := b.consume(now, count, per)
+	// Stamp lastSeen regardless of allow/deny so denied requests
+	// from a burst-throttled user still keep their bucket alive
+	// (GC eviction should reflect "user went quiet", not "user
+	// got rate-limited"). Lock under the bucket's own mutex.
+	b.mu.Lock()
+	b.lastSeen = now
+	b.mu.Unlock()
+	return allow, retry
+}
+
+// GCStaleBuckets removes buckets whose lastSeen is older than
+// now-maxAge. Cheap O(n) sweep under the map lock; per-bucket lock
+// taken briefly to read lastSeen.
+//
+// Returns the number of buckets evicted.
+func (l *UserLimiter) GCStaleBuckets(now time.Time, maxAge time.Duration) int {
+	cutoff := now.Add(-maxAge)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var n int
+	for user, b := range l.buckets {
+		b.mu.Lock()
+		stale := b.lastSeen.Before(cutoff)
+		b.mu.Unlock()
+		if stale {
+			delete(l.buckets, user)
+			n++
+		}
+	}
+	return n
+}
+
+// Size returns the current bucket-population count. Useful for
+// operator diagnostics + GC test assertions.
+func (l *UserLimiter) Size() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.buckets)
+}
+
+// StartGC spawns a goroutine that calls GCStaleBuckets every
+// interval, sweeping buckets whose lastSeen is older than maxAge.
+// Returns immediately; the goroutine runs until ctx is cancelled.
+//
+// Closes the Plan 76 §2.5 follow-up. Recommended defaults for a
+// canopy deployment: interval=15min, maxAge=2h. Sweep cost is O(n)
+// in bucket count — fine for any plausible user population.
+//
+// Safe to call multiple times; each call spawns an independent
+// goroutine. Operators wanting exactly-once-GC wrap their own
+// sync.Once.
+func (l *UserLimiter) StartGC(ctx context.Context, interval, maxAge time.Duration) {
+	if interval <= 0 || maxAge <= 0 {
+		return
+	}
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				l.GCStaleBuckets(time.Now(), maxAge)
+			}
+		}
+	}()
 }
 
 // userBucket holds one user's token-bucket state. Locked with its
 // own mutex so two requests from the same user serialize but
 // different users don't contend.
+//
+// lastSeen tracks when the bucket was last consumed against — used
+// by gcStaleBuckets to decide which buckets to evict.
 type userBucket struct {
 	mu       sync.Mutex
 	tokens   float64
 	lastFill time.Time
+	lastSeen time.Time
 }
 
 func (b *userBucket) consume(now time.Time, count int, per time.Duration) (bool, time.Duration) {

@@ -8,6 +8,7 @@
 package server
 
 import (
+	"context"
 	"log/slog"
 	"net"
 	"net/http"
@@ -59,6 +60,13 @@ func originFromRequest(r *http.Request) string {
 
 // Options configures non-default behavior of the constructed handler.
 type Options struct {
+	// Ctx, when non-nil, ties background goroutines spawned by the
+	// server (per-user-limiter GC sweep, etc.) to the caller's
+	// lifecycle. nil → context.Background, and the goroutines run
+	// until process exit. Tests can pass a cancellable context to
+	// stop the goroutines on teardown.
+	Ctx context.Context
+
 	// MirrorBaseURL, when non-empty, makes canopy advertise itself as a
 	// tarball mirror via bazel_registry.json.mirrors. Bazel takes each
 	// upstream archive URL, strips the scheme, and prepends this base
@@ -279,11 +287,21 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 			// bzlhub.com node, personal canopy) skip the routes entirely
 			// rather than serving 503 placeholders.
 			if opts.RequestStore != nil && opts.Policy != nil {
+				userLim := ratelimit.NewUserLimiter()
+				// Sweep stale per-user buckets every 15 minutes,
+				// evicting any whose lastSeen is past 2h. Sweep
+				// cost is O(n) under the map lock; bounded by
+				// active user population. Plan 76 §2.5 closeout.
+				gcCtx := opts.Ctx
+				if gcCtx == nil {
+					gcCtx = context.Background()
+				}
+				userLim.StartGC(gcCtx, 15*time.Minute, 2*time.Hour)
 				rh := &requestHandlers{
 					store:    opts.RequestStore,
 					policy:   opts.Policy,
 					log:      logger,
-					userRate: ratelimit.NewUserLimiter(),
+					userRate: userLim,
 				}
 				r.Route("/requests", func(r chi.Router) {
 					r.Post("/", rh.apiSubmitRequest)
