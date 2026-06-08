@@ -64,13 +64,13 @@ github.com/albertocavalcante/bigorna/gitlab
 # github.com/albertocavalcante/farol v0.0.0-20260521100058-45d811180afb => ../farol
 ## explicit; go 1.26
 github.com/albertocavalcante/farol/sdk
-# github.com/albertocavalcante/go-bcr-artifactory v0.3.0 => ../go-bcr-artifactory
+# github.com/albertocavalcante/go-bcr-artifactory v0.4.0 => ../go-bcr-artifactory
 ## explicit; go 1.26.0
 github.com/albertocavalcante/go-bcr-artifactory
-# github.com/albertocavalcante/go-bcr-bundle v0.2.0
+# github.com/albertocavalcante/go-bcr-bundle v0.3.0
 ## explicit; go 1.26.0
 github.com/albertocavalcante/go-bcr-bundle
-# github.com/albertocavalcante/go-bcr-httpstore v0.2.2 => ../go-bcr-httpstore
+# github.com/albertocavalcante/go-bcr-httpstore v0.3.0 => ../go-bcr-httpstore
 ## explicit; go 1.26.0
 github.com/albertocavalcante/go-bcr-httpstore
 # github.com/albertocavalcante/go-bcr-mirror v0.0.0-00010101000000-000000000000 => ../go-bcr-mirror

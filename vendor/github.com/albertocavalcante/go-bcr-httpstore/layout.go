@@ -56,6 +56,28 @@ type Layout interface {
 	// ErrModuleNotFound when the layout's index knows the
 	// module is absent.
 	ListVersions(ctx context.Context, r Reader, module string) ([]string, error)
+
+	// ContentPathPrefix is prepended to every content-read URL
+	// (Read*, Write*) by the Backend. Layouts whose BaseURL
+	// already reaches the BCR-shape tree return "" (the empty
+	// string is the safe default — content reads happen at
+	// `<BaseURL>/<relPath>`).
+	//
+	// Vendors with a per-repo content prefix override this. The
+	// canonical example is JFrog Artifactory:
+	//
+	//   storage API:  <BaseURL>/api/storage/<repo>/<relPath>  (Layout's own URLs)
+	//   content:      <BaseURL>/<repo>/<relPath>              (ContentPathPrefix="<repo>")
+	//
+	// Without the hook, content reads against Artifactory miss the
+	// `<repo>/` segment and 404. With it, the Layout author owns
+	// the repo prefix knowledge and the Backend's read.go +
+	// write.go stay vendor-agnostic.
+	//
+	// MUST be deterministic + cheap — the Backend calls it on
+	// every content read/write. Leading and trailing slashes are
+	// stripped before joining.
+	ContentPathPrefix() string
 }
 
 // HTMLAutoindex enumerates modules + versions by parsing autoindex
@@ -89,6 +111,11 @@ type HTMLAutoindex struct{}
 
 // Compile-time guard.
 var _ Layout = HTMLAutoindex{}
+
+// ContentPathPrefix returns "" — autoindex-fronted stores serve the
+// BCR-shape tree directly under BaseURL, so content reads need no
+// prefix.
+func (HTMLAutoindex) ContentPathPrefix() string { return "" }
 
 // ListModules enumerates `<BaseURL>/modules/` and returns the
 // directory entries (each entry = one module name).

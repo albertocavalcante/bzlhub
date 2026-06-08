@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-08
+
+### BREAKING
+
+- Requires `go-bcr-httpstore` >= v0.3.0 (Layout interface gained
+  `ContentPathPrefix() string`).
+
+### Added
+
+- `Layout.ContentPathPrefix()` returns the configured Artifactory
+  repository name. With `go-bcr-httpstore` v0.3+, the Backend now
+  prepends `<repo>/` to every content read + write so a single
+  Backend correctly hits the real JFrog topology:
+
+      storage API:  <BaseURL>/api/storage/<repo>/<relPath>
+      content:      <BaseURL>/<repo>/<relPath>
+
+  Pre-v0.4 + httpstore-v0.2.x users were limited to the
+  simplified deployment shape (content directly under BaseURL,
+  no repo segment). v0.4 closes that gap with no operator-side
+  configuration change beyond bumping versions.
+
+- `TestRealJFrog_E2E` — end-to-end test against a httptest.Server
+  that speaks the actual JFrog URL convention (both storage API
+  + content paths). Closes the canopy M3 "known follow-up"
+  caveat in Plan 28.
+
 ## [0.3.0] - 2026-06-02
 
 Build Promotion API. Adds the third documented Artifactory surface

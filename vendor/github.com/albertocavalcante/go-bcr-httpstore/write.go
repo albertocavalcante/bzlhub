@@ -46,7 +46,7 @@ type WriteOptions struct {
 // upstream actually returned, not what the client sent).
 func (b *Backend) WriteMetadataJSON(ctx context.Context, module string, body []byte, opts WriteOptions) error {
 	return b.writeBytes(ctx,
-		path.Join("modules", module, "metadata.json"),
+		b.contentPath(path.Join("modules", module, "metadata.json")),
 		body, opts, "application/json")
 }
 
@@ -54,7 +54,7 @@ func (b *Backend) WriteMetadataJSON(ctx context.Context, module string, body []b
 // See WriteMetadataJSON for error + cache semantics.
 func (b *Backend) WriteSourceJSON(ctx context.Context, module, version string, body []byte, opts WriteOptions) error {
 	return b.writeBytes(ctx,
-		path.Join("modules", module, version, "source.json"),
+		b.contentPath(path.Join("modules", module, version, "source.json")),
 		body, opts, "application/json")
 }
 
@@ -62,7 +62,7 @@ func (b *Backend) WriteSourceJSON(ctx context.Context, module, version string, b
 // See WriteMetadataJSON for error + cache semantics.
 func (b *Backend) WriteModuleBazel(ctx context.Context, module, version string, body []byte, opts WriteOptions) error {
 	return b.writeBytes(ctx,
-		path.Join("modules", module, version, "MODULE.bazel"),
+		b.contentPath(path.Join("modules", module, version, "MODULE.bazel")),
 		body, opts, "text/plain; charset=utf-8")
 }
 
@@ -70,7 +70,7 @@ func (b *Backend) WriteModuleBazel(ctx context.Context, module, version string, 
 // See WriteMetadataJSON for error + cache semantics.
 func (b *Backend) WritePatch(ctx context.Context, module, version, patchName string, body []byte, opts WriteOptions) error {
 	return b.writeBytes(ctx,
-		path.Join("modules", module, version, "patches", patchName),
+		b.contentPath(path.Join("modules", module, version, "patches", patchName)),
 		body, opts, "text/x-diff")
 }
 
@@ -83,7 +83,7 @@ func (b *Backend) WritePatch(ctx context.Context, module, version, patchName str
 // wrapping layer).
 func (b *Backend) WriteOverlay(ctx context.Context, module, version, overlayPath string, body []byte, opts WriteOptions) error {
 	return b.writeBytes(ctx,
-		path.Join("modules", module, version, "overlay", overlayPath),
+		b.contentPath(path.Join("modules", module, version, "overlay", overlayPath)),
 		body, opts, "application/octet-stream")
 }
 
@@ -91,7 +91,7 @@ func (b *Backend) WriteOverlay(ctx context.Context, module, version, overlayPath
 // <BaseURL>/bazel_registry.json. See WriteMetadataJSON for error
 // + cache semantics.
 func (b *Backend) WriteBazelRegistryJSON(ctx context.Context, body []byte, opts WriteOptions) error {
-	return b.writeBytes(ctx, "bazel_registry.json", body, opts, "application/json")
+	return b.writeBytes(ctx, b.contentPath("bazel_registry.json"), body, opts, "application/json")
 }
 
 // WriteBlob streams an opaque blob to <BaseURL>/blobs/<key>. Unlike
@@ -123,7 +123,7 @@ func (b *Backend) WriteBlob(ctx context.Context, key string, body io.Reader, len
 	if length >= 0 {
 		headers.Set("Content-Length", fmt.Sprintf("%d", length))
 	}
-	resp, u, err := b.do(ctx, http.MethodPut, "blobs/"+key, headers, body)
+	resp, u, err := b.do(ctx, http.MethodPut, b.contentPath("blobs/"+key), headers, body)
 	if err != nil {
 		return err
 	}

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-06-08
+
+### Added
+
+- `Mirror.Stats(ctx)` returns a `MirrorStats` snapshot:
+  `LastSyncAt` (zero when the LAST_SYNC marker is unset),
+  `ModuleCount` (folders directly under `modules/`), and
+  `SizeBytes` (on-disk footprint including `.git/`). Backs the
+  operator-facing `/api/system/status` surfaces, `bzlhub status`
+  CLI, and dashboard tiles. Walks the mirror directory with
+  `filepath.WalkDir`; stat-only, no reads, ctx-cancelable. One
+  transient stat failure deep in `.git/` is skipped rather than
+  failing the whole call — partial sums are useful diagnostics.
+
 ## [0.1.3] - 2026-05-31
 
 ### Added

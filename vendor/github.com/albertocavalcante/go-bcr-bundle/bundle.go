@@ -292,6 +292,12 @@ func (l bundleLayout) ListVersions(_ context.Context, _ httpstore.Reader, module
 	return out, nil
 }
 
+// ContentPathPrefix returns "" — bundles serve BCR-shape content
+// directly under BaseURL when fronted by the bundle reader, no
+// vendor-specific prefix needed. Added in httpstore v0.3 / bundle
+// v0.2.1.
+func (bundleLayout) ContentPathPrefix() string { return "" }
+
 // ---- internal helpers --------------------------------------------
 
 // extractTarGz reads a gzipped tar from r and writes every file

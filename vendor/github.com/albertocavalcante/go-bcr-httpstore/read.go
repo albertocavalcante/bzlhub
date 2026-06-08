@@ -63,7 +63,7 @@ func infoFromResponse(resp *http.Response) Info {
 // ErrModuleNotFound on 404. Other transport / non-2xx responses
 // surface as ErrUpstreamStatus wrapped with the status code.
 func (b *Backend) ReadMetadataJSON(ctx context.Context, module string) ([]byte, error) {
-	body, err := b.getBytes(ctx, path.Join("modules", module, "metadata.json"))
+	body, err := b.getBytes(ctx, b.contentPath(path.Join("modules", module, "metadata.json")))
 	if err != nil {
 		if errors.Is(err, ErrUpstream404) {
 			return nil, fmt.Errorf("%w: %s", ErrModuleNotFound, module)
@@ -76,7 +76,7 @@ func (b *Backend) ReadMetadataJSON(ctx context.Context, module string) ([]byte, 
 // ReadSourceJSON reads modules/<module>/<version>/source.json.
 // Returns ErrVersionNotFound on 404.
 func (b *Backend) ReadSourceJSON(ctx context.Context, module, version string) ([]byte, error) {
-	body, err := b.getBytes(ctx, path.Join("modules", module, version, "source.json"))
+	body, err := b.getBytes(ctx, b.contentPath(path.Join("modules", module, version, "source.json")))
 	if err != nil {
 		if errors.Is(err, ErrUpstream404) {
 			return nil, fmt.Errorf("%w: %s@%s", ErrVersionNotFound, module, version)
@@ -89,7 +89,7 @@ func (b *Backend) ReadSourceJSON(ctx context.Context, module, version string) ([
 // ReadModuleBazel reads modules/<module>/<version>/MODULE.bazel.
 // Returns ErrVersionNotFound on 404.
 func (b *Backend) ReadModuleBazel(ctx context.Context, module, version string) ([]byte, error) {
-	body, err := b.getBytes(ctx, path.Join("modules", module, version, "MODULE.bazel"))
+	body, err := b.getBytes(ctx, b.contentPath(path.Join("modules", module, version, "MODULE.bazel")))
 	if err != nil {
 		if errors.Is(err, ErrUpstream404) {
 			return nil, fmt.Errorf("%w: %s@%s", ErrVersionNotFound, module, version)
@@ -104,7 +104,7 @@ func (b *Backend) ReadModuleBazel(ctx context.Context, module, version string) (
 // on 404 — almost certainly a misconfigured BaseURL pointing at
 // a non-BCR tree.
 func (b *Backend) ReadBazelRegistryJSON(ctx context.Context) ([]byte, error) {
-	body, err := b.getBytes(ctx, "bazel_registry.json")
+	body, err := b.getBytes(ctx, b.contentPath("bazel_registry.json"))
 	if err != nil {
 		if errors.Is(err, ErrUpstream404) {
 			return nil, fmt.Errorf("%w: %s", ErrRegistryJSONNotFound, b.baseURL.String())
@@ -124,7 +124,7 @@ func (b *Backend) ReadBazelRegistryJSON(ctx context.Context) ([]byte, error) {
 // reject leading "../" because the kernel-enforced safety it
 // would imply is a different layer (callers wrap this method).
 func (b *Backend) ReadOverlay(ctx context.Context, module, version, overlayPath string) ([]byte, error) {
-	body, err := b.getBytes(ctx, path.Join("modules", module, version, "overlay", overlayPath))
+	body, err := b.getBytes(ctx, b.contentPath(path.Join("modules", module, version, "overlay", overlayPath)))
 	if err != nil {
 		if errors.Is(err, ErrUpstream404) {
 			return nil, fmt.Errorf("%w: %s@%s/%s", ErrOverlayNotFound, module, version, overlayPath)
@@ -143,7 +143,7 @@ func (b *Backend) ReadOverlay(ctx context.Context, module, version, overlayPath 
 // patchName is taken verbatim; callers are responsible for
 // validating it against their patch-name discipline.
 func (b *Backend) ReadPatch(ctx context.Context, module, version, patchName string) ([]byte, error) {
-	body, err := b.getBytes(ctx, path.Join("modules", module, version, "patches", patchName))
+	body, err := b.getBytes(ctx, b.contentPath(path.Join("modules", module, version, "patches", patchName)))
 	if err != nil {
 		if errors.Is(err, ErrUpstream404) {
 			return nil, fmt.Errorf("%w: %s@%s/%s", ErrPatchNotFound, module, version, patchName)
@@ -173,7 +173,7 @@ func (b *Backend) ReadBlob(ctx context.Context, key string) (io.ReadCloser, erro
 		// always wrong, never just absent.
 		return nil, fmt.Errorf("%w: %s (key contains path separators)", ErrBlobNotFound, key)
 	}
-	resp, u, err := b.do(ctx, http.MethodGet, "blobs/"+key, nil, nil)
+	resp, u, err := b.do(ctx, http.MethodGet, b.contentPath("blobs/"+key), nil, nil)
 	if err != nil {
 		return nil, err
 	}

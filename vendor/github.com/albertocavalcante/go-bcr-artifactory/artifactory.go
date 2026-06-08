@@ -47,6 +47,22 @@ func New(repo string) (Layout, error) {
 // construction.
 func (l Layout) Repo() string { return l.repo }
 
+// ContentPathPrefix returns the configured Artifactory repository name
+// so the httpstore.Backend prefixes every content read + write with
+// `<repo>/`. JFrog Artifactory serves generic-repo content at
+// `<host>/<base-path>/<repo>/<path>` (e.g.
+// `https://artifactory.example.com/artifactory/bcr-mirror/modules/...`),
+// while the storage API is a parallel-rooted
+// `/api/storage/<repo>/...`. Returning the repo here lets a single
+// Backend instance handle both correctly: ListModules / ListVersions
+// go through Layout.readStorage (which encodes the storage API path
+// directly), and Read* / Write* go through Backend.contentPath
+// (which prepends this value).
+//
+// Requires `go-bcr-httpstore` >= v0.3.0. Older versions don't consult
+// this method.
+func (l Layout) ContentPathPrefix() string { return l.repo }
+
 // storageEntry is one entry inside Artifactory's storage response.
 // Kept unexported so this package owns the wire format; consumers
 // only see the public Layout interface.

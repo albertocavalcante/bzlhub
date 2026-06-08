@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-08
+
+### BREAKING
+
+- `Layout` gains `ContentPathPrefix() string`. Custom Layout
+  implementations MUST add it (returning `""` matches pre-v0.3
+  behaviour). All bundled Layouts (`HTMLAutoindex`) are updated;
+  the sibling `go-bcr-artifactory` library bumps to v0.4.0 for
+  the corresponding `ContentPathPrefix() = repo` implementation.
+
+### Why
+
+JFrog Artifactory's URL convention puts BCR content at
+`<host>/artifactory/<repo>/modules/...` but the v0.2.x Backend
+built content URLs as `<BaseURL>/modules/...` — missing the
+`<repo>/` segment. The Layout already knew the repo name (used
+in storage-API paths); the missing piece was hooking that
+knowledge into content reads + writes. v0.3 adds the hook;
+the Layout author owns vendor-specific prefix knowledge in one
+place. Closes the canopy M3 "known follow-up" caveat in
+Plan 28.
+
+### Added
+
+- Internal `Backend.contentPath` helper consulted by every
+  Read* + Write* call. Layout's prefix is `strings.Trim`-stripped
+  of leading/trailing slashes before joining, so operators
+  returning `"bcr-mirror"`, `"/bcr-mirror"`, or `"/bcr-mirror/"`
+  all produce the same URL.
+- 3 new test groups (`TestContentPathPrefix_*`) cover the
+  Read* surface, empty-prefix backwards-compat, and slash
+  normalisation.
+
+### Unchanged
+
+- Layout-driven URL construction (`ReadIndex`, `Stat`, `Exists`)
+  does NOT prepend the prefix — Layouts encode their own paths
+  (e.g., Artifactory's `/api/storage/<repo>/...`) and don't need
+  further prefixing.
+- HTMLAutoindex still returns `""` — autoindex-fronted stores
+  serve content directly under BaseURL.
+
 ## [0.2.2] - 2026-06-02
 
 Tiny additive release. Exports `Backend.Do` so extension libraries

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 )
 
@@ -281,6 +282,23 @@ func (b *Backend) cacheStore(ctx context.Context, relPath string, body []byte, r
 		}
 	}
 	b.cache.Put(ctx, relPath, entry)
+}
+
+// contentPath prepends the configured Layout's ContentPathPrefix to
+// relPath so content reads + writes land at
+// `<BaseURL>/<prefix>/<relPath>`. Empty prefix (the autoindex /
+// CanopyIndex case) returns relPath unchanged.
+//
+// Used by every Read* and Write* method in read.go / write.go.
+// Layout-driven URL construction (ReadIndex, Stat, Exists) does NOT
+// go through this — Layouts encode their own paths (e.g., Artifactory's
+// `/api/storage/<repo>/...`) and need no further prefixing.
+func (b *Backend) contentPath(relPath string) string {
+	prefix := strings.Trim(b.layout.ContentPathPrefix(), "/")
+	if prefix == "" {
+		return relPath
+	}
+	return path.Join(prefix, relPath)
 }
 
 // getBytes is the workhorse cached GET — consults the cache,

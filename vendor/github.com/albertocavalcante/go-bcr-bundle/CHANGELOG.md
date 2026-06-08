@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-08
+
+### BREAKING
+
+- Requires `go-bcr-httpstore` >= v0.3.0 (Layout interface gained
+  `ContentPathPrefix() string`). Callers with v0.2.x of
+  go-bcr-httpstore in their dep graph must bump in lockstep.
+
+### Added
+
+- `bundleLayout.ContentPathPrefix()` returns `""` — bundles serve
+  BCR-shape content directly under BaseURL when read by the
+  bundle reader, no vendor-specific prefix needed. Implements the
+  v0.3 Layout-interface requirement.
+
 ## [0.2.0] - 2026-06-02
 
 **Ed25519 manifest signing — the reserved field from v0.0.1 is now

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-08
+
+### Changed
+
+- `validateURLs` + `dedupeURLs` moved from `cloudflare.go` to a
+  sibling `urls.go` (unexported, no API change). Same package,
+  same callers, same semantics — relocation preserves first-
+  occurrence-order dedup and whole-batch-reject validation. Future
+  CloudFront / Bunny adapters will share these helpers without
+  duplicating the contract.
+
+### Added
+
+- `urls_test.go` — direct unit-test coverage for the relocated
+  helpers (HTTP/HTTPS accept, whitespace/scheme/host rejects,
+  whole-batch reject contract, RFC-3986 case-sensitive dedup,
+  single/empty pass-through). The helpers were previously tested
+  indirectly via Cloudflare + Fastly Purge tests.
+
 ## [0.1.0] - 2026-06-02
 
 **Second CDN provider — proves the `Provider` interface generalises.**

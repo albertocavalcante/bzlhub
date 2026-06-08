@@ -189,22 +189,16 @@ func TestHTTPStoreConfig_Build_Artifactory_APIKeyHeader(t *testing.T) {
 // =================================================================
 
 func TestHTTPStoreConfig_Artifactory_E2E_ReadsBCRShape(t *testing.T) {
-	// Simulate an Artifactory-shape server:
-	//   - storage API at /api/storage/<repo>/... returns the
-	//     documented children[] shape for listings
-	//   - content at /modules/... served verbatim
+	// Real JFrog Artifactory topology:
+	//   - storage API at /artifactory/api/storage/<repo>/<path>
+	//   - content   at /artifactory/<repo>/<path>
 	//
-	// NOTE: this exercises the simplified deployment topology where
-	// the BCR-shape tree is reachable directly under BaseURL without
-	// the JFrog `/<repo>/` content-path prefix. Real JFrog Artifactory
-	// puts content at /<repo>/<path>, while the v0.3 artifactory.Layout
-	// + httpstore.Backend pair issues content reads against BaseURL
-	// alone — a known mismatch tracked as a follow-up against
-	// go-bcr-artifactory. For canopy M3, operators wanting real-world
-	// JFrog topology should front Artifactory with an nginx/CDN
-	// rewrite that adds the repo segment, OR configure BaseURL to
-	// the repo-inclusive URL and accept double-rooted storage API
-	// calls until the library evolves.
+	// As of go-bcr-httpstore v0.3 + go-bcr-artifactory v0.4 (both
+	// landed 2026-06-08), the artifactory.Layout's ContentPathPrefix()
+	// returns the repo name and httpstore.Backend prepends it to
+	// every content read + write. The pre-v0.4 caveat ("operators
+	// wanting real-world JFrog topology need a CDN/nginx rewrite") is
+	// closed.
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/artifactory/api/storage/bcr-mirror/modules",
@@ -229,12 +223,12 @@ func TestHTTPStoreConfig_Artifactory_E2E_ReadsBCRShape(t *testing.T) {
 		})
 
 	const metadataJSON = `{"homepage": "https://github.com/bazel-contrib/rules_go", "versions": ["0.50.0"]}`
-	mux.HandleFunc("/artifactory/modules/rules_go/metadata.json",
+	mux.HandleFunc("/artifactory/bcr-mirror/modules/rules_go/metadata.json",
 		func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = io.WriteString(w, metadataJSON)
 		})
 
-	mux.HandleFunc("/artifactory/modules/rules_go/0.50.0/MODULE.bazel",
+	mux.HandleFunc("/artifactory/bcr-mirror/modules/rules_go/0.50.0/MODULE.bazel",
 		func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = io.WriteString(w, `module(name = "rules_go", version = "0.50.0")`)
 		})

@@ -6,8 +6,8 @@ require (
 	github.com/albertocavalcante/bazel-doc-go v0.0.0-00010101000000-000000000000
 	github.com/albertocavalcante/bigorna v0.0.0-00010101000000-000000000000
 	github.com/albertocavalcante/farol v0.0.0-20260521100058-45d811180afb
-	github.com/albertocavalcante/go-bcr-bundle v0.2.0
-	github.com/albertocavalcante/go-bcr-httpstore v0.2.2
+	github.com/albertocavalcante/go-bcr-bundle v0.3.0
+	github.com/albertocavalcante/go-bcr-httpstore v0.3.0
 	github.com/albertocavalcante/go-bcr-mirror v0.0.0-00010101000000-000000000000
 	github.com/albertocavalcante/go-bzlmod v0.0.0-20260531025253-fc2e39f161aa
 	github.com/albertocavalcante/go-bzlmod-ast v0.0.0-20260531042442-dd6779bf1a31
@@ -87,7 +87,7 @@ require (
 require (
 	github.com/albertocavalcante/assay v0.1.1-0.20260531234214-afd5b6172f5c
 	github.com/albertocavalcante/bazel-module-summary-go v0.0.0
-	github.com/albertocavalcante/go-bcr-artifactory v0.3.0
+	github.com/albertocavalcante/go-bcr-artifactory v0.4.0
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
