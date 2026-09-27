@@ -17,22 +17,22 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/albertocavalcante/bzlhub/internal/admit"
 	"github.com/albertocavalcante/bzlhub/internal/api"
+	"github.com/albertocavalcante/bzlhub/internal/audit"
 	"github.com/albertocavalcante/bzlhub/internal/auth"
 	"github.com/albertocavalcante/bzlhub/internal/backend"
 	"github.com/albertocavalcante/bzlhub/internal/bzlhub"
 	"github.com/albertocavalcante/bzlhub/internal/egress"
 	"github.com/albertocavalcante/bzlhub/internal/eventbus"
 	"github.com/albertocavalcante/bzlhub/internal/featureflags"
-	"github.com/albertocavalcante/bzlhub/internal/server"
-	"github.com/albertocavalcante/bzlhub/internal/admit"
-	"github.com/albertocavalcante/bzlhub/internal/audit"
 	"github.com/albertocavalcante/bzlhub/internal/fetch"
 	"github.com/albertocavalcante/bzlhub/internal/policy"
 	"github.com/albertocavalcante/bzlhub/internal/preflight"
 	"github.com/albertocavalcante/bzlhub/internal/publish"
 	"github.com/albertocavalcante/bzlhub/internal/purge"
-	canopyruntime "github.com/albertocavalcante/bzlhub/internal/runtime"
+	bzlhubruntime "github.com/albertocavalcante/bzlhub/internal/runtime"
+	"github.com/albertocavalcante/bzlhub/internal/server"
 	"github.com/albertocavalcante/bzlhub/internal/store"
 	"github.com/albertocavalcante/bzlhub/internal/version"
 	farol "github.com/albertocavalcante/farol/sdk"
@@ -71,7 +71,7 @@ func newServeCmd() *cobra.Command {
 				// gated by the same policy that fronts cascade /
 				// webhook / forge (feedback_corporate_security_first
 				// — egress is the only sanctioned http.Client factory).
-				httpClient := egress.NewHTTPClient(egress.Policy{})
+				httpClient := egress.DefaultHTTPClient()
 				hs, err := httpStoreCfg.Build(httpClient)
 				if err != nil {
 					return fmt.Errorf("backend config: %w", err)
@@ -171,11 +171,11 @@ func newServeCmd() *cobra.Command {
 				bk = cascade
 			}
 
-			var svc api.Canopy
+			var svc api.Bzlhub
 			// verifier carries the concrete *bzlhub.Service so the
 			// /mcp transport (when BZLHUB_MCP_HTTP_ENABLED) can wire
 			// bzlhub_verify alongside the read-side tools. Same
-			// concrete also satisfies api.Canopy; the split here is
+			// concrete also satisfies api.Bzlhub; the split here is
 			// purely to keep server.Options' Verifier field typed
 			// against mcpsrv.Verifier without an unsafe assertion.
 			var verifier *bzlhub.Service
@@ -307,7 +307,7 @@ func newServeCmd() *cobra.Command {
 				"attrs_interpret", flags.AttrsInterpret,
 			)
 
-			// Propagate the AttrsInterpret flag into the canopy service
+			// Propagate the AttrsInterpret flag into the bzlhub service
 			// so IngestDir + Bump run the Tier-3 attrs hydrator after
 			// each ingest. Done after the flag parse so a misconfigured
 			// env var stops the boot before we mutate svc.
@@ -316,7 +316,7 @@ func newServeCmd() *cobra.Command {
 			}
 
 			// Trusted-proxy CIDR list for the header-auth scaffold.
-			// Empty (default) disables header trust — personal-canopy
+			// Empty (default) disables header trust — personal-bzlhub
 			// stays anonymous. Corporate deployments set this to the
 			// CIDR of their reverse-proxy / ingress.
 			trustedProxyCIDRs, err := server.ParseTrustedProxyCIDRs(os.Getenv("BZLHUB_TRUSTED_PROXY_CIDR"))
@@ -356,7 +356,7 @@ func newServeCmd() *cobra.Command {
 				}
 			}
 
-			// Policy (.canopy/policy.yml — Plan 71, chunk 6). Missing
+			// Policy (.bzlhub/policy.yml — Plan 71, chunk 6). Missing
 			// file → no policy, procurement routes not registered;
 			// malformed file → fail fast. Operators wanting policy
 			// gates set BZLHUB_POLICY_FILE. Diagnostics emitted as
@@ -377,6 +377,12 @@ func newServeCmd() *cobra.Command {
 				default:
 					return fmt.Errorf("BZLHUB_POLICY_FILE=%s: %w", policyPath, err)
 				}
+			}
+			if err := flags.CheckMCPWriteStartup(
+				bearerRegistry != nil || len(trustedProxyCIDRs) > 0,
+				pol != nil,
+			); err != nil {
+				return err
 			}
 
 			// SIGHUP-reloadable policy. Handlers + checker call the
@@ -406,7 +412,7 @@ func newServeCmd() *cobra.Command {
 				Verifier: verifier,
 				Version:  version.Version,
 			})
-			// Wrap the canopy handler with farol's HTTP middleware:
+			// Wrap the bzlhub handler with farol's HTTP middleware:
 			// request-id, W3C trace propagation, RED-metric histogram
 			// (http.server.request.duration), structured access log,
 			// and panic recovery. When OTel isn't configured the
@@ -415,6 +421,9 @@ func newServeCmd() *cobra.Command {
 				Addr:              addr,
 				Handler:           farol.HTTPMiddleware(handler),
 				ReadHeaderTimeout: 10 * time.Second,
+				ReadTimeout:       30 * time.Second,
+				IdleTimeout:       120 * time.Second,
+				MaxHeaderBytes:    1 << 20,
 			}
 			log.Info("serving", "addr", addr, "root", rootDir, "db", dbPath, "mirror_base", mirrorBaseURL)
 
@@ -433,7 +442,7 @@ func newServeCmd() *cobra.Command {
 			// HTTP gates and the preflight checker re-read on every
 			// request via the policySnap getter, so policy reload
 			// effects are immediate for the user-visible path.
-			reloader := canopyruntime.NewReloader(log)
+			reloader := bzlhubruntime.NewReloader(log)
 			if bearerRegistry != nil {
 				reloader.Register("identity", func(context.Context) error {
 					newReg, err := auth.LoadIdentityFile(identityPath)
@@ -462,7 +471,7 @@ func newServeCmd() *cobra.Command {
 				})
 			}
 			if reloader.HasReloaders() {
-				go reloader.Run(ctx, canopyruntime.SIGHUPTrigger(ctx))
+				go reloader.Run(ctx, bzlhubruntime.SIGHUPTrigger(ctx))
 			}
 
 			// Procurement preflight runner (Plan 67, chunk 4 §C7).
@@ -606,7 +615,7 @@ func newServeCmd() *cobra.Command {
 	cmd.Flags().StringVar(&rootDir, "root", "", "filesystem directory holding the BCR-shape registry tree (enables BCR endpoints)")
 	cmd.Flags().StringVar(&dbPath, "db", "", "SQLite index path (enables /api/* endpoints)")
 	cmd.Flags().StringVar(&addr, "addr", ":8080", "address to listen on")
-	cmd.Flags().StringVar(&mirrorBaseURL, "mirror-base-url", "", "advertise canopy as a tarball mirror via bazel_registry.json.mirrors (e.g. http://canopy.local:8080/m/)")
+	cmd.Flags().StringVar(&mirrorBaseURL, "mirror-base-url", "", "advertise bzlhub as a tarball mirror via bazel_registry.json.mirrors (e.g. http://bzlhub.local:8080/m/)")
 	cmd.Flags().StringArrayVar(&upstreamURLs, "upstream", nil, "BCR-shape registry to cascade-fallback to on local miss (repeatable; env BZLHUB_UPSTREAMS=url1,url2). Each URL must be the directory containing bazel_registry.json. Response cache (Plan 16 Layer C) is enabled by default at 1000 entries; tune via env BZLHUB_UPSTREAM_CACHE_SIZE (set to a negative integer to disable). Cache promotion on serve (Plan 16 Layer F) — async-Bump every upstream-won (m, v) into the local mirror — is off by default; opt in via env BZLHUB_PROMOTE_ON_SERVE=true (changes the mirror from curated to greedy).")
 	return cmd
 }
@@ -624,7 +633,7 @@ func newServeCmd() *cobra.Command {
 //     rootDir.
 //   - Unset, rootDir is not a git clone → FilesystemPublisher
 //     (writes BCR-shape files locally; no commit / push). Useful
-//     for personal-canopy installs that don't keep their registry
+//     for personal-bzlhub installs that don't keep their registry
 //     in git.
 //
 // Returns (nil, nil) when rootDir is empty — admit can't run
@@ -683,7 +692,7 @@ func envOr(name, fallback string) string {
 }
 
 // buildPurger constructs the CDN purge provider from env vars +
-// returns the canopy CDN-public origin used to compute purge URLs.
+// returns the bzlhub CDN-public origin used to compute purge URLs.
 //
 // Env vars (all optional):
 //
@@ -696,7 +705,7 @@ func envOr(name, fallback string) string {
 //	BZLHUB_FASTLY_SERVICE_ID  Fastly service ID (vendor=fastly)
 //
 // Misconfiguration (vendor=cloudflare with no token, etc.) logs a
-// Warn and falls back to NoOp so canopy still serves traffic — the
+// Warn and falls back to NoOp so bzlhub still serves traffic — the
 // CDN just doesn't get invalidated.
 func buildPurger(log *slog.Logger) (purge.Provider, string) {
 	vendor := strings.TrimSpace(os.Getenv("BZLHUB_CDN_VENDOR"))
@@ -747,7 +756,7 @@ func firstUpstream() string {
 // warnIfIdentityFileWorldReadable emits a single WARN at boot when
 // the identity file mode allows group or world read. Bearer tokens
 // hashed into the file are credential material — the file should be
-// 0600 (or 0640 with a dedicated canopy group). Doesn't refuse to
+// 0600 (or 0640 with a dedicated bzlhub group). Doesn't refuse to
 // start; some operators legitimately stage permissive permissions
 // during bring-up. SSH-style "refuse mode-644 keys" would block
 // docker-compose's typical bind-mount default (0644) and harm

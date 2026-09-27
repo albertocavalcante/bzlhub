@@ -10,9 +10,9 @@ import (
 
 func TestParseRepoLabel(t *testing.T) {
 	cases := []struct {
-		in              string
-		ok              bool
-		owner, repo     string
+		in          string
+		ok          bool
+		owner, repo string
 	}{
 		{"bazelbuild/rules_go", true, "bazelbuild", "rules_go"},
 		{" bazelbuild/rules_go ", true, "bazelbuild", "rules_go"},

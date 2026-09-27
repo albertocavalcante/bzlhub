@@ -9,7 +9,7 @@
 // The headers are trusted ONLY when the request's source IP is in
 // the configured trusted-proxy CIDR. Outside the CIDR, any client-
 // sent X-Forwarded-* headers are ignored — defangs the trivial
-// "anyone can spoof headers" attack against an exposed canopy.
+// "anyone can spoof headers" attack against an exposed bzlhub.
 //
 // Documented in docs/plans/08-corporate-security.md
 // § "Authentication model / v0.3 — header-based auth scaffold".
@@ -41,7 +41,7 @@ const (
 // trustedCIDRs is the operator-provided list of source-IP CIDRs
 // from which X-Forwarded-* headers will be honored. An empty list
 // disables header trust entirely (requests stay anonymous), which
-// is the safe default for personal-canopy installs not running
+// is the safe default for personal-bzlhub installs not running
 // behind a reverse proxy.
 //
 // Anonymous requests pass through with no identity attached;
@@ -74,7 +74,7 @@ func headerAuth(trustedCIDRs []*net.IPNet) func(http.Handler) http.Handler {
 // falls within any of the operator-trusted CIDR blocks. Uses
 // RemoteAddr verbatim — does NOT honor X-Forwarded-For (that would
 // re-introduce the spoofing attack we're guarding against). The
-// trusted proxy must connect directly to canopy.
+// trusted proxy must connect directly to bzlhub.
 func sourceIPIsTrusted(r *http.Request, cidrs []*net.IPNet) bool {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

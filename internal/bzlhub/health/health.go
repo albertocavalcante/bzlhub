@@ -15,7 +15,7 @@
 // is to decide whether to BELIEVE that instantly (green → amber is
 // immediate) or wait for more samples (amber → red needs N).
 //
-// What `signals` adds
+// # What `signals` adds
 //
 // Each call to Derive collects every check that tripped — not just
 // the worst — into ComputedStatus.Signals. The UI uses this to
@@ -79,7 +79,7 @@ const (
 //     moving in upstream is normal during a slow registry phase; a
 //     month is suspicious. These are gut numbers, revisitable after
 //     30 days of operational data (plan-65 Q56).
-//   - SyncStaleAmber / SyncStaleRed gate daemon-liveness — `canopy
+//   - SyncStaleAmber / SyncStaleRed gate daemon-liveness — `bzlhub
 //     sync run`'s upstream-pull heartbeat. Typical operator interval
 //     is 15–60min; 1h covers one missed cycle, 6h means the daemon
 //     is almost certainly dead. Plan-65 Q58.

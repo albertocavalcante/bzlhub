@@ -119,9 +119,9 @@ func resolveWatchConfig(f watchFlags) (watchConfig, error) {
 		if err != nil {
 			return cfg, fmt.Errorf("bzlhub watch: cannot determine home dir for default state file: %w", err)
 		}
-		cfg.stateFile = filepath.Join(home, ".canopy", "watch-state.json")
+		cfg.stateFile = defaultWatchStateFile(home)
 	}
-	if err := os.MkdirAll(filepath.Dir(cfg.stateFile), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(cfg.stateFile), 0o700); err != nil {
 		return cfg, fmt.Errorf("bzlhub watch: create state-file dir: %w", err)
 	}
 
@@ -142,4 +142,19 @@ func resolveWatchConfig(f watchFlags) (watchConfig, error) {
 	}
 
 	return cfg, nil
+}
+
+// defaultWatchStateFile uses the Bzlhub path for new installations while
+// continuing an existing pre-rename watch from its legacy state file. Losing
+// that cursor would make the watcher replay already-processed commits.
+func defaultWatchStateFile(home string) string {
+	preferred := filepath.Join(home, ".bzlhub", "watch-state.json")
+	if _, err := os.Stat(preferred); err == nil {
+		return preferred
+	}
+	legacy := filepath.Join(home, ".canopy", "watch-state.json")
+	if _, err := os.Stat(legacy); err == nil {
+		return legacy
+	}
+	return preferred
 }

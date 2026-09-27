@@ -19,7 +19,7 @@ import (
 //     entry only when the module itself is new — but cheaper to
 //     always purge than to plumb a flag through)
 //
-// baseURL is the canopy origin reachable through the CDN (e.g.,
+// baseURL is the bzlhub origin reachable through the CDN (e.g.,
 // `https://bcr.bzlhub.com`). Trailing slashes are stripped. An empty
 // baseURL returns nil — purgers downstream NoOp themselves on empty
 // input.

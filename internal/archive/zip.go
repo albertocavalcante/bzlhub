@@ -20,7 +20,7 @@ import (
 // Unlike tar.gz, zip requires random access. We buffer the entire
 // archive into memory first so we can hand archive/zip an io.ReaderAt.
 // BCR source archives are typically <100MB, so the cost is acceptable
-// for canopy's batch use cases (ingest, what-if diff, closure diff).
+// for bzlhub's batch use cases (ingest, what-if diff, closure diff).
 // The input-read cap (maxBytes) doubles as a buffering bound: a
 // pathological zip declaring TB-class uncompressed sizes from a
 // small compressed blob (zip bomb) still can't slip past since the

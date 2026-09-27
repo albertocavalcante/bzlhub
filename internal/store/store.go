@@ -1,4 +1,4 @@
-// Package store wraps a SQLite database holding canopy's index of
+// Package store wraps a SQLite database holding bzlhub's index of
 // ingested modules. Writes happen via WriteReport; reads via Search and
 // GetReport. Both use FTS5 with the trigram tokenizer for sub-10ms search.
 //
@@ -28,7 +28,7 @@ import (
 //go:embed schema.sql
 var schemaSQL string
 
-// Store is canopy's index store.
+// Store is bzlhub's index store.
 type Store struct {
 	db *sql.DB
 }
@@ -53,7 +53,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	//
 	// WAL adds -wal + -shm sidecar files next to the database;
 	// backup scripts should copy them together or use
-	// `sqlite3 .backup`.  Self-hosted/canopy-demo/DEPLOY.md backup
+	// `sqlite3 .backup`.  Self-hosted/bzlhub-demo/DEPLOY.md backup
 	// section uses a named volume tar which captures all three.
 	dsn := path
 	pragmas := "_pragma=foreign_keys(true)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
@@ -104,7 +104,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	// inline-drift-badges feature (Plan 19 Idea A, Plan 22 PR 3).
 	// Default '{}' decodes to api.DriftSummary{} (Status=unknown),
 	// which is the correct shape for rows that predate the column
-	// or for canopies running without a configured drift source.
+	// or for Bzlhub instances running without a configured drift source.
 	// JSON column over typed columns matches the existing
 	// hermeticity_json + report_json convention and lets Plan 21's
 	// layered staleness fields land additively without further

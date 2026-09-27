@@ -57,7 +57,7 @@ func finalizePublish(ctx context.Context, pub publish.Publisher, req publish.Pub
 }
 
 // branchForMode returns the branch the result advertises as "head":
-//   - PR mode: the feature branch (e.g., canopy/add-foo-1.0.0).
+//   - PR mode: the feature branch (e.g., bzlhub/add-foo-1.0.0).
 //   - commit mode: the base branch itself (the commit landed there).
 func branchForMode(commitMode bool, base, feature string) string {
 	if commitMode {

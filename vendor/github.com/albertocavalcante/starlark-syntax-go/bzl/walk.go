@@ -29,7 +29,6 @@ func (m *StopTraversalError) Error() string {
 //
 // The stk argument is the stack of expressions in the recursion above x,
 // from outermost to innermost.
-//
 func Walk(v Expr, f func(x Expr, stk []Expr)) {
 	var stack []Expr
 	walk1(&v, &stack, func(x *Expr, stk []Expr) (Expr, error) {
@@ -62,7 +61,6 @@ func WalkInterruptable(v Expr, f func(x Expr, stk []Expr) error) {
 //
 // The stk argument is the stack of expressions in the recursion above x,
 // from outermost to innermost.
-//
 func Edit(v Expr, f func(x Expr, stk []Expr) Expr) Expr {
 	var stack []Expr
 	return walk1(&v, &stack, func(x *Expr, stk []Expr) (Expr, error) {

@@ -5,31 +5,30 @@
   "type": "module",
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "preinstall": "npx -y only-allow pnpm",
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && node tools/check-bundle-size.mjs",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.6",
-    "@sveltejs/kit": "^2.20.0",
-    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@sveltejs/kit": "^2.70.1",
+    "@sveltejs/vite-plugin-svelte": "^5.1.1",
     "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^25.9.1",
     "jsdom": "^29.1.1",
-    "svelte": "^5.20.0",
+    "svelte": "^5.56.8",
     "svelte-check": "^4.1.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",
-    "vite": "^6.0.0",
+    "vite": "^6.4.3",
     "vitest": "^4.1.7"
   },
   "dependencies": {
-    "dompurify": "^3.4.5",
+    "dompurify": "^3.4.12",
     "marked": "^14.1.4",
-    "mermaid": "^11.15.0",
-    "shiki": "^1.24.0"
+    "mermaid": "^11.16.0",
+    "shiki": "^1.29.2"
   }
 }

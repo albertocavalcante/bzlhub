@@ -61,16 +61,16 @@ const (
 // construction — all fields are either read-only or protected by
 // mutexes.
 type Client struct {
-	http       *http.Client
-	baseURL    string
-	graphqlURL string
-	auth       bigorna.Authorizer
-	repo       bigorna.Repo
-	logger     *slog.Logger
-	ua         string
-	retry      bigorna.RetryPolicy
-	clock      bigorna.Clock
-	rng        *mathrand.Rand
+	http               *http.Client
+	baseURL            string
+	graphqlURL         string
+	auth               bigorna.Authorizer
+	repo               bigorna.Repo
+	logger             *slog.Logger
+	ua                 string
+	retry              bigorna.RetryPolicy
+	clock              bigorna.Clock
+	rng                *mathrand.Rand
 	disableIdempotency bool
 
 	// nodeID memoizes the GraphQL node ID for the configured repo,

@@ -1,4 +1,4 @@
-// Package embed embeds the compiled SvelteKit UI into the canopy binary
+// Package embed embeds the compiled SvelteKit UI into the bzlhub binary
 // via go:embed and exposes an http.Handler that serves it with a sane
 // SPA fallback (any unmatched path returns index.html so the client
 // router can take over).
@@ -29,7 +29,7 @@ func Handler() http.Handler {
 
 // HandlerWithTransform is Handler with an optional transform applied to
 // the index.html body before it's written. Asset responses pass through
-// untouched (they're not text/html). The transform is used by the canopy
+// untouched (they're not text/html). The transform is used by the bzlhub
 // server to inject per-URL SEO <head> tags into the SPA shell — see
 // internal/server/headtags/. Pass nil for the no-op behaviour Handler
 // gives you.
@@ -71,12 +71,12 @@ func (missingBuildHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusServiceUnavailable)
 	_, _ = w.Write([]byte(`<!doctype html><meta charset=utf-8>
-<title>canopy UI not built</title>
+<title>bzlhub UI not built</title>
 <style>body{font-family:system-ui;max-width:40rem;margin:5rem auto;padding:0 1rem;color:#333}code{background:#f3f3f3;padding:.1rem .35rem;border-radius:3px;font-size:.9rem}</style>
-<h1>canopy UI not built</h1>
+<h1>bzlhub UI not built</h1>
 <p>The embedded UI bundle is empty. To build it:</p>
 <pre><code>cd ui && pnpm install && pnpm run build
 cp -r ui/build/* internal/embed/ui/
-go build -o canopy ./cmd/bzlhub</code></pre>
+go build -o bzlhub ./cmd/bzlhub</code></pre>
 <p>Or run <code>./scripts/embed-ui.sh</code> if present.</p>`))
 }

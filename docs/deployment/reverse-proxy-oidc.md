@@ -28,17 +28,17 @@ trusted CIDR**.
 
 Bzlhub never sees the user's IdP cookies or tokens. It trusts the
 reverse-proxy's identity headers **only when the request originates
-from a configured CIDR** (`CANOPY_TRUSTED_PROXY_CIDR`), which closes
+from a configured CIDR** (`BZLHUB_TRUSTED_PROXY_CIDR`), which closes
 the obvious header-spoofing hole.
 
 ## Required bzlhub environment
 
 | Var | Required? | Example | Notes |
 |-----|-----------|---------|-------|
-| `CANOPY_TRUSTED_PROXY_CIDR` | **yes** | `10.0.0.0/8,127.0.0.1/32` | Comma-separated CIDRs your reverse-proxy will originate from. Anything else has its identity headers stripped. |
-| `CANOPY_ALLOWED_HOSTS` | **strongly recommended** | `bcr.bazel.build,*.githubusercontent.com` | Host allowlist for registry JSON and source-archive fetches. Without this, ingest/bump may fetch any URL a `source.json` points at. |
-| `CANOPY_INGEST_WRITE_ENABLED` | optional | `false` | Default off. Flip on only after auth is wired and you've decided who is allowed to ingest. |
-| `CANOPY_DEMO_MODE` | optional | `false` | Set to `true` if this is a public demo; the UI footer renders a "demo instance" badge. |
+| `BZLHUB_TRUSTED_PROXY_CIDR` | **yes** | `10.0.0.0/8,127.0.0.1/32` | Comma-separated CIDRs your reverse-proxy will originate from. Anything else has its identity headers stripped. |
+| `BZLHUB_ALLOWED_HOSTS` | **strongly recommended** | `bcr.bazel.build,*.githubusercontent.com` | Host allowlist for registry JSON and source-archive fetches. Without this, ingest/bump may fetch any URL a `source.json` points at. |
+| `BZLHUB_INGEST_WRITE_ENABLED` | optional | `false` | Default off. Flip on only after auth is wired and you've decided who is allowed to ingest. |
+| `BZLHUB_DEMO_MODE` | optional | `false` | Set to `true` if this is a public demo; the UI footer renders a "demo instance" badge. |
 | `GITHUB_TOKEN_FILE` | optional | `/run/secrets/github-token` | Path to a file containing the GitHub token used for source.json fallbacks. Prefer files over env vars. |
 
 ## Identity headers bzlhub reads
@@ -108,9 +108,9 @@ location / {
 bzlhub:
   image: ghcr.io/albertocavalcante/bzlhub:latest
   environment:
-    CANOPY_TRUSTED_PROXY_CIDR: "10.244.0.0/16"   # k8s pod cidr / docker net
-    CANOPY_ALLOWED_HOSTS: "bcr.bazel.build,*.githubusercontent.com"
-    CANOPY_INGEST_WRITE_ENABLED: "true"
+    BZLHUB_TRUSTED_PROXY_CIDR: "10.244.0.0/16"   # k8s pod cidr / docker net
+    BZLHUB_ALLOWED_HOSTS: "bcr.bazel.build,*.githubusercontent.com"
+    BZLHUB_INGEST_WRITE_ENABLED: "true"
     GITHUB_TOKEN_FILE: "/run/secrets/github-token"
   secrets:
     - github-token
@@ -156,7 +156,7 @@ http_filters:
           uri: "${OIDC_TOKEN_ENDPOINT}"     # operator-supplied
           timeout: 5s
         authorization_endpoint: "${OIDC_AUTHORIZATION_ENDPOINT}"
-        redirect_uri: "${CANOPY_PUBLIC_URL}/callback"
+        redirect_uri: "${BZLHUB_PUBLIC_URL}/callback"
         redirect_path_matcher: { path: { exact: /callback } }
         signout_path: { path: { exact: /signout } }
         forward_bearer_token: true
@@ -242,9 +242,9 @@ change.
 bzlhub:
   image: ghcr.io/albertocavalcante/bzlhub:latest
   environment:
-    CANOPY_TRUSTED_PROXY_CIDR: "10.244.0.0/16"   # network the Envoy sidecar comes from
-    CANOPY_ALLOWED_HOSTS: "bcr.bazel.build,*.githubusercontent.com"
-    CANOPY_INGEST_WRITE_ENABLED: "true"
+    BZLHUB_TRUSTED_PROXY_CIDR: "10.244.0.0/16"   # network the Envoy sidecar comes from
+    BZLHUB_ALLOWED_HOSTS: "bcr.bazel.build,*.githubusercontent.com"
+    BZLHUB_INGEST_WRITE_ENABLED: "true"
   # bzlhub is identical to the oauth2-proxy recipe; only the reverse
   # proxy differs
 ```
@@ -284,14 +284,14 @@ sqlite3 bzlhub.db \
 If `user_id` is empty for requests that should be authenticated, the
 trusted CIDR isn't matching. Check `r.RemoteAddr` server-side
 (`docker logs bzlhub` will show the accesslog) and adjust
-`CANOPY_TRUSTED_PROXY_CIDR` accordingly.
+`BZLHUB_TRUSTED_PROXY_CIDR` accordingly.
 
 If `user_id` populates from a request that should NOT have been
 authenticated, the trusted CIDR is too broad — narrow it.
 
 ## Procurement gates over header auth
 
-When bzlhub's procurement state machine is wired (`CANOPY_POLICY_FILE`
+When bzlhub's procurement state machine is wired (`BZLHUB_POLICY_FILE`
 set), every gated action consults `policy.auth.actions[<action>]`
 against the resolved identity. Header-auth users get the same
 treatment as bearer-token users — the gate doesn't care how the
@@ -376,11 +376,11 @@ service account is double-authing).
 - **Rotate tokens via file replacement + SIGHUP**, not by restarting
   the bzlhub process. `LazyRead` callers pick up new values on the
   next call.
-- **Default-deny registry/archive egress.** `CANOPY_ALLOWED_HOSTS` is
+- **Default-deny registry/archive egress.** `BZLHUB_ALLOWED_HOSTS` is
   empty by default, which means no enforcement for ingest/bump fetches.
   Set it before exposing the instance to anyone but yourself.
 - **Ingest-write gates are layered:** even with auth in place, leave
-  `CANOPY_INGEST_WRITE_ENABLED=false` until you have an
+  `BZLHUB_INGEST_WRITE_ENABLED=false` until you have an
   authorization policy (group membership, header allowlist) that
   matches your intent.
 

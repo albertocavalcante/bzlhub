@@ -10,7 +10,7 @@ import (
 // MODULE.bazel, with the tag-class invocations attached to its
 // returned proxy.
 //
-// Used by canopy's cross-module index: every canopy-indexed
+// Used by bzlhub's cross-module index: every bzlhub-indexed
 // consumer's MODULE.bazel contributes UseExtensionSites; when
 // re-analyzing a producer ruleset (rules_go etc.) for its airgap
 // surface, the producer's module_extension impls get driven with

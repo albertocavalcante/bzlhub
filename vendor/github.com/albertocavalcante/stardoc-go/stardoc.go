@@ -183,7 +183,7 @@ func renderModuleExtensions(b *strings.Builder, rep *report.ModuleReport, opts O
 		if len(e.TagClasses) > 0 {
 			b.WriteString("\n**Tag classes**\n\n")
 			for _, tc := range e.TagClasses {
-				fmt.Fprintf(b, "- `%s`\n", tc)
+				fmt.Fprintf(b, "- `%s`\n", tc.Name)
 			}
 		}
 	}

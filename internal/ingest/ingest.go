@@ -58,7 +58,7 @@ func FromDir(ctx context.Context, s *store.Store, dir string) (*report.ModuleRep
 	return r, nil
 }
 
-// FromMirroredVersion re-ingests a module version from canopy's local
+// FromMirroredVersion re-ingests a module version from bzlhub's local
 // BCR-shape mirror at worktreeDir/modules/<module>/<version>/. Reads
 // source.json + MODULE.bazel from disk; fetches the tarball over HTTP
 // with integrity verification; runs assay on the extracted tree; and

@@ -15,7 +15,7 @@ import (
 )
 
 func (h *handler) bazelRegistry(w http.ResponseWriter, r *http.Request) {
-	// When canopy was started with --mirror-base-url, synthesize a
+	// When bzlhub was started with --mirror-base-url, synthesize a
 	// bazel_registry.json that advertises ourselves as a mirror. We
 	// ignore whatever's on disk because the disk file is allowed to
 	// stay at "{}" (mirror config is deployment-time, not ingest-time).

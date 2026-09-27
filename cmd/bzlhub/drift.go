@@ -27,7 +27,7 @@ func newDriftCmd() *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "drift",
-		Short: "Compare a local canopy mirror against an upstream BCR-shape registry",
+		Short: "Compare a local bzlhub mirror against an upstream BCR-shape registry",
 		Long: "Read-only HTTP probe against an upstream BCR registry. Renders a one-shot " +
 			"drift report; does NOT touch bzlhub.db.\n\n" +
 			"For the cache-writing companion that operates against a git-aware mirror, " +
@@ -79,7 +79,7 @@ func newDriftRefreshCmd() *cobra.Command {
 		Use:   "refresh",
 		Short: "Recompute drift verdicts from the local git-aware mirror",
 		Long:  "Overwrites all rows. Boot-time backfill preserves populated rows; this verb does not.",
-		Example: `  # Recompute drift after `+"`bzlhub sync bootstrap`"+` so chips populate without restarting serve
+		Example: `  # Recompute drift after ` + "`bzlhub sync bootstrap`" + ` so chips populate without restarting serve
   bzlhub drift refresh --mirror=/var/bzlhub/bcr --db=/var/bzlhub/bzlhub.db`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if mirrorPath == "" {

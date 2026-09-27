@@ -14,7 +14,7 @@ import (
 
 // newExportDocsCmd renders a stored module's ModuleReport as Stardoc-
 // shape Markdown via stardoc-go and writes it to stdout. The
-// "publish-grade docs without running canopy as a server" workflow:
+// "publish-grade docs without running bzlhub as a server" workflow:
 // pipe to a file, commit it to a docs site, post to a wiki.
 //
 // `bzlhub export-docs rules_go@0.50.1 > rules_go.md` is the canonical
@@ -87,7 +87,7 @@ func newRefreshMetadataCmd() *cobra.Command {
 metadata.json, merging registry-level fields (homepage, maintainers,
 repository, yanked_versions) into the local mirror.
 
-Useful after the canopy update that added upstream metadata
+Useful after the bzlhub update that added upstream metadata
 persistence — modules bumped earlier only have a thin local
 metadata.json with no registry-level fields. One refresh-metadata
 run brings the whole corpus up to date.

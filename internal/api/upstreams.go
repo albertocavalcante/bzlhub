@@ -12,21 +12,21 @@ import "time"
 // has no cache and no collision recording; both are explicit
 // follow-ups).
 //
-// When canopy serves a non-federated configuration (no --upstream
+// When bzlhub serves a non-federated configuration (no --upstream
 // flag / BZLHUB_UPSTREAMS env), Upstreams is the empty array and
 // Primary reports the local backend kind. Clients can treat empty
 // Upstreams as "federation disabled" without parsing the Primary
 // kind explicitly.
 type UpstreamsResponse struct {
-	Primary    PrimaryInfo    `json:"primary"`
-	Upstreams  []UpstreamInfo `json:"upstreams"`
+	Primary   PrimaryInfo    `json:"primary"`
+	Upstreams []UpstreamInfo `json:"upstreams"`
 	// CacheStats reflects the federation response cache (Plan 16
 	// Layer C). Zero values when the cache is disabled (operators
 	// running with `BZLHUB_UPSTREAM_CACHE_SIZE` ≤ 0) or when no
 	// federation upstream has been queried yet.
 	CacheStats CacheStatsInfo `json:"cache_stats"`
 	// CollisionsCount is the number of distinct (module, version)
-	// pairs canopy has observed in MORE than one federation source
+	// pairs bzlhub has observed in MORE than one federation source
 	// — Plan 16 Layer D provenance audit. Zero when the federation
 	// hasn't seen any cross-upstream collisions yet (typical for a
 	// well-curated mirror + a single upstream).
@@ -63,9 +63,9 @@ type CacheStatsInfo struct {
 // different Kind values.
 type PrimaryInfo struct {
 	// Kind is "local" when the primary is a filesystem backend
-	// (--root <path>), "none" when canopy was started without a
+	// (--root <path>), "none" when bzlhub was started without a
 	// primary, or a future backend identifier (s3/postgres/oci) as
-	// canopy grows.
+	// bzlhub grows.
 	Kind string `json:"kind"`
 	// Root is the filesystem path when Kind=="local". Empty for
 	// other kinds.

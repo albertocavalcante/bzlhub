@@ -11,7 +11,7 @@ import (
 )
 
 func TestIntegrityToHex(t *testing.T) {
-	raw := sha256.Sum256([]byte("canopy"))
+	raw := sha256.Sum256([]byte("bzlhub"))
 	want := hex.EncodeToString(raw[:])
 	integrity := "sha256-" + base64.StdEncoding.EncodeToString(raw[:])
 

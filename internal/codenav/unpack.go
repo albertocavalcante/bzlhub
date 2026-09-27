@@ -1,4 +1,4 @@
-// Package codenav lazily materializes canopy-stored module sources for
+// Package codenav lazily materializes bzlhub-stored module sources for
 // per-(module, version) code navigation. Source bytes live as content-
 // addressed tarball blobs under the mirror root; this package gunzips
 // + untars them on demand into a stable cache directory, opens the
@@ -8,7 +8,7 @@
 //
 // Designed for an HTTP handler hot path: parse + extract once per
 // (module, version), then serve subsequent requests from cache. Bounded
-// by a small LRU so a long-running canopy serving thousands of modules
+// by a small LRU so a long-running bzlhub serving thousands of modules
 // doesn't keep every source tree warm in memory.
 package codenav
 
@@ -55,7 +55,7 @@ type sourceDescriptor struct {
 //
 // Patches declared in source.json.patches are intentionally NOT applied.
 // V1 code-nav navigates raw upstream sources; patched MODULE.bazel
-// differences would require a bigger plumbing story (canopy's mirror
+// differences would require a bigger plumbing story (bzlhub's mirror
 // stores the patches under modules/<m>/<v>/patches/, but applying them
 // post-extract isn't worth the complexity for navigation).
 // completeSentinel marks a finished extract. Written as the LAST step
@@ -63,7 +63,10 @@ type sourceDescriptor struct {
 // non-empty" heuristic the previous version used would wrongly trust a
 // half-written tree from a crashed process. The sentinel name leads
 // with a dot so it never collides with a real Bazel source path.
-const completeSentinel = ".canopy-unpack-complete"
+const (
+	completeSentinel       = ".bzlhub-unpack-complete"
+	legacyCompleteSentinel = ".canopy-unpack-complete"
+)
 
 // MaterializeSource ensures the unpacked source tree for (module,
 // version) exists under cacheDir/<module>/<version>/ and returns its
@@ -89,7 +92,7 @@ func unpackSource(blobsDir, sourceJSONPath, destDir string) error {
 	// A partial extract (some files written, sentinel missing) forces a
 	// redo: we wipe destDir so the new extract isn't contaminated by
 	// stale files from the crashed run.
-	if _, err := os.Stat(filepath.Join(destDir, completeSentinel)); err == nil {
+	if extractComplete(destDir) {
 		return nil
 	}
 	if _, err := os.Stat(destDir); err == nil {
@@ -136,6 +139,15 @@ func unpackSource(blobsDir, sourceJSONPath, destDir string) error {
 	return nil
 }
 
+func extractComplete(destDir string) bool {
+	for _, name := range []string{completeSentinel, legacyCompleteSentinel} {
+		if _, err := os.Stat(filepath.Join(destDir, name)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 func readSourceDescriptor(path string) (*sourceDescriptor, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -149,7 +161,7 @@ func readSourceDescriptor(path string) (*sourceDescriptor, error) {
 }
 
 // integrityToHex converts an SRI integrity string ("sha256-<base64>")
-// into the hex-encoded sha256 used as canopy's content-addressed blob
+// into the hex-encoded sha256 used as bzlhub's content-addressed blob
 // name. Only sha256 is supported — every BCR module in the wild uses
 // it, and supporting alternates here would mean teaching the mirror
 // writer about them too.
@@ -173,7 +185,7 @@ func integrityToHex(integrity string) (string, error) {
 // archive_type is empty (the typical BCR shape — release tarballs
 // from GitHub usually only have a .tar.gz or .zip suffix and no
 // explicit declaration). Defers to internal/archive for actual
-// extraction so codenav and the rest of canopy share one
+// extraction so codenav and the rest of bzlhub share one
 // implementation per format.
 //
 // Recognized formats: tar.gz / tgz (default) and zip. Anything

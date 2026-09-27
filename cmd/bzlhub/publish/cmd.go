@@ -57,8 +57,8 @@ env vars by default. Use --dry-run to validate config without pushing.`,
 	cmd.Flags().StringVar(&f.baseURL, "base-url", "", "forge API base URL (env BZLHUB_FORGE_BASE_URL; defaults to api.github.com)")
 	cmd.Flags().StringVar(&f.tokenEnv, "token-env", "", "env var holding the PAT (default per-forge: BZLHUB_GITHUB_TOKEN / BZLHUB_GITLAB_TOKEN / BZLHUB_BITBUCKET_TOKEN / BZLHUB_FORGEJO_TOKEN)")
 	cmd.Flags().StringVar(&f.baseBranch, "base-branch", "", "base branch (env BZLHUB_REGISTRY_BASE_BRANCH; default main)")
-	cmd.Flags().StringVar(&f.botName, "bot-name", "", "committer name (env BZLHUB_BOT_NAME; default canopy)")
-	cmd.Flags().StringVar(&f.botEmail, "bot-email", "", "committer email (env BZLHUB_BOT_EMAIL; default canopy@<hostname>)")
+	cmd.Flags().StringVar(&f.botName, "bot-name", "", "committer name (env BZLHUB_BOT_NAME; default bzlhub)")
+	cmd.Flags().StringVar(&f.botEmail, "bot-email", "", "committer email (env BZLHUB_BOT_EMAIL; default bzlhub@<hostname>)")
 
 	// Mode.
 	cmd.Flags().BoolVar(&f.commit, "commit", false, "push directly to base branch instead of opening a PR (requires --allow-direct)")

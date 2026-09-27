@@ -5,7 +5,7 @@ import "sort"
 // checkIndexMirrorAgreement surfaces (module, version) pairs present
 // on one side (DB index vs. on-disk mirror tree) but not the other.
 //
-// Severity is Warning rather than Error because the canopy server can
+// Severity is Warning rather than Error because the bzlhub server can
 // still operate in either degraded mode:
 //   - "indexed but missing from disk": serve endpoints will 404 on
 //     fetch but search/show still work

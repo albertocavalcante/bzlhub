@@ -1,7 +1,7 @@
-// Package token provides pluggable credential sources for canopy's
+// Package token provides pluggable credential sources for bzlhub's
 // optional GitHub API access.
 //
-// canopy NEVER requires GitHub access. Features that benefit from
+// bzlhub NEVER requires GitHub access. Features that benefit from
 // it (I5 stars/forks/watchers, I9 languages, I4 PR provenance) MUST
 // degrade gracefully when no token is available. Anonymous (60/h
 // rate limit) is the default; everything else is an operator opt-in
@@ -12,9 +12,9 @@
 //   - Anonymous: zero setup, ships today, 60/h.
 //   - PAT:       file-pointed env var, ships today, personal use.
 //   - GitHubApp: short-lived installation tokens, Sprint 4 — the
-//                recommended corporate path.
+//     recommended corporate path.
 //   - OIDC:      federation à la OctoSTS, Sprint 5 — zero stored
-//                secret, ideal for k8s / cloud workload identity.
+//     secret, ideal for k8s / cloud workload identity.
 //
 // Documented in docs/plans/08-corporate-security.md §
 // "TokenProvider abstraction".
@@ -39,7 +39,7 @@ type Provider interface {
 
 // Anonymous is the default provider. Returns the empty token,
 // which makes GitHub API calls anonymous (60 requests/hour). Works
-// without configuration; suitable for personal-canopy installs at
+// without configuration; suitable for personal-bzlhub installs at
 // small corpus scale.
 type Anonymous struct{}
 
@@ -51,7 +51,7 @@ func (Anonymous) Token(_ context.Context) (string, error) { return "", nil }
 // fallback for quick-start.
 //
 // PAT is documented as the "escape hatch" path for personal
-// canopy installs that don't have a GitHub App configured. Not
+// bzlhub installs that don't have a GitHub App configured. Not
 // recommended for corporate deployments — its blast radius on
 // leak equals the issuing user's account permissions.
 type PAT struct {

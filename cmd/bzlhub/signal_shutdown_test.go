@@ -27,7 +27,7 @@ import (
 //     run. Without PID-aware acquire (lock.go), the daemon would
 //     ErrLocked every iteration.
 //  2. The takeover emits a structured WARN log via slog so an
-//     operator investigating "what happened to canopy.lock"
+//     operator investigating "what happened to bzlhub.lock"
 //     gets a forensic trail.
 //  3. SIGTERM (what `systemctl stop` sends) cancels cmd.Context()
 //     via signal.NotifyContext in main, propagates to
@@ -47,7 +47,7 @@ func TestSignalShutdown_DaemonExitsCleanlyOnSIGTERM(t *testing.T) {
 		// unattended `go test ./...` from getting derailed.
 		t.Skip("set BZLHUB_RUN_SIGNAL_TEST=1 or run in CI to exercise")
 	}
-	bin := buildCanopy(t)
+	bin := buildBzlhub(t)
 	mirror, db := setupSmokeFixture(t)
 
 	// Plant an orphan lock from a "crashed prior daemon" — we
@@ -55,7 +55,7 @@ func TestSignalShutdown_DaemonExitsCleanlyOnSIGTERM(t *testing.T) {
 	// then write it as the lock content. PID-aware acquire on the
 	// next iteration will detect the dead holder and take over.
 	deadPID := harvestDeadPID(t)
-	lockPath := filepath.Join(mirror, ".git", "canopy.lock")
+	lockPath := filepath.Join(mirror, ".git", "bcr-mirror.lock")
 	if err := os.WriteFile(lockPath, []byte(strconv.Itoa(deadPID)), 0o644); err != nil {
 		t.Fatalf("plant orphan lock: %v", err)
 	}
@@ -113,6 +113,9 @@ func TestSignalShutdown_DaemonExitsCleanlyOnSIGTERM(t *testing.T) {
 	if !strings.Contains(out, strconv.Itoa(deadPID)) {
 		t.Errorf("takeover log missing dead PID %d; got: %s", deadPID, out)
 	}
+	if strings.Contains(out, "context canceled") || strings.Contains(out, "iteration failed") {
+		t.Errorf("graceful shutdown was reported as an iteration failure: %s", out)
+	}
 
 	// Lock file should be gone — the defer release ran.
 	if _, err := os.Stat(lockPath); !errors.Is(err, os.ErrNotExist) {
@@ -135,16 +138,16 @@ func harvestDeadPID(t *testing.T) int {
 	return pid
 }
 
-// buildCanopy compiles the canopy binary into a t.TempDir and
+// buildBzlhub compiles the bzlhub binary into a t.TempDir and
 // returns the path. Cached across tests via the build-cache;
 // repeat tests in the same `go test` run share the artifact.
-func buildCanopy(t *testing.T) string {
+func buildBzlhub(t *testing.T) string {
 	t.Helper()
-	out := filepath.Join(t.TempDir(), "canopy")
+	out := filepath.Join(t.TempDir(), "bzlhub")
 	cmd := exec.Command("go", "build", "-o", out, ".")
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("go build canopy: %v", err)
+		t.Fatalf("go build bzlhub: %v", err)
 	}
 	return out
 }
@@ -175,7 +178,7 @@ func setupSmokeFixture(t *testing.T) (mirrorPath, dbPath string) {
 	db := filepath.Join(t.TempDir(), "bzlhub.db")
 
 	// Bootstrap so the mirror exists.
-	bin := buildCanopy(t) // reuses build cache
+	bin := buildBzlhub(t) // reuses build cache
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, bin, "sync", "bootstrap",

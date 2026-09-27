@@ -14,7 +14,7 @@ import (
 // Decisions per plan-64 §2:
 //   - Stateless. WithStateLess(true) — no Mcp-Session-Id ever issued;
 //     every POST is independent. Load-balancer-friendly when (if) we
-//     shard, and avoids "session lost" UX when canopy restarts.
+//     shard, and avoids "session lost" UX when bzlhub restarts.
 //   - Non-streaming. WithDisableStreaming(true) — GETs return 405
 //     instead of opening an SSE channel. All bzlhub tools complete
 //     well under 100ms; SSE adds Cloudflare Tunnel buffering
@@ -43,14 +43,14 @@ import (
 // cannot trigger background mirror writes via tools/call. Trusted
 // internal deployments pass true. The server.go wiring drives this
 // off featureflags.MCPWriteToolsEnabled (default false).
-func NewHTTPHandler(c api.Canopy, v Verifier, version string, writeEnabled bool) http.Handler {
+func NewHTTPHandler(c api.MCPService, v Verifier, version string, writeEnabled bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		// Per-request server: fresh tool dispatcher state, no
 		// cross-goroutine reuse. Allocation is the cost; the win is
 		// no chance of one client's tool-call response data
 		// inadvertently flushing into another client's connection
 		// while both are mid-flight.
-		srv := server.NewMCPServer("canopy", version)
+		srv := server.NewMCPServer("bzlhub", version)
 		registerTools(srv, c, v, writeEnabled)
 
 		httpSrv := server.NewStreamableHTTPServer(

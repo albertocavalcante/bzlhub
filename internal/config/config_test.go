@@ -7,7 +7,7 @@ import (
 
 // TestConfigValidate_MirrorOnlyRejectsNonEmptyEgressAllow is the
 // load-bearing contract from Plan 21 §"mirror-only" profile: a corp-net
-// canopy MUST NOT carry any egress allowlist entries. The configured
+// bzlhub MUST NOT carry any egress allowlist entries. The configured
 // allowlist is the policy-shaped expression of "this host may talk to
 // the public internet"; mirror-only is the policy-shaped expression of
 // "this host may not." The two are mutually exclusive by design, and

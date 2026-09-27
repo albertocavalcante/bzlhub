@@ -9,7 +9,7 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
-// Use-extension usages are the cross-module index that lets canopy's
+// Use-extension usages are the cross-module index that lets bzlhub's
 // airgap analyzer drive a producer ruleset's module_extension impls
 // with REAL tag values aggregated across the consumer corpus, rather
 // than synthetic attr defaults.
@@ -159,4 +159,3 @@ func TestUseExtensionUsages_EmptySliceClears(t *testing.T) {
 		t.Errorf("empty write should clear prior usages, got %d", len(usages))
 	}
 }
-

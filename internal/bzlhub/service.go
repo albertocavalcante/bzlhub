@@ -1,4 +1,4 @@
-// Package canopy is the concrete implementation of the api.Canopy interface.
+// Package bzlhub is the concrete implementation of the api.Bzlhub interface.
 // It composes Store (the search index) and the ingestion pipeline behind a
 // single Go object. REST/MCP/CLI all call into Service; transports never
 // touch Store directly.
@@ -19,7 +19,7 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
-// Service implements api.Canopy.
+// Service implements api.Bzlhub.
 //
 // MirrorRoot is the filesystem path serving the BCR-shape mirror. It's
 // optional — only Drift and Bump require it. Empty MirrorRoot makes
@@ -71,7 +71,7 @@ type Service struct {
 	// backend.NewFromRoot detected <root>/.git at boot and wired
 	// the Mirror via UseMirror. Drives the git-aware drift
 	// backfill (PR7) — when nil, BackfillDriftSummary stays a
-	// no-op and operators fall back to the HTTP-probe `canopy
+	// no-op and operators fall back to the HTTP-probe `bzlhub
 	// drift` CLI verb.
 	mirror *bcrmirror.Mirror
 }
@@ -168,4 +168,4 @@ func eventFromReport(r *report.ModuleReport) ModuleIndexedEvent {
 }
 
 // Compile-time interface check.
-var _ api.Canopy = (*Service)(nil)
+var _ api.Bzlhub = (*Service)(nil)

@@ -48,7 +48,7 @@ func (s *Service) AirgapSurface(ctx context.Context, name, version string) (*api
 			External: node.External,
 		}
 		if node.External {
-			// Closure points outside canopy's index — show the node
+			// Closure points outside bzlhub's index — show the node
 			// but don't query (would 404).
 			resp.Modules = append(resp.Modules, mod)
 			resp.MissingModules = append(resp.MissingModules, node.Name+"@"+node.Version)
@@ -286,7 +286,7 @@ func (s *Service) corpusUsagesForExtensions(ctx context.Context, rep *report.Mod
 
 // ExternalSurface assembles the per-module URL inventory from the
 // store and computes class-counts for chip rendering. Mirrors
-// api.Canopy.ExternalSurface. The store rows arrive class-sorted, so
+// api.Bzlhub.ExternalSurface. The store rows arrive class-sorted, so
 // no additional sort is needed for stable output.
 func (s *Service) ExternalSurface(ctx context.Context, name, version string) (*api.ExternalSurfaceResponse, error) {
 	refs, err := s.store.GetExternalRefs(ctx, name, version)

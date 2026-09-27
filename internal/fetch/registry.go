@@ -15,7 +15,7 @@ import (
 )
 
 // SourceJSON mirrors the wire shape of modules/<n>/<v>/source.json — the
-// subset canopy needs for fetching. JSON tags match go-bcr / bazel-oci-worker.
+// subset bzlhub needs for fetching. JSON tags match go-bcr / bazel-oci-worker.
 type SourceJSON struct {
 	Type        string            `json:"type,omitempty"`
 	URL         string            `json:"url,omitempty"`
@@ -26,7 +26,7 @@ type SourceJSON struct {
 	PatchStrip  int               `json:"patch_strip,omitempty"`
 }
 
-// MetadataJSON is the subset of modules/<n>/metadata.json canopy reads.
+// MetadataJSON is the subset of modules/<n>/metadata.json bzlhub reads.
 type MetadataJSON struct {
 	Versions       []string          `json:"versions"`
 	YankedVersions map[string]string `json:"yanked_versions,omitempty"`
@@ -43,7 +43,7 @@ var ErrNotFound = errors.New("registry: not found")
 // MaxJSONResponseBytes caps body reads for upstream JSON / small text
 // endpoints (source.json, MODULE.bazel, metadata.json). Even BCR
 // modules with hundreds of versions ship <100KB metadata; 16MB is
-// 100x headroom and well below the OOM threshold for canopy's
+// 100x headroom and well below the OOM threshold for bzlhub's
 // typical deployment — but small enough that a compromised upstream
 // can't sink the process by serving a 10GB body.
 //
@@ -104,8 +104,7 @@ func NewClient() *Client {
 	// at startup; this is the composition seam Plan 28 C5
 	// introduces. See internal/egress/client.go for the wrap
 	// semantics.
-	hc := egress.NewHTTPClientWithTransport(
-		egress.Policy{},
+	hc := egress.DefaultHTTPClientWithTransport(
 		allowlistTransport{base: http.DefaultTransport, allowedHosts: allowed},
 	)
 	hc.Timeout = 5 * time.Minute
@@ -262,7 +261,7 @@ func (c *Client) get(ctx context.Context, u string) (*http.Response, error) {
 		return nil, err
 	}
 	req.Header.Set("Accept", "*/*")
-	req.Header.Set("User-Agent", "canopy/0.0")
+	req.Header.Set("User-Agent", "bzlhub/0.0")
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return nil, err
@@ -291,7 +290,7 @@ func (c *Client) get(ctx context.Context, u string) (*http.Response, error) {
 // don't need the segment-level escaping the previous PathEscape pass
 // provided — but if a "/" did show up in a segment it would now be
 // treated as a path separator. That matches the intent (any future
-// schema with embedded slashes is outside canopy's BCR mapping).
+// schema with embedded slashes is outside bzlhub's BCR mapping).
 func joinURL(registry string, segs ...string) (string, error) {
 	base, err := url.Parse(strings.TrimRight(registry, "/"))
 	if err != nil {

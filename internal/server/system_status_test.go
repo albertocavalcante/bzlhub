@@ -174,7 +174,7 @@ func TestSystemStatus_PopulatesMirrorHeadAndLastSync(t *testing.T) {
 }
 
 // TestSystemStatus_ComputedWireRoundTrip asserts the
-// internal/canopy/health derivation reaches the wire — without
+// internal/bzlhub/health derivation reaches the wire — without
 // this guard, a refactor that drops the `status.Computed =
 // health.Derive(...)` call in apiStatus would silently regress
 // the /status page (UI would fall back to 'unhealthy' for every

@@ -31,7 +31,7 @@ func TestUpstreams_NoFederationReportsLocalPrimary(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	bk := backend.NewFile("/tmp/canopy-test")
+	bk := backend.NewFile("/tmp/bzlhub-test")
 	ts := httptest.NewServer(server.New(bk, bzlhub.New(s), nil))
 	t.Cleanup(ts.Close)
 
@@ -51,8 +51,8 @@ func TestUpstreams_NoFederationReportsLocalPrimary(t *testing.T) {
 	if got.Primary.Kind != "local" {
 		t.Errorf("primary.kind = %q, want local", got.Primary.Kind)
 	}
-	if got.Primary.Root != "/tmp/canopy-test" {
-		t.Errorf("primary.root = %q, want /tmp/canopy-test", got.Primary.Root)
+	if got.Primary.Root != "/tmp/bzlhub-test" {
+		t.Errorf("primary.root = %q, want /tmp/bzlhub-test", got.Primary.Root)
 	}
 	if len(got.Upstreams) != 0 {
 		t.Errorf("upstreams = %d, want 0 (non-federated)", len(got.Upstreams))
@@ -96,7 +96,7 @@ func TestUpstreams_FederationReportsEachUpstream(t *testing.T) {
 	}))
 	t.Cleanup(bad.Close)
 
-	primary := backend.NewFile("/tmp/canopy-test")
+	primary := backend.NewFile("/tmp/bzlhub-test")
 	cascade, err := backend.NewCascade(backend.CascadeConfig{
 		Primary: primary,
 		Upstreams: []*backend.Upstream{
@@ -132,8 +132,8 @@ func TestUpstreams_FederationReportsEachUpstream(t *testing.T) {
 	if got.Primary.Kind != "local" {
 		t.Errorf("primary.kind = %q, want local (cascade unwraps primary)", got.Primary.Kind)
 	}
-	if got.Primary.Root != "/tmp/canopy-test" {
-		t.Errorf("primary.root = %q, want /tmp/canopy-test", got.Primary.Root)
+	if got.Primary.Root != "/tmp/bzlhub-test" {
+		t.Errorf("primary.root = %q, want /tmp/bzlhub-test", got.Primary.Root)
 	}
 	if len(got.Upstreams) != 2 {
 		t.Fatalf("upstreams = %d, want 2", len(got.Upstreams))
@@ -170,4 +170,3 @@ func TestUpstreams_FederationReportsEachUpstream(t *testing.T) {
 		t.Errorf("cache_stats has negative field: %+v", got.CacheStats)
 	}
 }
-

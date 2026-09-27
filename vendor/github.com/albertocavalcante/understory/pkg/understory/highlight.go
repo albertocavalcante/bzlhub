@@ -20,12 +20,29 @@ import (
 // classification. Pure-Starlark stays registered for .star files
 // that the Bazel dialect doesn't claim.
 //
-// Adding more dialects later (Buck2, Copybara) is a one-line
-// registration; the wire shape downstream doesn't change because
+// Adding more dialects later (Buck2, Copybara) changes this list;
+// the wire shape downstream doesn't change because
 // dialect-specific kinds are namespaced (bazel.label, buck2.target).
-var hlRegistry = highlight.NewRegistry().
-	Register(bazel.Dialect{}).
-	Register(starlark.Dialect{})
+var hlDialects = []highlight.Dialect{bazel.Dialect{}, starlark.Dialect{}}
+
+var hlRegistry = func() *highlight.Registry {
+	r := highlight.NewRegistry()
+	for _, dialect := range hlDialects {
+		r.Register(dialect)
+	}
+	return r
+}()
+
+const maxHighlightSourceBytes = 4 << 20
+
+func supportsHighlight(file string) bool {
+	for _, dialect := range hlDialects {
+		if dialect.Match(file) {
+			return true
+		}
+	}
+	return false
+}
 
 // highlightResponse is the wire shape returned by GET /api/highlight.
 //
@@ -44,11 +61,11 @@ type highlightResponse struct {
 }
 
 type wireToken struct {
-	Kind      string            `json:"kind"`
-	StartLine int               `json:"start_line"`
-	StartChar int               `json:"start_char"`
-	EndLine   int               `json:"end_line"`
-	EndChar   int               `json:"end_char"`
+	Kind      string `json:"kind"`
+	StartLine int    `json:"start_line"`
+	StartChar int    `json:"start_char"`
+	EndLine   int    `json:"end_line"`
+	EndChar   int    `json:"end_char"`
 	// Meta passes through dialect-specific data verbatim (e.g.
 	// bazel-highlight-go emits {name, url, description} on
 	// bazel.builtin tokens). Renderers ignore unknown keys; the
@@ -93,6 +110,7 @@ func toWire(toks []highlight.Token) []wireToken {
 //     — keeps the client call site simple: always fetch, render whatever.
 //   - 400 on missing/invalid file param (matches /api/source).
 //   - 404 on file resolution failure.
+//   - 413 when a supported source exceeds 4 MiB.
 //   - 503 when sourceRoot is nil — same gate as /api/source.
 //
 // On parse error, tokens collected before the error are still
@@ -135,17 +153,27 @@ func highlightHandler(idx *Index, sourceRoot *os.Root) http.HandlerFunc {
 			return
 		}
 
-		src, err := io.ReadAll(f)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "read failed")
-			return
-		}
-
-		tokens, terr := hlRegistry.Tokenize(file, src)
-		if errors.Is(terr, highlight.ErrUnsupportedDialect) {
-			// Not Starlark-shaped — return empty tokens so the client
-			// can call this unconditionally on every file open.
-			tokens = []highlight.Token{}
+		var tokens []highlight.Token
+		if supportsHighlight(file) {
+			if info.Size() > maxHighlightSourceBytes {
+				writeError(w, http.StatusRequestEntityTooLarge, "source too large to highlight")
+				return
+			}
+			// The limit also protects against a file growing after Stat.
+			src, err := io.ReadAll(io.LimitReader(f, maxHighlightSourceBytes+1))
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "read failed")
+				return
+			}
+			if len(src) > maxHighlightSourceBytes {
+				writeError(w, http.StatusRequestEntityTooLarge, "source too large to highlight")
+				return
+			}
+			var terr error
+			tokens, terr = hlRegistry.Tokenize(file, src)
+			if errors.Is(terr, highlight.ErrUnsupportedDialect) {
+				tokens = nil
+			}
 		}
 		// Source bytes in the codenav cache are content-addressed
 		// (canopy unpacks tarballs by SHA into stable dirs), so the

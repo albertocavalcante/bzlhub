@@ -1,9 +1,9 @@
 // Package server serves both the BCR HTTP protocol (so Bazel can fetch
-// modules) and canopy's own /api/* routes (so the web UI, agents, and CLI
+// modules) and bzlhub's own /api/* routes (so the web UI, agents, and CLI
 // can query the index).
 //
 // BCR endpoints are projections of backend.Backend; /api endpoints are
-// projections of api.Canopy. Either may be nil; the corresponding routes
+// projections of api.Bzlhub. Either may be nil; the corresponding routes
 // just become unavailable.
 package server
 
@@ -18,8 +18,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/albertocavalcante/bzlhub/internal/api"
-	"github.com/albertocavalcante/bzlhub/internal/auth"
 	"github.com/albertocavalcante/bzlhub/internal/api/paths"
+	"github.com/albertocavalcante/bzlhub/internal/auth"
 	"github.com/albertocavalcante/bzlhub/internal/backend"
 	"github.com/albertocavalcante/bzlhub/internal/bcrprobe"
 	"github.com/albertocavalcante/bzlhub/internal/codenav"
@@ -67,13 +67,13 @@ type Options struct {
 	// stop the goroutines on teardown.
 	Ctx context.Context
 
-	// MirrorBaseURL, when non-empty, makes canopy advertise itself as a
+	// MirrorBaseURL, when non-empty, makes bzlhub advertise itself as a
 	// tarball mirror via bazel_registry.json.mirrors. Bazel takes each
 	// upstream archive URL, strips the scheme, and prepends this base
 	// to construct the mirror request. /m/<host+path> is the handler
 	// that looks up the corresponding content-addressed blob.
 	//
-	// Example: --mirror-base-url "http://canopy.local:8080/m/"
+	// Example: --mirror-base-url "http://bzlhub.local:8080/m/"
 	MirrorBaseURL string
 
 	// MirrorRoot is the filesystem path used to build the URL→blob
@@ -100,7 +100,7 @@ type Options struct {
 	// a literal in-line.
 	Flags featureflags.Flags
 
-	// TrustedProxyCIDRs lists source-IP ranges from which canopy
+	// TrustedProxyCIDRs lists source-IP ranges from which bzlhub
 	// honors X-Forwarded-User / -Email / -Groups headers (set by a
 	// reverse proxy doing OIDC/SSO termination). Empty disables
 	// header-based auth entirely — requests stay anonymous. See
@@ -108,7 +108,7 @@ type Options struct {
 	TrustedProxyCIDRs []*net.IPNet
 
 	// Helper supplies the read-side queries that don't live on the
-	// cross-transport api.Canopy contract (per-row metadata,
+	// cross-transport api.Bzlhub contract (per-row metadata,
 	// adoption counts, GitHub-meta). Wired by main from
 	// *bzlhub.Service. Nil disables every augmentation cleanly —
 	// the responses degrade to "plain report" shape rather than
@@ -117,13 +117,13 @@ type Options struct {
 
 	// Verifier is the implementation of the bzlhub_verify MCP tool.
 	// Wired by serve.go from *bzlhub.Service (the same value passed
-	// as the api.Canopy argument; one concrete satisfies both
+	// as the api.Bzlhub argument; one concrete satisfies both
 	// interfaces — see the Verifier doc-comment in mcpsrv for why
 	// they don't fuse). May be nil; when nil and MCPHTTPEnabled,
 	// the /mcp endpoint serves only the read-side tool catalogue.
 	Verifier mcpsrv.Verifier
 
-	// Version is the canopy build identifier ("0.1.0", a git sha,
+	// Version is the bzlhub build identifier ("0.1.0", a git sha,
 	// or "dev") surfaced over the MCP transport's `serverInfo`
 	// initialize response. Cosmetic; tools work regardless.
 	Version string
@@ -140,7 +140,7 @@ type Options struct {
 	// RequestStore enables the procurement endpoints
 	// (POST /api/v1/requests, future list/approve/deny). When nil
 	// the routes aren't registered — the deployment runs without
-	// procurement, which is the right shape for the personal-canopy
+	// procurement, which is the right shape for the personal-bzlhub
 	// install or the public bzlhub.com node.
 	RequestStore RequestStore
 
@@ -152,7 +152,7 @@ type Options struct {
 	Policy policy.Snapshot
 }
 
-// RequestStore is the slice of the canopy store consumed by the
+// RequestStore is the slice of the bzlhub store consumed by the
 // procurement HTTP handlers. *store.Store satisfies it.
 // Exposing it as an interface keeps the server pkg testable
 // without spinning up SQLite and documents the seam for any
@@ -161,12 +161,12 @@ type RequestStore = requestStore
 
 // New constructs an http.Handler. Either b or c can be nil for partial
 // deployments; the corresponding routes are simply not registered.
-func New(b backend.Backend, c api.Canopy, logger *slog.Logger) http.Handler {
+func New(b backend.Backend, c api.Bzlhub, logger *slog.Logger) http.Handler {
 	return NewWithOptions(b, c, logger, Options{})
 }
 
 // NewWithOptions is New with non-default behavior controlled by Options.
-func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts Options) http.Handler {
+func NewWithOptions(b backend.Backend, c api.Bzlhub, logger *slog.Logger, opts Options) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -194,7 +194,7 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 	// BZLHUB_IDENTITY_FILE).
 	r.Use(bearerAuth(opts.BearerRegistry, logger))
 	// Header-based auth scaffold. No-op when TrustedProxyCIDRs is
-	// empty (default for personal-canopy installs). When configured,
+	// empty (default for personal-bzlhub installs). When configured,
 	// reads X-Forwarded-User/Email/Groups from requests originating
 	// in the trusted CIDR block and attaches auth.Identity to ctx.
 	r.Use(headerAuth(opts.TrustedProxyCIDRs))
@@ -284,7 +284,7 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 			// Procurement endpoints (Plan 67, Plan 72 §C4). Registered
 			// only when the operator has wired both a RequestStore and
 			// a Policy — deployments without procurement (the public
-			// bzlhub.com node, personal canopy) skip the routes entirely
+			// bzlhub.com node, personal bzlhub) skip the routes entirely
 			// rather than serving 503 placeholders.
 			if opts.RequestStore != nil && opts.Policy != nil {
 				userLim := ratelimit.NewUserLimiter()
@@ -418,7 +418,7 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 	r.Get("/sitemap.xml", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 		w.Header().Set("Cache-Control", "public, max-age=3600")
-		// Sitemap.Stream never 500s on canopy errors — it emits what
+		// Sitemap.Stream never 500s on bzlhub errors — it emits what
 		// it can and continues. A partial sitemap is more useful to
 		// a crawler than a 5xx.
 		_ = sitemap.Stream(req.Context(), c, originFromRequest(req), w)
@@ -467,14 +467,26 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 	// surfaces "MCP-over-HTTP is not enabled on this instance"
 	// inline — honest empty state).
 	if c != nil && opts.Flags.MCPHTTPEnabled {
-		mcpHandler := mcpsrv.NewHTTPHandler(c, opts.Verifier, opts.Version,
-			opts.Flags.MCPWriteToolsEnabled)
 		r.Mount("/mcp", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			if req.Method == http.MethodGet &&
 				strings.Contains(req.Header.Get("Accept"), "text/html") {
 				spa.ServeHTTP(w, req)
 				return
 			}
+			id, _ := auth.FromContext(req.Context())
+			writeEnabled := false
+			if opts.Policy != nil {
+				pol := opts.Policy()
+				if pol == nil || !pol.Allow(id, "use_mcp_read") {
+					writeJSON(w, http.StatusForbidden, map[string]string{
+						"error": "policy denied action use_mcp_read",
+					})
+					return
+				}
+				writeEnabled = opts.Flags.MCPWriteToolsEnabled &&
+					pol.Allow(id, "use_mcp_write")
+			}
+			mcpHandler := mcpsrv.NewHTTPHandler(c, opts.Verifier, opts.Version, writeEnabled)
 			mcpHandler.ServeHTTP(w, req)
 		}))
 	}
@@ -496,7 +508,7 @@ func NewWithOptions(b backend.Backend, c api.Canopy, logger *slog.Logger, opts O
 
 type handler struct {
 	b             backend.Backend
-	c             api.Canopy
+	c             api.Bzlhub
 	helper        ReadHelper // may be nil; see Options.Helper
 	log           *slog.Logger
 	opts          Options

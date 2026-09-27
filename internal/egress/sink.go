@@ -44,7 +44,7 @@ func NewJSONLSink(w io.Writer) *JSONLSink {
 
 // Emit serialises one event as a single-line JSON object followed
 // by '\n'. Errors are silently dropped — the audit log should never
-// be the reason canopy fails a request. Operators monitor the log's
+// be the reason bzlhub fails a request. Operators monitor the log's
 // size and rotation freshness as the staleness signal.
 func (s *JSONLSink) Emit(ev AuditEvent) {
 	b, err := json.Marshal(ev)

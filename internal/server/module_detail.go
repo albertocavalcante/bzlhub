@@ -91,7 +91,7 @@ func (h *handler) augmentModuleResponse(ctx context.Context, rep *report.ModuleR
 	var prov *api.BumpProvenance
 	if h.helper != nil {
 		// Read-side helpers live behind ReadHelper rather than
-		// api.Canopy: those are detail-page augmentations, not
+		// api.Bzlhub: those are detail-page augmentations, not
 		// part of the cross-transport contract. Tests that pass a
 		// nil helper see zero values everywhere; the response just
 		// degrades to the plain report shape.
@@ -131,24 +131,24 @@ func (h *handler) augmentModuleResponse(ctx context.Context, rep *report.ModuleR
 // buildParsedDocs walks every doc-bearing symbol and returns a
 // name -> ParsedDoc map. Symbols whose doc is empty are omitted so
 // the response stays compact.
-// canopyLinkResolver implements docview.LinkResolver using the same
+// bzlhubLinkResolver implements docview.LinkResolver using the same
 // URL shapes the UI builds via ui/src/lib/links.ts. Keeping the
 // templates here (not just on the frontend) is the price of
 // shipping presentation-ready data: multiple clients (UI, CLI,
 // MCP) get consistent URLs from one source.
-type canopyLinkResolver struct{}
+type bzlhubLinkResolver struct{}
 
-func (canopyLinkResolver) ModuleHref(name string) string {
+func (bzlhubLinkResolver) ModuleHref(name string) string {
 	return "/modules/" + name
 }
 
-func (canopyLinkResolver) CodeNavFileHref(module, version, file string) string {
+func (bzlhubLinkResolver) CodeNavFileHref(module, version, file string) string {
 	return "/modules/" + module + "/" + version + "/code-nav/file/" + file
 }
 
 func buildParsedDocs(rep *report.ModuleReport, owner docview.Owner) map[string]*docview.Doc {
 	parsed := map[string]*docview.Doc{}
-	resolver := canopyLinkResolver{}
+	resolver := bzlhubLinkResolver{}
 	add := func(name, body string) {
 		if body == "" {
 			return
@@ -156,7 +156,7 @@ func buildParsedDocs(rep *report.ModuleReport, owner docview.Owner) map[string]*
 		// Three-step pipeline: starlark-doc-go produces the section
 		// structure; bazel-doc-go overlays Bazel-aware reference
 		// extraction (labels, xrefs) on top; docview resolves each
-		// ref to a canopy URL and dedupes for the chip row so the
+		// ref to a bzlhub URL and dedupes for the chip row so the
 		// frontend just iterates and renders.
 		v := docview.Build(bazeldoc.Enrich(doc.Parse(body)), owner, resolver)
 		if v != nil {

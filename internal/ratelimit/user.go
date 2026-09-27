@@ -103,7 +103,7 @@ func (l *UserLimiter) Size() int {
 // Returns immediately; the goroutine runs until ctx is cancelled.
 //
 // Closes the Plan 76 §2.5 follow-up. Recommended defaults for a
-// canopy deployment: interval=15min, maxAge=2h. Sweep cost is O(n)
+// bzlhub deployment: interval=15min, maxAge=2h. Sweep cost is O(n)
 // in bucket count — fine for any plausible user population.
 //
 // Safe to call multiple times; each call spawns an independent

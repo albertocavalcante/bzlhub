@@ -129,7 +129,7 @@ func extractFromBlob(blobPath string, maxBytes int64) (moduleBazel []byte, strip
 		maxBytes = defaultExtractCap
 	}
 
-	scratch, err := os.MkdirTemp("", "canopy-admit-extract-")
+	scratch, err := os.MkdirTemp("", "bzlhub-admit-extract-")
 	if err != nil {
 		return nil, "", fmt.Errorf("mkdir scratch: %w", err)
 	}
@@ -213,4 +213,3 @@ func cascadeFromPreflight(req store.Request) *preflight.CascadeHit {
 	}
 	return v.CascadeSource
 }
-

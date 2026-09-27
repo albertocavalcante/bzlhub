@@ -78,7 +78,7 @@ func (d *RetentionDaemon) Run(ctx context.Context) {
 
 	tick := time.NewTicker(d.interval)
 	defer tick.Stop()
-	// Sweep on start too — otherwise a freshly-restarted canopy
+	// Sweep on start too — otherwise a freshly-restarted bzlhub
 	// waits a full interval before doing the first prune even when
 	// there's a backlog.
 	d.sweep(ctx)

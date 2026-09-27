@@ -37,7 +37,7 @@ func TestMCP_ExternalSurfaceTool_RoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srv := server.NewMCPServer("canopy-test", "test")
+	srv := server.NewMCPServer("bzlhub-test", "test")
 	registerTools(srv, bzlhub.New(s), nil, true)
 
 	req := mcp.CallToolRequest{}

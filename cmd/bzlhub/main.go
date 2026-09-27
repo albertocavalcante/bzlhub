@@ -1,8 +1,10 @@
-// Command canopy is the Bazel-first self-hosted registry.
+// Command bzlhub is the Bazel-first self-hosted registry.
 package main
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -13,6 +15,8 @@ import (
 	"github.com/albertocavalcante/bzlhub/cmd/bzlhub/diff"
 	"github.com/albertocavalcante/bzlhub/cmd/bzlhub/publish"
 	"github.com/albertocavalcante/bzlhub/cmd/bzlhub/watch"
+	"github.com/albertocavalcante/bzlhub/internal/config"
+	"github.com/albertocavalcante/bzlhub/internal/egress"
 	"github.com/albertocavalcante/bzlhub/internal/fetch"
 	"github.com/albertocavalcante/bzlhub/internal/version"
 	farol "github.com/albertocavalcante/farol/sdk"
@@ -43,10 +47,11 @@ func defaultSourcesCacheDir() string {
 }
 
 func main() {
-	// Process-wide default for registry/source fetches. The fetch.Client
-	// snapshots this on construction, so wire it before any subcommand can
-	// create a client.
-	fetch.SetDefaultAllowedHosts(fetch.ParseAllowedHosts(os.Getenv("BZLHUB_ALLOWED_HOSTS")))
+	closeEgress, err := configureProcessEgress()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
 
 	root := &cobra.Command{
 		Use:           "bzlhub",
@@ -64,6 +69,7 @@ func main() {
 	farol.Cobra(root)
 	root.AddCommand(newServeCmd())
 	root.AddCommand(newIngestCmd())
+	root.AddCommand(newReindexCmd())
 	root.AddCommand(newSearchCmd())
 	root.AddCommand(newShowCmd())
 	root.AddCommand(newMCPCmd())
@@ -86,7 +92,65 @@ func main() {
 	// Close — wouldn't fire.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	exitCode := 0
 	if err := root.ExecuteContext(ctx); err != nil {
-		os.Exit(1)
+		exitCode = 1
 	}
+	if err := closeEgress(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error: close egress audit log:", err)
+		exitCode = 1
+	}
+	if exitCode != 0 {
+		os.Exit(exitCode)
+	}
+}
+
+const envEgressAuditFile = "BZLHUB_EGRESS_AUDIT_FILE"
+
+func configureProcessEgress() (func() error, error) {
+	cfg, err := config.LoadEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("egress config: %w", err)
+	}
+	mode, err := egress.ParseMode(cfg.Egress.Mode)
+	if err != nil {
+		return nil, fmt.Errorf("egress config: %w", err)
+	}
+
+	var (
+		sink   egress.Sink = egress.NopSink{}
+		closer io.Closer
+	)
+	if raw := os.Getenv(envEgressAuditFile); raw != "" {
+		auditPath := filepath.Clean(raw)
+		if err := os.MkdirAll(filepath.Dir(auditPath), 0o700); err != nil {
+			return nil, fmt.Errorf("create egress audit directory: %w", err)
+		}
+		f, err := os.OpenFile(auditPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil {
+			return nil, fmt.Errorf("open egress audit file %q: %w", auditPath, err)
+		}
+		if err := f.Chmod(0o600); err != nil {
+			_ = f.Close()
+			return nil, fmt.Errorf("secure egress audit file %q: %w", auditPath, err)
+		}
+		closer = f
+		sink = egress.NewJSONLSink(f)
+	} else if mode == egress.ModeDeny || mode == egress.ModeAudit {
+		return nil, fmt.Errorf("%s is required for BZLHUB_PROFILE=%s so egress decisions are durably audited",
+			envEgressAuditFile, cfg.Profile)
+	}
+
+	egress.ConfigureDefault(egress.Policy{Mode: mode, Allow: cfg.Egress.Allow}, sink)
+	// fetch also maintains a redirect-aware per-client allowlist. Use
+	// the same resolved hosts so every redirect and every other
+	// outbound subsystem enforce one operator configuration.
+	fetch.SetDefaultAllowedHosts(cfg.Egress.Allow)
+
+	return func() error {
+		if closer == nil {
+			return nil
+		}
+		return closer.Close()
+	}, nil
 }

@@ -85,9 +85,9 @@ func TestSeed_SkipsAfterDenial(t *testing.T) {
 
 func TestSeed_ParseEntry(t *testing.T) {
 	cases := map[string]seedEntry{
-		"rules_go@0.50.0":         {Module: "rules_go", Version: "0.50.0"},
-		"bazel_skylib@1.7.1":      {Module: "bazel_skylib", Version: "1.7.1"},
-		"  rules_python@1.5.0  ":  {Module: "rules_python", Version: "1.5.0"},
+		"rules_go@0.50.0":        {Module: "rules_go", Version: "0.50.0"},
+		"bazel_skylib@1.7.1":     {Module: "bazel_skylib", Version: "1.7.1"},
+		"  rules_python@1.5.0  ": {Module: "rules_python", Version: "1.5.0"},
 	}
 	for input, want := range cases {
 		got, err := parseSeedEntry(input)

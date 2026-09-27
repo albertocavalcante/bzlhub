@@ -1,0 +1,95 @@
+# Local bzlhub, one command.
+#
+#   docker compose up --build        (or: podman compose up --build)
+#   open http://localhost:8090
+#
+# The image already carries everything this needs -- BZLHUB_* env, EXPOSE 8090,
+# a healthcheck and an entrypoint that reads those vars -- so this file is
+# wiring, not configuration. deploy/entrypoint.sh was written expecting it.
+#
+# A fresh bzlhub serves an EMPTY registry, which looks broken rather than new.
+# The `tools` profile below ingests something so there is data to look at:
+#
+#   docker compose --profile tools run --rm ingest rules_python@0.40.0
+#   docker compose --profile tools run --rm reindex
+#
+# Data lives in NAMED VOLUMES, not bind mounts. That is deliberate: a bind mount
+# from a path that is itself a symlink (an external disk, for instance) is a
+# known way to get a container that starts and then cannot see its own data.
+# Named volumes also inherit the image's 65532:0 ownership, so the non-root user
+# can write without a chown dance on the host.
+
+name: bzlhub
+
+# Shared by the server and the one-shot tools so the image, the volumes and the
+# environment cannot drift apart between them.
+x-bzlhub: &bzlhub
+  build:
+    context: .
+    dockerfile: Dockerfile
+  volumes:
+    - mirror:/var/lib/bzlhub/mirror
+    - index:/var/lib/bzlhub/index
+    - sources:/var/lib/bzlhub/sources
+  environment:
+    BZLHUB_ROOT: /var/lib/bzlhub/mirror
+    BZLHUB_DB: /var/lib/bzlhub/index/bzlhub.db
+
+services:
+  bzlhub:
+    <<: *bzlhub
+    ports:
+      - "8090:8090"
+    environment:
+      BZLHUB_ROOT: /var/lib/bzlhub/mirror
+      BZLHUB_DB: /var/lib/bzlhub/index/bzlhub.db
+      BZLHUB_BIND: 0.0.0.0:8090
+      # Left empty: with no public base URL the mirror serves relative links,
+      # which is what you want on localhost. Set it when fronting with a proxy.
+      BZLHUB_MIRROR_BASE_URL: ""
+    restart: unless-stopped
+
+  # Ingest one module into the shared volumes. Not started by `up`.
+  #
+  #   docker compose --profile tools run --rm ingest rules_python@0.40.0
+  #
+  # --db and --mirror-to are fixed here because they have to match the volume
+  # paths above. Left to the operator they default to the working directory,
+  # which writes a database the server never reads -- the ingest reports success
+  # and the UI stays empty.
+  #
+  # --from defaults to the public BCR. Override it for an internal registry:
+  #   docker compose --profile tools run --rm ingest \
+  #     --from=https://my-registry.internal rules_python@0.40.0
+  ingest:
+    <<: *bzlhub
+    profiles: ["tools"]
+    entrypoint:
+      - /usr/local/bin/bzlhub
+      - ingest
+      - --db=/var/lib/bzlhub/index/bzlhub.db
+      - --mirror-to=/var/lib/bzlhub/mirror
+      - --from=https://bcr.bazel.build
+    command: ["--help"]
+
+  # Regenerate stored SCIP indexes from the mirrored sources. Offline.
+  #
+  #   docker compose --profile tools run --rm reindex --dry-run
+  #
+  # --mirror and --sources-cache are passed here rather than left to the
+  # operator, because they must match the volume paths above; getting them wrong
+  # produces "0 reindexed", which reads exactly like "nothing needed doing".
+  reindex:
+    <<: *bzlhub
+    profiles: ["tools"]
+    entrypoint:
+      - /usr/local/bin/bzlhub
+      - reindex
+      - --db=/var/lib/bzlhub/index/bzlhub.db
+      - --mirror=/var/lib/bzlhub/mirror
+      - --sources-cache=/var/lib/bzlhub/sources
+
+volumes:
+  mirror:
+  index:
+  sources:

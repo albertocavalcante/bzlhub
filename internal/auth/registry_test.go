@@ -122,9 +122,9 @@ func TestLoadIdentityFile_RejectsMalformed(t *testing.T) {
 func TestLoadIdentityFile_RejectsOversizeFile(t *testing.T) {
 	// Defensive cap — a mis-mounted bind (someone points
 	// BZLHUB_IDENTITY_FILE at /var/log/something) shouldn't OOM
-	// canopy at boot. The legitimate identity file is ~150B per
+	// bzlhub at boot. The legitimate identity file is ~150B per
 	// token; 10 MB holds ~70k tokens which is far past any real
-	// canopy deployment. Anything bigger is a configuration mistake.
+	// bzlhub deployment. Anything bigger is a configuration mistake.
 	path := filepath.Join(t.TempDir(), "huge.json")
 	// 11 MB of junk — just over the 10 MB cap.
 	junk := strings.Repeat("a", 11*1024*1024)

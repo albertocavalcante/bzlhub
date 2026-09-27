@@ -11,16 +11,16 @@ import (
 )
 
 // registerDiffTools registers the READ-side analysis tools: drift,
-// diff, diff_closure, compat_check. These read canopy state + may
+// diff, diff_closure, compat_check. These read bzlhub state + may
 // fetch upstream metadata transiently but never write the mirror.
 // Safe to expose anonymously on a public read-only instance.
 //
 // The write-side companion bzlhub_bump lives in
 // registerDiffWriteTools below.
-func registerDiffTools(srv *server.MCPServer, c api.Canopy) {
+func registerDiffTools(srv *server.MCPServer, c api.MCPDiffService) {
 	srv.AddTool(
 		mcp.NewTool("bzlhub_drift",
-			mcp.WithDescription("Compare canopy's local mirror against an upstream BCR-shape registry. Returns per-module drift status (in-sync / behind / yanked-upstream / local-only / upstream-error) plus the newer versions available. Use this to find out what's stale before calling bzlhub_bump."),
+			mcp.WithDescription("Compare bzlhub's local mirror against an upstream BCR-shape registry. Returns per-module drift status (in-sync / behind / yanked-upstream / local-only / upstream-error) plus the newer versions available. Use this to find out what's stale before calling bzlhub_bump."),
 			mcp.WithString("upstream", mcp.Description("Upstream registry URL. Default: https://bcr.bazel.build (whatever the bzlhub serve was configured with).")),
 			mcp.WithString("module", mcp.Description("Optional: limit the report to this single module name.")),
 		),
@@ -51,7 +51,7 @@ func registerDiffTools(srv *server.MCPServer, c api.Canopy) {
 
 	srv.AddTool(
 		mcp.NewTool("bzlhub_compat_check",
-			mcp.WithDescription("Given a MODULE.bazel text blob, diff every bazel_dep against the LATEST indexed version in canopy and report what BREAKS for a consumer that adopts the latest. This is the analyzer behind the /compat-check UI page; agents call it directly when the user asks 'is it safe to upgrade?' or 'why did rules_go 0.50→0.51 break my build?'.\n\nThe response shape (compat.Result):\n  - self: the analyzed module's (name, version) when input declares one\n  - summary: total_deps / breaking_deps / missing_from_corpus / already_latest\n  - deps[]: one entry per bazel_dep with from_version → to_version, in_corpus flag, breaking_count, and an inline `findings[]` array. Each finding carries kind + symbol + reason + hint + codemod (Plan 06 — ready-to-pipe `buildozer ...` command, or `# review:` discovery comment for kinds that need human judgment).\n  - plan_markdown: paste-ready migration plan for a PR description\n  - plan_shell: ready-to-pipe `migrate.sh` bash script (Plan 06) that wraps every clean codemod in `run` + emits `[manual]` rows for discovery-only findings. Defaults to --dry-run; explicit --apply to mutate.\n\nIMPORTANT: surface the codemods + safety messaging when recommending a bump. The script is a SUGGESTION; Buildozer edits are pattern-based and may match more sites than intended. Always recommend the operator review before --apply."),
+			mcp.WithDescription("Given a MODULE.bazel text blob, diff every bazel_dep against the LATEST indexed version in bzlhub and report what BREAKS for a consumer that adopts the latest. This is the analyzer behind the /compat-check UI page; agents call it directly when the user asks 'is it safe to upgrade?' or 'why did rules_go 0.50→0.51 break my build?'.\n\nThe response shape (compat.Result):\n  - self: the analyzed module's (name, version) when input declares one\n  - summary: total_deps / breaking_deps / missing_from_corpus / already_latest\n  - deps[]: one entry per bazel_dep with from_version → to_version, in_corpus flag, breaking_count, and an inline `findings[]` array. Each finding carries kind + symbol + reason + hint + codemod (Plan 06 — ready-to-pipe `buildozer ...` command, or `# review:` discovery comment for kinds that need human judgment).\n  - plan_markdown: paste-ready migration plan for a PR description\n  - plan_shell: ready-to-pipe `migrate.sh` bash script (Plan 06) that wraps every clean codemod in `run` + emits `[manual]` rows for discovery-only findings. Defaults to --dry-run; explicit --apply to mutate.\n\nIMPORTANT: surface the codemods + safety messaging when recommending a bump. The script is a SUGGESTION; Buildozer edits are pattern-based and may match more sites than intended. Always recommend the operator review before --apply."),
 			mcp.WithString("body", mcp.Required(), mcp.Description("MODULE.bazel content as a single string. Max ~256KB.")),
 			mcp.WithBoolean("include_dev", mcp.Description("Include dev_dependency = True bazel_deps in the analysis. Default false (matches the 'will my prod build break?' framing).")),
 		),
@@ -64,19 +64,19 @@ func registerDiffTools(srv *server.MCPServer, c api.Canopy) {
 // (module, version) into the local mirror. Called separately by the
 // dispatcher so HTTP deployments can opt out via
 // featureflags.MCPWriteToolsEnabled; stdio always registers it.
-func registerDiffWriteTools(srv *server.MCPServer, c api.Canopy) {
+func registerDiffWriteTools(srv *server.MCPServer, c api.MCPMutationService) {
 	srv.AddTool(
 		mcp.NewTool("bzlhub_bump",
-			mcp.WithDescription("Fetch one (module, version) from an upstream BCR-shape registry, mirror it locally, and index it. Idempotent: re-bumping the same version is a no-op. Use this after bzlhub_drift to advance a module to its upstream-latest. Returns the produced ModuleReport. Errors return early: 'not configured' means canopy was started without a mirror root; integrity / upstream errors are surfaced verbatim."),
+			mcp.WithDescription("Fetch one (module, version) from an upstream BCR-shape registry, mirror it locally, and index it. Idempotent: re-bumping the same version is a no-op. Use this after bzlhub_drift to advance a module to its upstream-latest. Returns the produced ModuleReport. Errors return early: 'not configured' means bzlhub was started without a mirror root; integrity / upstream errors are surfaced verbatim."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Bazel module name (e.g., 'rules_go').")),
-			mcp.WithString("version", mcp.Required(), mcp.Description("Target version (e.g., '0.52.0' or a 4-component canopy variant '0.52.0.1').")),
+			mcp.WithString("version", mcp.Required(), mcp.Description("Target version (e.g., '0.52.0' or a 4-component bzlhub variant '0.52.0.1').")),
 			mcp.WithString("upstream", mcp.Description("Upstream registry URL. Default: the service's configured default (typically https://bcr.bazel.build).")),
 		),
 		bumpHandler(c),
 	)
 }
 
-func driftHandler(c api.Canopy) server.ToolHandlerFunc {
+func driftHandler(c api.MCPDiffService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		upstream, _ := args["upstream"].(string)
@@ -89,7 +89,7 @@ func driftHandler(c api.Canopy) server.ToolHandlerFunc {
 	}
 }
 
-func bumpHandler(c api.Canopy) server.ToolHandlerFunc {
+func bumpHandler(c api.MCPMutationService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		module, _ := args["module"].(string)
@@ -106,7 +106,7 @@ func bumpHandler(c api.Canopy) server.ToolHandlerFunc {
 	}
 }
 
-func diffHandler(c api.Canopy) server.ToolHandlerFunc {
+func diffHandler(c api.MCPDiffService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		module, _ := args["module"].(string)
@@ -129,7 +129,7 @@ func diffHandler(c api.Canopy) server.ToolHandlerFunc {
 	}
 }
 
-func diffClosureHandler(c api.Canopy) server.ToolHandlerFunc {
+func diffClosureHandler(c api.MCPDiffService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		module, _ := args["module"].(string)
@@ -159,7 +159,7 @@ func diffClosureHandler(c api.Canopy) server.ToolHandlerFunc {
 // including plan_markdown + plan_shell (Plan 06 codemods) — so an
 // agent can recommend a migration AND attach the ready-to-pipe
 // migrate.sh in one round-trip.
-func compatCheckHandler(c api.Canopy) server.ToolHandlerFunc {
+func compatCheckHandler(c api.MCPDiffService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body, _ := args["body"].(string)

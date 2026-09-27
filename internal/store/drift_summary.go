@@ -14,12 +14,12 @@ var emptyDriftJSON = []byte("{}")
 
 // SetDriftSummary persists the JSON-encoded drift summary for
 // (name, version). The store layer is JSON-shape-agnostic; the
-// canonical shape lives in internal/api/canopy.go (DriftSummary).
+// canonical shape lives in internal/api/bzlhub.go (DriftSummary).
 // Callers marshal there and hand bytes here.
 //
 // Passing nil or an empty slice resets the row to the column
 // default '{}' — that is the "no drift data" signal a fresh
-// canopy or an unconfigured drift source emits.
+// bzlhub or an unconfigured drift source emits.
 //
 // Idempotent. Called from the future drift-cache write path
 // (Plan 19 Idea A backend, Plan 26 κ6 ModuleReport-in-AC pulldown)

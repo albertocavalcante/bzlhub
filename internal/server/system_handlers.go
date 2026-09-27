@@ -49,7 +49,7 @@ func (h *handler) apiBCRProbe(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
-// apiEvents is a Server-Sent Events stream. When the configured Canopy
+// apiEvents is a Server-Sent Events stream. When the configured Bzlhub
 // service implements api.EventSubscriber, events from the bus
 // (module_indexed, etc.) are forwarded as `event: <kind>\ndata: <json>`
 // frames. Otherwise the stream is keep-alive-only.
@@ -123,12 +123,12 @@ func (h *handler) apiVersion(w http.ResponseWriter, _ *http.Request) {
 }
 
 // apiStatus returns the single-shot human-and-monitor-shaped
-// snapshot of this canopy instance. Contract: plan-65 v2 §Part 3.
+// snapshot of this bzlhub instance. Contract: plan-65 v2 §Part 3.
 // Drives the /status page (15s polling) and any external poller that
 // wants one JSON read per probe.
 //
 // Composition rules (also in the api.SystemStatus doc comment):
-//   - Every field is derived from state canopy already tracks.
+//   - Every field is derived from state bzlhub already tracks.
 //   - Fields with no honest source are omitted (omitempty) rather
 //     than emitted as theatrical 0 / null.
 //   - No probes happen inside this handler. The federation
@@ -235,8 +235,8 @@ func (h *handler) apiStatus(w http.ResponseWriter, r *http.Request) {
 
 	// Server-derived instant state. Computed AFTER every source
 	// field is populated so the verdict reflects the same payload
-	// the wire carries. Thresholds live in internal/canopy/health
-	// — single source of truth for both /status (UI) and `canopy
+	// the wire carries. Thresholds live in internal/bzlhub/health
+	// — single source of truth for both /status (UI) and `bzlhub
 	// status` (CLI).
 	status.Computed = health.Derive(status, time.Now())
 

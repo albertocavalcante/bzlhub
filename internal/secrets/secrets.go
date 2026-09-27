@@ -13,7 +13,7 @@
 //     citizen on those platforms.
 //  2. Rotation: replace the file, SIGHUP. No restart, no downtime.
 //     Env vars can't be rotated without restarting the process.
-//  3. Logging: even verbose canopy logs never include file *contents*
+//  3. Logging: even verbose bzlhub logs never include file *contents*
 //     — only file *paths*. Env values can leak via `env`,
 //     `docker inspect`, /proc/<pid>/environ, etc.
 //  4. Backups: env config can be in version control. Secret files

@@ -75,7 +75,7 @@ type Spec struct {
 	GeneratedAt time.Time
 }
 
-// Palette mirrors the UI's --color-* tokens used elsewhere in canopy.
+// Palette mirrors the UI's --color-* tokens used elsewhere in bzlhub.
 // Hex values are approximate matches for the oklch() definitions in
 // ui/src/app.css; keeping them as constants here means rendering
 // works without parsing CSS. When Plan 19 Idea I (semantic colour-

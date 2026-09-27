@@ -225,9 +225,9 @@ func scanRefs(field, text string) []Ref {
 //   - @repo//pkg[:target]      (including @@canonical)
 //   - //pkg[:target]
 //   - :target                  (relative label, only when preceded by
-//                              whitespace or string-start so URLs
-//                              like "http://" don't match the bare
-//                              "//" branch)
+//     whitespace or string-start so URLs
+//     like "http://" don't match the bare
+//     "//" branch)
 //
 // Capture groups intentionally absent — we re-parse the matched
 // text in parseLabel to keep the regex small and the structured

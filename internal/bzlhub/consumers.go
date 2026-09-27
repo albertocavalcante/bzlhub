@@ -8,11 +8,14 @@ import (
 	"strings"
 
 	"github.com/albertocavalcante/assay/report"
+	scipbazel "github.com/albertocavalcante/scip-bazel/pkg/index"
+	scipsymbol "github.com/albertocavalcante/scip-kit/symbol"
+	scipstarlark "github.com/albertocavalcante/scip-starlark/pkg/index"
 
 	"github.com/albertocavalcante/bzlhub/internal/api"
 )
 
-// LookupConsumers implements api.Canopy.LookupConsumers — Plan 07's
+// LookupConsumers implements api.Bzlhub.LookupConsumers — Plan 07's
 // cross-corpus consumer view. Resolves the user-facing identifier to
 // a SCIP symbol via the defining module's ModuleReport, then runs
 // LookupXRefs with includeDefinition=false and groups per consumer
@@ -33,18 +36,28 @@ func (s *Service) LookupConsumers(ctx context.Context, module, version, name str
 		return nil, fmt.Errorf("%s@%s: %q not found in any rule/provider/macro/repo_rule/module_extension", module, version, name)
 	}
 
-	// SCIP symbol shape canopy emits via scip-bazel:
-	//   bzlmod <module>@<version> <relpath>#<name>
-	// See internal/scip/lookup.go for the format definition.
-	symbol := fmt.Sprintf("bzlmod %s@%s %s#%s", module, version, file, name)
+	// Built with the same function scip-starlark uses to EMIT the symbol, not
+	// formatted by hand. This query and the stored index have to agree byte for
+	// byte or the lookup returns "not found" -- an empty result, not an error,
+	// so a mismatch here is invisible. It was formatted by hand until the
+	// symbol grammar changed underneath it.
+	sym, err := scipsymbol.Global(scipstarlark.SymbolScheme,
+		scipsymbol.Package{
+			Manager: scipbazel.BzlmodManager,
+			Name:    module,
+			Version: version,
+		}, file, name)
+	if err != nil {
+		return nil, fmt.Errorf("%s@%s: cannot encode a SCIP symbol for %q: %w", module, version, name, err)
+	}
 
-	xrefs, err := s.LookupXRefs(ctx, symbol, false /* includeDefinition */)
+	xrefs, err := s.LookupXRefs(ctx, sym, false /* includeDefinition */)
 	if err != nil {
 		return nil, fmt.Errorf("lookup xrefs: %w", err)
 	}
 
 	out := &api.ConsumersResult{
-		Symbol:    symbol,
+		Symbol:    sym,
 		Module:    module,
 		Version:   version,
 		Name:      name,
@@ -92,7 +105,7 @@ func (s *Service) LookupConsumers(ctx context.Context, module, version, name str
 // resolveSymbolProvenance walks the ModuleReport for any
 // rule/provider/macro/repo_rule/module_extension whose Name matches
 // the given identifier; returns its Provenance.File + a kind tag.
-// First-match-wins; canopy's report doesn't enforce uniqueness
+// First-match-wins; bzlhub's report doesn't enforce uniqueness
 // across kinds (a name could theoretically be both a rule and a
 // macro), but the file is what matters for SCIP symbol resolution.
 //
@@ -129,7 +142,7 @@ func resolveSymbolProvenance(rep *report.ModuleReport, name string) (file, kind 
 	return "", ""
 }
 
-// codeNavHref builds canopy's code-nav deep-link path for a (module,
+// codeNavHref builds bzlhub's code-nav deep-link path for a (module,
 // version, file, line) coordinate. Mirrors ui/src/lib/links.ts's
 // codeNavFileHref so a Go-emitted href is interchangeable with one
 // the UI would compose itself.

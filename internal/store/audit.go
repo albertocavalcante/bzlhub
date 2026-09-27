@@ -25,8 +25,8 @@ const auditTimestampLayout = "2006-01-02T15:04:05.000000000Z07:00"
 type AuditEvent struct {
 	ID         int64           `json:"id"`
 	Timestamp  time.Time       `json:"timestamp"`
-	Kind       string          `json:"kind"`              // e.g. "bump_success", "ingest_recursive_failure"
-	Source     string          `json:"source"`            // "drift-ui" | "cli" | "mcp" | "rest" | "unknown"
+	Kind       string          `json:"kind"`   // e.g. "bump_success", "ingest_recursive_failure"
+	Source     string          `json:"source"` // "drift-ui" | "cli" | "mcp" | "rest" | "unknown"
 	Module     string          `json:"module,omitempty"`
 	Version    string          `json:"version,omitempty"`
 	OK         bool            `json:"ok"`
@@ -69,7 +69,7 @@ func (s *Store) ListAuditAfterID(ctx context.Context, afterID int64, limit int) 
 
 // MaxAuditID returns the highest id in audit_events, or 0 when
 // the table is empty. Used by webhook delivery to set its
-// watermark at boot — events recorded BEFORE canopy started
+// watermark at boot — events recorded BEFORE bzlhub started
 // aren't re-delivered.
 func (s *Store) MaxAuditID(ctx context.Context) (int64, error) {
 	var id sql.NullInt64
@@ -85,7 +85,7 @@ func (s *Store) MaxAuditID(ctx context.Context) (int64, error) {
 
 // PruneAudit deletes audit_events rows whose ts is older than now
 // minus olderThan. Returns the number of rows deleted. A
-// retention sweep called from canopy's audit-retention daemon.
+// retention sweep called from bzlhub's audit-retention daemon.
 //
 // olderThan ≤ 0 is a no-op (returns 0). The store doesn't enforce
 // a minimum retention — operators wanting "never prune" set

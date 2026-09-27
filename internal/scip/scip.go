@@ -1,16 +1,17 @@
-// Package scip wraps scip-bazel for canopy's ingest pipeline: take a
+// Package scip wraps scip-bazel for bzlhub's ingest pipeline: take a
 // materialized module source tree + (module, version) coordinate, run
-// scip-bazel.Index against it with the right SymbolPrefix, and return
+// scip-bazel.Index against it with the right package identity, and return
 // the resulting binary protobuf bytes ready for storage.
 //
 // The wrapper is intentionally minimal — scip-bazel itself handles the
 // Bazel-flavored annotation; scip-starlark underneath handles language
 // indexing. This package's only job is to:
 //
-//   - Pin the symbol scheme so canopy's per-(module, version) indexes
-//     don't collide ("bzlmod rules_python@0.40.0 ..." vs the same
-//     module at a different version).
-//   - Marshal the *scip.Index to protobuf bytes for SQLite storage.
+//   - Pin the package identity so bzlhub's per-(module, version) indexes
+//     don't collide. The coordinate lands in the symbol's manager, name
+//     and version fields:
+//     "starlark bzlmod rules_python 0.40.0 defs.bzl/py_binary#".
+//   - Write the *scip.Index to protobuf bytes for SQLite storage.
 //
 // Callers should treat a Generate error as non-fatal — bzlhub ingest
 // can still proceed; the SCIP index is supplementary navigation data,
@@ -18,79 +19,106 @@
 package scip
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/albertocavalcante/assay/report"
-	bzlmodres "github.com/albertocavalcante/scip-bazel/pkg/bzlmod"
+	"github.com/albertocavalcante/scip-bazel/pkg/bzlmod"
 	scipbazel "github.com/albertocavalcante/scip-bazel/pkg/index"
-	"github.com/scip-code/scip/bindings/go/scip"
-	"google.golang.org/protobuf/proto"
+	"github.com/albertocavalcante/scip-kit/scipio"
+	"github.com/albertocavalcante/scip-kit/symbol"
 )
 
 // Generate indexes the materialized module source rooted at sourceDir
 // and returns the resulting SCIP index as binary protobuf bytes.
 //
-// The SymbolPrefix is pinned to "bzlmod <module>@<version>" so every
-// symbol in the resulting index carries its registry coordinate. The
+// The Package is pinned to the module's registry coordinate so every symbol
+// in the resulting index carries it. The closure resolves load() statements
+// that reach other modules. The
 // supplied ModuleReport's BazelDeps populate a closure map handed to
 // scip-bazel's BzlmodResolver, which turns load() statements like
 // `load("@platforms//:cpu.bzl", "get_default_cpu")` into fully-qualified
-// SCIP symbols like `bzlmod platforms@0.0.10 cpu.bzl#get_default_cpu` —
-// the wire shape that makes cross-module navigation work via exact-
-// string symbol match against other canopy-served indexes.
+// SCIP symbols like `starlark bzlmod platforms 0.0.10 cpu.bzl/get_default_cpu#`
+// -- the wire shape that makes cross-module navigation work via exact-string
+// symbol match against other bzlhub-served indexes.
 //
-// Phase 1 limitation: the closure carries the module's DIRECT
-// bazel_deps only. Transitive load() targets (`@some-trans-dep//...`)
-// fall back to scip-starlark's `unresolved-load` placeholder. A future
-// pass will plug in canopy's MVS-resolved closure (already available
-// from closurediff.walkClosure) for full transitive coverage.
-func Generate(sourceDir, moduleName, version string, r *report.ModuleReport) ([]byte, error) {
+// What can still be unresolved, and why: a dependency that has not been
+// ingested is not in the store, so references into it keep scip-starlark's
+// placeholder -- `starlark unresolved <raw-label> . <symbol>#`, which parses
+// but carries no coordinate. That makes ingest ORDER matter: a module indexed
+// before its dependencies resolves fewer symbols until it is re-indexed.
+// Closing that needs a reindex pass, not a change here.
+//
+// The closure is a parameter, not derived from a ModuleReport, so the caller
+// picks how far it reaches: DirectClosure for the module's direct deps, or
+// TransitiveClosure for the transitive walk. Making that visible at the call site is
+// the point -- it used to be a hidden choice inside this function, and it was
+// silently the narrow one.
+//
+// Generate itself stays free of I/O and policy. It runs per module during
+// ingest; whatever resolves the closure is the caller's business, and the
+// caller is already operating under the egress policy.
+func Generate(sourceDir, moduleName, version string, closure bzlmod.Closure) ([]byte, error) {
 	if sourceDir == "" || moduleName == "" || version == "" {
 		return nil, fmt.Errorf("scip.Generate: sourceDir, module, and version are all required (got %q, %q, %q)", sourceDir, moduleName, version)
 	}
-	closure := closureFromReport(r)
 	idx, err := scipbazel.Index(sourceDir, scipbazel.Options{
-		SymbolPrefix:        fmt.Sprintf("bzlmod %s@%s", moduleName, version),
-		CrossModuleResolver: bzlmodres.NewBzlmodResolver(closure),
+		Package: symbol.Package{
+			Manager: scipbazel.BzlmodManager,
+			Name:    moduleName,
+			Version: version,
+		},
+		CrossModuleResolver: bzlmod.NewBzlmodResolver(closure),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("scip-bazel index %s@%s: %w", moduleName, version, err)
 	}
-	b, err := proto.Marshal(idx)
+	var buf bytes.Buffer
+	_, err = scipio.WriteIndex(&buf, idx)
 	if err != nil {
-		return nil, fmt.Errorf("marshal scip.Index for %s@%s: %w", moduleName, version, err)
+		return nil, fmt.Errorf("write scip.Index for %s@%s: %w", moduleName, version, err)
 	}
-	return b, nil
+	return buf.Bytes(), nil
 }
 
-// closureFromReport projects a ModuleReport's bazel_deps into the
-// {name → version} map shape scip-bazel's BzlmodResolver expects.
+// DirectClosure projects a ModuleReport's own bazel_deps into the repo-keyed
+// closure scip-bazel's BzlmodResolver expects.
+//
+// This is the narrow closure: direct dependencies only, no transitive walk. It
+// is what the ingest paths fall back to when the transitive walk cannot complete,
+// because resolving a module's direct deps beats resolving nothing.
 // Tolerant of a nil report (returns an empty map; the resolver
 // gracefully degrades to "" returns, which scip-starlark renders as
-// `unresolved-load` placeholders).
-func closureFromReport(r *report.ModuleReport) map[string]string {
+// unresolved placeholders).
+func DirectClosure(r *report.ModuleReport) bzlmod.Closure {
 	if r == nil {
 		return nil
 	}
-	out := make(map[string]string, len(r.BazelDeps))
+	out := make(bzlmod.Closure, len(r.BazelDeps))
 	for _, dep := range r.BazelDeps {
 		if dep.Name == "" || dep.Version == "" {
+			// Neither half can be guessed, and a partial coordinate cannot
+			// produce a conformant symbol. Leaving it out sends the reference
+			// to the unresolved placeholder, which is the honest outcome.
 			continue
 		}
-		out[dep.Name] = dep.Version
+		out[repoKeyOf(dep)] = bzlmod.Coordinate{Module: dep.Name, Version: dep.Version}
 	}
 	return out
 }
 
-// Parse is the inverse of Generate: hand it the bytes back, get a
-// *scip.Index. Useful for canopy's REST endpoint when it wants to do
-// any server-side filtering before serving (e.g. strip diagnostics,
-// project a subset of documents). Today canopy serves the bytes
-// verbatim, but the helper is here for the next iteration.
-func Parse(b []byte) (*scip.Index, error) {
-	var idx scip.Index
-	if err := proto.Unmarshal(b, &idx); err != nil {
-		return nil, fmt.Errorf("unmarshal scip.Index: %w", err)
+// repoKeyOf returns the key a load() statement will use for this dependency.
+//
+// `load("@foo//...")` names the REPO, and
+// bazel_dep(name = "rules_foo", repo_name = "foo") makes "foo" an alias for
+// module "rules_foo". RepoName is empty for the majority that set no alias,
+// where the repo and module names coincide.
+//
+// Shared by the direct closure here and the transitive walk: two
+// copies of this rule is how one of them ends up keyed by module name again.
+func repoKeyOf(dep report.ModuleKey) string {
+	if dep.RepoName != "" {
+		return dep.RepoName
 	}
-	return &idx, nil
+	return dep.Name
 }

@@ -22,23 +22,40 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/albertocavalcante/scip-kit/canonical"
+	"github.com/albertocavalcante/scip-kit/symbol"
+	"github.com/albertocavalcante/scip-kit/toolinfo"
 	scip "github.com/scip-code/scip/bindings/go/scip"
 	"go.starlark.net/syntax"
 )
 
+// SymbolScheme is the SCIP scheme every global symbol this package emits
+// carries. It names the LANGUAGE, not the packaging system: "bzlmod" used to
+// appear here as a scheme, which meant a bzlmod-resolved reference and a plain
+// definition of the same entity could never compare equal. bzlmod is a package
+// manager and now lives in that field.
+const SymbolScheme = "starlark"
+
 // IndexerName is the tool name written into the SCIP Metadata.
 const IndexerName = "scip-starlark"
 
-// IndexerVersion is the tool version written into the SCIP Metadata.
-const IndexerVersion = "0.2.0"
+// IndexerVersion is the module version embedded in the running binary.
+// Local builds report "dev" rather than claiming a tagged release.
+var IndexerVersion = toolinfo.ModuleVersion("github.com/albertocavalcante/scip-starlark")
 
-// unresolvedLoadPrefix is the placeholder scheme used for load()-imported
-// references when no CrossModuleResolver is supplied. The full symbol form
-// is: "unresolved-load <raw-load-target>#<symbol>". Downstream consumers
-// may safely ignore or rewrite occurrences with this prefix.
-const unresolvedLoadPrefix = "unresolved-load "
+// UnresolvedManager marks a load()-imported reference no CrossModuleResolver
+// could place. It sits in the symbol's package-MANAGER field, which keeps the
+// marker legible after parsing:
+//
+//	starlark unresolved @rules_python//:defs.bzl . py_binary#
+//
+// It used to be a pseudo-scheme ("unresolved-load <raw>#<sym>"), which the
+// reference parser rejects outright. A consumer can still find these by
+// checking the manager, and now the rest of the symbol survives a round trip.
+const UnresolvedManager = "unresolved"
 
 // Index walks rootDir, parses every Starlark file that passes
 // opts.FileMatcher, and emits a SCIP index.
@@ -88,12 +105,12 @@ func Index(rootDir string, opts Options) (*scip.Index, error) {
 		},
 	}
 
+	// Symbols referenced across the whole tree that no indexed file defines.
+	externals := map[string]string{}
+
 	walkErr := filepath.WalkDir(absRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			if path == absRoot {
-				return err
-			}
-			return nil
+			return fmt.Errorf("cannot visit %q: %w", path, err)
 		}
 		if d.IsDir() {
 			if path == absRoot {
@@ -107,20 +124,54 @@ func Index(rootDir string, opts Options) (*scip.Index, error) {
 		}
 		relPath, err := filepath.Rel(absRoot, path)
 		if err != nil {
-			return nil
+			// WalkDir only ever yields paths under absRoot, so this is an
+			// invariant violation rather than a bad input. It used to return
+			// nil, which told WalkDir to carry on and dropped the file from
+			// the index with nothing said -- the silent degradation this
+			// package otherwise goes out of its way to avoid.
+			return fmt.Errorf("scip-starlark: %q is not under root %q: %w", path, absRoot, err)
 		}
 		relPath = filepath.ToSlash(relPath)
 		if !matcher(relPath) {
 			return nil
 		}
-		doc := indexFile(path, relPath, opts)
+		doc, fileExternals := indexFile(path, relPath, opts)
 		if doc != nil {
 			idx.Documents = append(idx.Documents, doc)
+		}
+		for sym, name := range fileExternals {
+			if _, seen := externals[sym]; !seen {
+				externals[sym] = name
+			}
 		}
 		return nil
 	})
 	if walkErr != nil {
 		return nil, fmt.Errorf("scip-starlark: walk %q: %w", absRoot, walkErr)
+	}
+
+	// A symbol defined by one of the indexed files is not external, even if
+	// another file referenced it through a load(). Emitting it in both places
+	// is rejected by `scip lint` (bothLocalAndExternalSymbolError).
+	defined := map[string]bool{}
+	for _, doc := range idx.Documents {
+		for _, si := range doc.Symbols {
+			defined[si.Symbol] = true
+		}
+	}
+	syms := make([]string, 0, len(externals))
+	for sym := range externals {
+		if !defined[sym] {
+			syms = append(syms, sym)
+		}
+	}
+	sort.Strings(syms)
+	for _, sym := range syms {
+		idx.ExternalSymbols = append(idx.ExternalSymbols, &scip.SymbolInformation{
+			Symbol:      sym,
+			DisplayName: externals[sym],
+			Kind:        scip.SymbolInformation_UnspecifiedKind,
+		})
 	}
 	return idx, nil
 }
@@ -132,24 +183,27 @@ var parseFileOptions = syntax.LegacyFileOptions()
 // indexFile parses a single Starlark source file and produces a SCIP Document.
 // Parse failures are attached as Diagnostics on a single placeholder Occurrence
 // at the file's start so the failure surfaces without aborting the walk.
-func indexFile(absPath, relPath string, opts Options) *scip.Document {
+func indexFile(absPath, relPath string, opts Options) (doc *scip.Document, exports map[string]string) {
 	data, err := os.ReadFile(absPath)
 	if err != nil {
-		return documentWithReadError(relPath, err)
+		return documentWithReadError(relPath, err), nil
 	}
 	file, err := parseFileOptions.Parse(absPath, data, 0)
 	if err != nil {
-		return documentWithParseError(relPath, err)
+		return documentWithParseError(relPath, err), nil
 	}
 
-	doc := &scip.Document{
+	doc = &scip.Document{
 		Language:         "starlark",
 		RelativePath:     relPath,
 		PositionEncoding: scip.PositionEncoding_UTF32CodeUnitOffsetFromLineStart,
 	}
 	idx := newFileIndexer(doc, relPath, opts)
 	idx.run(file)
-	return doc
+	if opts.DocumentHook != nil {
+		opts.DocumentHook(relPath, file, doc)
+	}
+	return doc, idx.externals
 }
 
 // fileIndexer carries per-file state through the AST walk.
@@ -158,14 +212,35 @@ type fileIndexer struct {
 	relPath string
 	opts    Options
 	root    *scope
+
+	// externals records every symbol this file REFERENCES but does not
+	// define, keyed by symbol, valued by display name.
+	//
+	// These must reach Index.external_symbols. A symbol that is referenced
+	// by an Occurrence but carries no SymbolInformation anywhere is rejected
+	// by `scip lint` (missingSymbolForOccurrenceError) and by any consumer
+	// that checks the same invariant -- scipd's verifier reported exactly
+	// this against a real index before the field was populated.
+	externals map[string]string
 }
 
 func newFileIndexer(doc *scip.Document, relPath string, opts Options) *fileIndexer {
 	return &fileIndexer{
-		doc:     doc,
-		relPath: relPath,
-		opts:    opts,
-		root:    newRootScope(),
+		doc:       doc,
+		relPath:   relPath,
+		opts:      opts,
+		root:      newRootScope(),
+		externals: map[string]string{},
+	}
+}
+
+// noteExternal records a referenced symbol that lives outside this file.
+func (fi *fileIndexer) noteExternal(sym, displayName string) {
+	if sym == "" {
+		return
+	}
+	if _, seen := fi.externals[sym]; !seen {
+		fi.externals[sym] = displayName
 	}
 }
 
@@ -180,6 +255,14 @@ func (fi *fileIndexer) run(file *syntax.File) {
 	for _, stmt := range file.Stmts {
 		fi.walkStmt(stmt, fi.root)
 	}
+
+	// Occurrences are emitted in AST-walk order, which is NOT source order:
+	// a statement's right-hand side is walked before its left-hand binding,
+	// so `my_rule = rule(implementation = _impl)` emits line 17's reference
+	// before line 16's definition. The canonical form is ascending by range,
+	// and a consumer that assumes it (or binary-searches) reads the wrong
+	// symbol.
+	canonical.SortOccurrences(fi.doc.Occurrences)
 }
 
 // preDeclareTopLevel populates fi.root with the SCIP symbol for every
@@ -307,11 +390,11 @@ func (fi *fileIndexer) walkDefStmt(s *syntax.DefStmt, sc *scope) {
 func (fi *fileIndexer) bindParam(p syntax.Expr, body *scope) {
 	switch e := p.(type) {
 	case *syntax.Ident:
-		fi.bindAndEmitLocal(e, body)
+		fi.bindAndEmitLocal(e, body, scip.SymbolInformation_Parameter)
 	case *syntax.BinaryExpr:
 		if e.Op == syntax.EQ {
 			if id, ok := e.X.(*syntax.Ident); ok {
-				fi.bindAndEmitLocal(id, body)
+				fi.bindAndEmitLocal(id, body, scip.SymbolInformation_Parameter)
 			}
 			// Walk the default-value expression under the enclosing
 			// (parent) scope — Starlark evaluates defaults at def time.
@@ -324,7 +407,7 @@ func (fi *fileIndexer) bindParam(p syntax.Expr, body *scope) {
 	case *syntax.UnaryExpr:
 		if e.X != nil {
 			if id, ok := e.X.(*syntax.Ident); ok {
-				fi.bindAndEmitLocal(id, body)
+				fi.bindAndEmitLocal(id, body, scip.SymbolInformation_Parameter)
 			}
 		}
 		// Bare `*` separator: no binding.
@@ -333,10 +416,17 @@ func (fi *fileIndexer) bindParam(p syntax.Expr, body *scope) {
 
 // bindAndEmitLocal allocates a fresh local symbol for id, binds it in sc,
 // emits SymbolInformation, and emits a Definition occurrence.
-func (fi *fileIndexer) bindAndEmitLocal(id *syntax.Ident, sc *scope) {
+//
+// The kind is passed in rather than fixed, because the callers are not all
+// binding the same thing: a def's parameter list really does produce
+// Parameters, but an assignment target and a comprehension's loop variable
+// are Variables. Hardcoding Parameter here labelled `local_var = f` a
+// parameter, which is simply false and misleads any consumer that renders an
+// icon or filters by kind.
+func (fi *fileIndexer) bindAndEmitLocal(id *syntax.Ident, sc *scope, kind scip.SymbolInformation_Kind) {
 	sym := fi.allocLocalSymbol(id.Name)
 	sc.bind(id.Name, sym)
-	fi.emitSymbolInfo(sym, id.Name, scip.SymbolInformation_Parameter)
+	fi.emitSymbolInfo(sym, id.Name, kind)
 	fi.emitOccurrence(id, sym, int32(scip.SymbolRole_Definition))
 }
 
@@ -344,7 +434,7 @@ func (fi *fileIndexer) bindAndEmitLocal(id *syntax.Ident, sc *scope) {
 // Format: "local <relpath-escaped>$<sequence>$<name>"
 func (fi *fileIndexer) allocLocalSymbol(name string) string {
 	id := fi.root.nextLocalID()
-	return "local " + escapeLocalID(fmt.Sprintf("%s$%d$%s", fi.relPath, id, name))
+	return symbol.Local(symbol.EscapeLocalID(fmt.Sprintf("%s$%d$%s", fi.relPath, id, name)))
 }
 
 func (fi *fileIndexer) walkAssignStmt(s *syntax.AssignStmt, sc *scope) {
@@ -395,11 +485,11 @@ func (fi *fileIndexer) bindAssignTargets(lhs syntax.Expr, sc *scope) {
 		// If this name is already bound locally, treat as a write to the
 		// existing binding (still ReadAccess-shaped here for simplicity,
 		// but a true second def-occurrence is fine semantically).
-		if existing := sc.lookup(e.Name); existing != "" && isLocalSCIPSymbol(existing) {
+		if existing := sc.lookup(e.Name); existing != "" && symbol.IsLocal(existing) {
 			fi.emitOccurrence(e, existing, int32(scip.SymbolRole_WriteAccess))
 			return
 		}
-		fi.bindAndEmitLocal(e, sc)
+		fi.bindAndEmitLocal(e, sc, scip.SymbolInformation_Variable)
 	case *syntax.TupleExpr:
 		for _, elem := range e.List {
 			fi.bindAssignTargets(elem, sc)
@@ -478,7 +568,19 @@ func (fi *fileIndexer) walkLoadStmt(s *syntax.LoadStmt, sc *scope) {
 			externSym = fi.opts.CrossModuleResolver(target)
 		}
 		if externSym == "" {
-			externSym = unresolvedLoadPrefix + raw + "#" + sourceName
+			// The raw label goes in the package-name field. Bazel labels
+			// contain "//" and ":", both of which the grammar accepts there.
+			// Global validates, so a label that somehow cannot be encoded
+			// yields an error instead of an unparseable symbol -- in which
+			// case the reference is dropped rather than poisoning the index,
+			// and the local import binding above still stands on its own.
+			sym, err := symbol.Global(SymbolScheme,
+				symbol.Package{Manager: UnresolvedManager, Name: raw},
+				"", sourceName)
+			if err != nil {
+				continue
+			}
+			externSym = sym
 		}
 		// Place the external-reference occurrence at the From ident
 		// (which the parser positions at the original-name string
@@ -488,6 +590,7 @@ func (fi *fileIndexer) walkLoadStmt(s *syntax.LoadStmt, sc *scope) {
 			externIdent = to
 		}
 		fi.emitOccurrence(externIdent, externSym, int32(scip.SymbolRole_ReadAccess)|int32(scip.SymbolRole_Import))
+		fi.noteExternal(externSym, sourceName)
 	}
 }
 
@@ -583,6 +686,14 @@ func (fi *fileIndexer) walkExpr(expr syntax.Expr, sc *scope) {
 }
 
 // emitOccurrence appends an Occurrence pointing at id's source range.
+//
+// The flat Range field is deprecated in favour of the typed oneof added in
+// SCIP v0.9.0, and it is still what this indexer writes, deliberately. A
+// reader built against pre-v0.9.0 bindings sees nil for the typed form and
+// reports a zero range for every occurrence *without erroring* -- the failure
+// understory shipped with. The flat form stays valid and every reader
+// understands it, so it is the safe thing to emit until nothing in the family
+// reads the old way. scipd's RangeLegacy default is the same decision.
 func (fi *fileIndexer) emitOccurrence(id *syntax.Ident, sym string, roles int32) {
 	fi.doc.Occurrences = append(fi.doc.Occurrences, &scip.Occurrence{
 		Range:       identRange(id),
@@ -645,10 +756,16 @@ func zeroBased(n int32) int32 {
 
 // makeSymbol formats a SCIP symbol string for a top-level name.
 //
-// Format follows docs/plans/phase-0-design.md:
+// The form is the SCIP grammar's, built by scip-kit:
 //
-//	Default                : "starlark <relpath>#<name>"
-//	With SymbolPrefix "P"  : "P <relpath>#<name>"
+//	<scheme> <manager> <name> <version> <descriptor>+
+//
+//	no package identity : "starlark . . . rules.bzl/foo#"
+//	a bzlmod module     : "starlark bzlmod rules_python 0.40.0 defs.bzl/foo#"
+//
+// The path contributes one namespace descriptor per segment and the name a
+// trailing type descriptor. "." fills any package field we do not know, which
+// is what makes a conformant symbol possible for a file that has no package.
 //
 // Underscore-prefixed names (Starlark's convention for module-private)
 // are emitted as SCIP local symbols ("local <id>") because SCIP has no
@@ -657,44 +774,13 @@ func zeroBased(n int32) int32 {
 // docs/plans/phase-0-design.md test case #7.
 func makeSymbol(relPath, name string, opts Options) string {
 	if strings.HasPrefix(name, "_") {
-		return "local " + escapeLocalID(relPath+":"+name)
+		return symbol.Local(symbol.EscapeLocalID(relPath + ":" + name))
 	}
-	prefix := opts.SymbolPrefix
-	if prefix == "" {
-		prefix = "starlark"
-	}
-	return prefix + " " + relPath + "#" + name
-}
-
-// isLocalSCIPSymbol reports whether sym begins with the SCIP local prefix.
-// We avoid the dependency on scip.IsLocalSymbol here so the predicate stays
-// cheap inside hot AST loops.
-func isLocalSCIPSymbol(sym string) bool {
-	return strings.HasPrefix(sym, "local ")
-}
-
-// escapeLocalID maps a free-form string to a SCIP-safe local identifier.
-// SCIP's <local-id> ::= (<identifier-character>)+ where
-// identifier-character is '_' | '+' | '-' | '$' | ASCII letter/digit.
-// Everything else becomes '$'.
-func escapeLocalID(s string) string {
-	var b strings.Builder
-	b.Grow(len(s))
-	for _, r := range s {
-		switch {
-		case r == '_' || r == '+' || r == '-' || r == '$':
-			b.WriteRune(r)
-		case r >= 'a' && r <= 'z':
-			b.WriteRune(r)
-		case r >= 'A' && r <= 'Z':
-			b.WriteRune(r)
-		case r >= '0' && r <= '9':
-			b.WriteRune(r)
-		default:
-			b.WriteByte('$')
-		}
-	}
-	return b.String()
+	// MustGlobal rather than Global: an unparseable symbol is not a runtime
+	// condition to report, it is a bug in this function. Producing indexes
+	// full of symbols the reference parser rejects is exactly what this
+	// replaced, and it went unnoticed for months because nothing failed.
+	return symbol.MustGlobal(SymbolScheme, opts.Package, relPath, name)
 }
 
 // documentWithParseError returns a Document whose only content is a single
@@ -744,6 +830,12 @@ func documentWithReadError(relPath string, err error) *scip.Document {
 // Options configures an Index run. All fields are optional; zero values
 // pick sensible defaults driven by Dialect.
 type Options struct {
+	// DocumentHook runs after a successfully parsed file has been indexed,
+	// with the same AST and Document that produced the result. Dialect layers
+	// can add metadata without reading or parsing the file again. The hook
+	// should preserve symbol identities and occurrences.
+	DocumentHook func(relPath string, file *syntax.File, doc *scip.Document)
+
 	// FileMatcher decides which files (by path relative to rootDir) get
 	// indexed. When nil, the Dialect preset's matcher is used.
 	FileMatcher func(relPath string) bool
@@ -768,10 +860,16 @@ type Options struct {
 	// Downstream consumers may rewrite or ignore unresolved references.
 	CrossModuleResolver func(target LoadTarget) string
 
-	// SymbolPrefix is prepended to every emitted symbol. Lets consumers
-	// namespace symbols by package or registry coordinate
-	// (e.g. "bzlmod rules_python@0.40.0").
-	SymbolPrefix string
+	// Package identifies the unit being indexed and lands in the symbol's
+	// manager/name/version fields. A zero Package encodes as "." in each,
+	// which is the grammar's placeholder for "unknown" -- a plain Starlark
+	// file genuinely has no package identity and must not claim one.
+	//
+	// This replaced a SymbolPrefix string that was glued onto the front of
+	// every symbol. A single prefix cannot express the three fields the
+	// grammar requires, which is why every symbol this package emitted was
+	// rejected by scip.ParseSymbol.
+	Package symbol.Package
 }
 
 // LoadTarget describes a Starlark load() statement, parsed but not resolved.

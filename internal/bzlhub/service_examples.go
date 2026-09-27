@@ -79,7 +79,7 @@ var exampleSkipDirs = map[string]bool{
 // so the strip is necessary.
 func (s *Service) ExampleFiles(ctx context.Context, name, version, dir string) (*api.ExampleDirContents, error) {
 	if s.SourcesCacheDir == "" || s.MirrorRoot == "" {
-		return nil, errors.New("example-files not available: canopy was started without both --root and a sources cache")
+		return nil, errors.New("example-files not available: bzlhub was started without both --root and a sources cache")
 	}
 	// Reject suspicious dir values up front — the only legitimate
 	// inputs come from ModuleReport.Assets.ExampleDirs which is

@@ -1,4 +1,4 @@
-// Package policy parses and evaluates canopy's `.canopy/policy.yml`.
+// Package policy parses and evaluates bzlhub's `.bzlhub/policy.yml`.
 //
 // Every operator-visible behavior is a policy knob, not hardcoded.
 // Handlers call Policy.Allow(identity, action) for global gates and
@@ -71,7 +71,7 @@ func Static(p *Policy) Snapshot {
 	return func() *Policy { return p }
 }
 
-// Policy is the parsed shape of .canopy/policy.yml after profile
+// Policy is the parsed shape of .bzlhub/policy.yml after profile
 // + override merging.
 type Policy struct {
 	Version     int          `yaml:"version"`
@@ -90,32 +90,32 @@ type Policy struct {
 // Auth holds the auth section. Actions is a map keyed by action
 // name (matching the constants in Action*) → Gate.
 type Auth struct {
-	Actions          map[string]Gate `yaml:"actions"`
-	AnonymousAbuse   AnonymousAbuse  `yaml:"anonymous_abuse"`
-	PerUserRateLimit string          `yaml:"per_user_rate_limit"`
-	MaxPendingPerUser int            `yaml:"max_pending_per_user"`
-	PublicIDField    string          `yaml:"public_id_field"`
+	Actions           map[string]Gate `yaml:"actions"`
+	AnonymousAbuse    AnonymousAbuse  `yaml:"anonymous_abuse"`
+	PerUserRateLimit  string          `yaml:"per_user_rate_limit"`
+	MaxPendingPerUser int             `yaml:"max_pending_per_user"`
+	PublicIDField     string          `yaml:"public_id_field"`
 }
 
 // AnonymousAbuse holds the anti-abuse knobs that apply when
 // any actions are set to GateAny.
 type AnonymousAbuse struct {
-	Turnstile          string `yaml:"turnstile"`
-	PerIPRateLimit     string `yaml:"per_ip_rate_limit"`
-	FirstTimeHoldback  bool   `yaml:"first_time_holdback"`
+	Turnstile         string `yaml:"turnstile"`
+	PerIPRateLimit    string `yaml:"per_ip_rate_limit"`
+	FirstTimeHoldback bool   `yaml:"first_time_holdback"`
 }
 
 // Admission holds the procurement admission gates consumed by
 // the preflight runner and the procurement state machine.
 type Admission struct {
-	License       License           `yaml:"license"`
-	Hermeticity   map[string]string `yaml:"hermeticity"`
-	Source        Source            `yaml:"source"`
-	Cost          Cost              `yaml:"cost"`
-	Attestations  Attestations      `yaml:"attestations"`
-	SmokeTest     SmokeTest         `yaml:"smoke_test"`
-	Bazel         BazelSupport      `yaml:"bazel"`
-	Review        Review            `yaml:"review"`
+	License      License           `yaml:"license"`
+	Hermeticity  map[string]string `yaml:"hermeticity"`
+	Source       Source            `yaml:"source"`
+	Cost         Cost              `yaml:"cost"`
+	Attestations Attestations      `yaml:"attestations"`
+	SmokeTest    SmokeTest         `yaml:"smoke_test"`
+	Bazel        BazelSupport      `yaml:"bazel"`
+	Review       Review            `yaml:"review"`
 }
 
 type License struct {
@@ -132,10 +132,10 @@ type Source struct {
 }
 
 type Cost struct {
-	MaxArchiveSizeBytes      int64 `yaml:"max_archive_size_bytes"`
-	MaxClosureModules        int   `yaml:"max_closure_modules"`
-	MaxTotalAdmissionBytes   int64 `yaml:"max_total_admission_bytes"`
-	MaxPatchBytesPerVersion  int64 `yaml:"max_patch_bytes_per_version"`
+	MaxArchiveSizeBytes     int64 `yaml:"max_archive_size_bytes"`
+	MaxClosureModules       int   `yaml:"max_closure_modules"`
+	MaxTotalAdmissionBytes  int64 `yaml:"max_total_admission_bytes"`
+	MaxPatchBytesPerVersion int64 `yaml:"max_patch_bytes_per_version"`
 }
 
 type Attestations struct {
@@ -145,15 +145,15 @@ type Attestations struct {
 }
 
 type SmokeTest struct {
-	Enabled   bool              `yaml:"enabled"`
+	Enabled   bool                `yaml:"enabled"`
 	Matrix    map[string][]string `yaml:"matrix"`
-	Timeout   string            `yaml:"timeout"`
-	OnFailure string            `yaml:"on_failure"`
+	Timeout   string              `yaml:"timeout"`
+	OnFailure string              `yaml:"on_failure"`
 }
 
 type BazelSupport struct {
-	SupportedVersions      []string `yaml:"supported_versions"`
-	IncludeToolsInClosure  bool     `yaml:"include_tools_in_closure"`
+	SupportedVersions     []string `yaml:"supported_versions"`
+	IncludeToolsInClosure bool     `yaml:"include_tools_in_closure"`
 }
 
 type Review struct {
@@ -173,10 +173,10 @@ type Maintainers struct {
 }
 
 type AuditSection struct {
-	RetainDays             int      `yaml:"retain_days"`
-	IdentityTaggedActions  []string `yaml:"identity_tagged_actions"`
-	RedactInLogs           []string `yaml:"redact_in_logs"`
-	WebhookURL             string   `yaml:"webhook_url"`
+	RetainDays            int      `yaml:"retain_days"`
+	IdentityTaggedActions []string `yaml:"identity_tagged_actions"`
+	RedactInLogs          []string `yaml:"redact_in_logs"`
+	WebhookURL            string   `yaml:"webhook_url"`
 }
 
 type MCP struct {
@@ -185,11 +185,11 @@ type MCP struct {
 }
 
 type Git struct {
-	Remote               string `yaml:"remote"`
-	BaseBranch           string `yaml:"base_branch"`
-	Adapter              string `yaml:"adapter"`
-	PRWorkflow           bool   `yaml:"pr_workflow"`
-	AutoMergeOnAutoPass  bool   `yaml:"auto_merge_on_auto_pass"`
+	Remote              string `yaml:"remote"`
+	BaseBranch          string `yaml:"base_branch"`
+	Adapter             string `yaml:"adapter"`
+	PRWorkflow          bool   `yaml:"pr_workflow"`
+	AutoMergeOnAutoPass bool   `yaml:"auto_merge_on_auto_pass"`
 }
 
 type Content struct {

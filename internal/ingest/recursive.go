@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	gobzlmod "github.com/albertocavalcante/go-bzlmod"
+	"github.com/albertocavalcante/bzlhub/internal/moduledeps"
 	"github.com/albertocavalcante/go-bzlmod/bazeltools"
 
 	"github.com/albertocavalcante/bzlhub/internal/eventbus"
@@ -41,7 +41,7 @@ type RecursiveOptions struct {
 	Workers int
 
 	// Bus, if non-nil, receives a module_indexed event per successful
-	// "done" outcome (matches the event the canopy service publishes
+	// "done" outcome (matches the event the bzlhub service publishes
 	// for one-off Bump calls — single shape for both code paths so
 	// the UI doesn't need to special-case recursive ingest). Errors
 	// and skips are not published to the bus (they're surfaced via
@@ -289,13 +289,20 @@ func walkOneMirrored(ctx context.Context, client *fetch.Client, registryURL stri
 // parseDeps extracts bazel_dep(name=..., version=...) tuples from raw
 // MODULE.bazel bytes. Skips dev_dependency entries and compatibility-
 // only declarations with empty version.
+// parseDeps returns the modules this walk should fetch next.
+//
+// The parse itself lives in internal/moduledeps, which is lossless; the
+// filtering here is this caller's policy. Dev dependencies are skipped because
+// a registry closure walk mirrors what a consumer builds, and Bazel ignores a
+// dependency's dev deps. Note that the SCIP closure filters differently -- it
+// keeps the ROOT module's dev deps -- which is why the parser does not filter.
 func parseDeps(modBytes []byte) ([]moduleKey, error) {
-	info, err := gobzlmod.ParseModuleContent(string(modBytes))
+	all, err := moduledeps.FromModuleBazel(modBytes)
 	if err != nil {
-		return nil, fmt.Errorf("parse MODULE.bazel: %w", err)
+		return nil, err
 	}
 	var deps []moduleKey
-	for _, d := range info.Dependencies {
+	for _, d := range all {
 		if d.DevDependency {
 			continue
 		}

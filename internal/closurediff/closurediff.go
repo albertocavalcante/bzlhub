@@ -20,9 +20,10 @@ import (
 	"sort"
 	"sync"
 
-	gobzlmod "github.com/albertocavalcante/go-bzlmod"
 	"github.com/albertocavalcante/assay/report"
+	gobzlmod "github.com/albertocavalcante/go-bzlmod"
 
+	"github.com/albertocavalcante/bzlhub/internal/egress"
 	"github.com/albertocavalcante/bzlhub/internal/modulediff"
 )
 
@@ -83,9 +84,9 @@ type Report struct {
 // ClosureDepsDiff: which modules appeared / disappeared / moved versions
 // between the from and to closures.
 type ClosureDepsDiff struct {
-	Added   []report.ModuleKey   `json:"added,omitempty"`
-	Removed []report.ModuleKey   `json:"removed,omitempty"`
-	Changed []ChangedClosureDep  `json:"changed,omitempty"`
+	Added   []report.ModuleKey  `json:"added,omitempty"`
+	Removed []report.ModuleKey  `json:"removed,omitempty"`
+	Changed []ChangedClosureDep `json:"changed,omitempty"`
 }
 
 // ChangedClosureDep is a module that's in both closures but at a
@@ -193,10 +194,26 @@ func Compute(ctx context.Context, opts Options) (*Report, error) {
 // walkClosure runs MVS-based resolution against the given upstream and
 // returns the set of selected (name → version). The root itself is
 // included in the returned map.
+// walkClosure resolves the full MVS closure for one (module, version).
+//
+// 🚨 WithHTTPClient is not optional. gobzlmod builds its OWN default client
+// when none is supplied ("If client is nil, creates a default client with
+// connection pooling"), and that client answers to no policy: a closure walk
+// would reach the upstream registry with the egress mode ignored and nothing
+// written to the audit sink. DiffClosure is reachable over the API, so that
+// made an operator-visible request able to leave the network under
+// mirror-only, silently.
+//
+// internal/egress.DefaultHTTPClient is the same seam internal/fetch and
+// internal/backend use. The anti-leak lint in internal/egress cannot catch
+// this shape -- it looks for `http.Client{...}` composite literals in bzlhub's
+// own code, and delegating to a library that constructs its own client has no
+// literal to find.
 func walkClosure(ctx context.Context, module, version, upstream string) (map[string]string, error) {
 	res, err := gobzlmod.Resolve(ctx,
 		gobzlmod.RegistrySource{Name: module, Version: version},
 		gobzlmod.WithRegistries(upstream),
+		gobzlmod.WithHTTPClient(egress.DefaultHTTPClient()),
 	)
 	if err != nil {
 		return nil, err

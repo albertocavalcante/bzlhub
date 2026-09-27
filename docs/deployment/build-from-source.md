@@ -44,13 +44,18 @@ MUST have a populated `vendor/` directory before `docker build`.
 
 ```bash
 cd ~/path/to/bzlhub
-go mod vendor
+tools/vendor-understory-ui.sh
 ```
+
+The script runs `go mod vendor` and copies Understory's built UI into
+`vendor/`. Understory's tagged Go module contains a stub page, so plain
+`go mod vendor` drops the code-navigation JavaScript assets. Set
+`UNDERSTORY_SOURCE` if the matching tagged Understory checkout is elsewhere.
 
 The Dockerfile fails fast if `vendor/` is missing:
 
 ```
-ERROR: bzlhub/vendor/ missing — run 'go mod vendor' first
+ERROR: bzlhub/vendor/ missing — run 'tools/vendor-understory-ui.sh' first
 ```
 
 If your network policy doesn't allow `go mod vendor` from the build
@@ -360,7 +365,7 @@ with Kerberos auth).
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `ERROR: bzlhub/vendor/ missing` during build | `go mod vendor` wasn't run | Run `go mod vendor` in the source tree before `docker build` |
+| `ERROR: bzlhub/vendor/ missing` during build | Dependencies and the Understory UI were not staged | Run `tools/vendor-understory-ui.sh` before `docker build` |
 | `ERROR: internal/embed/ui/index.html missing` during build | ui-builder stage failed silently OR vendored a stub | Check pnpm output in the ui-builder stage; the build fails fast on this |
 | `exec format error` when the pod starts | Image was built for arm64, cluster is amd64 (or vice versa) | Rebuild with `--platform linux/amd64` or use buildx multi-arch |
 | `unauthorized: authentication required` on `docker push` | Registry login expired or wrong | Re-run the registry-specific login from §4 |

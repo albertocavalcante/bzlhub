@@ -1,5 +1,5 @@
 // Package sitemap streams an XML sitemap (per sitemaps.org/schemas/
-// sitemap/0.9) built from canopy's indexed module/version corpus.
+// sitemap/0.9) built from bzlhub's indexed module/version corpus.
 // Served at /sitemap.xml so search engines can auto-discover every
 // module page without crawling the link graph from /modules.
 //
@@ -37,7 +37,7 @@ import (
 )
 
 // isStubVersion reports whether v is a placeholder/sentinel version
-// canopy persists for cross-reference bookkeeping (a module pulled in
+// bzlhub persists for cross-reference bookkeeping (a module pulled in
 // via bazel_deps but never ingested for real). Common shapes:
 //   - "0.0.0" or "0" — synthetic floor before ingest
 //   - "HEAD" — git-shaped placeholder from an early ingest tool
@@ -50,7 +50,7 @@ import (
 //
 // Not exhaustive — we don't try to detect every malformed version
 // the BCR ecosystem can produce. The three patterns above cover the
-// stub rows canopy creates internally, which is the source we control.
+// stub rows bzlhub creates internally, which is the source we control.
 func isStubVersion(v string) bool {
 	return v == "" || v == "0" || v == "0.0.0" || v == "HEAD"
 }
@@ -75,10 +75,10 @@ var staticPages = []struct {
 // sitemap is rooted there. If c is nil, only the static pages are
 // emitted (still a valid sitemap, just less interesting).
 //
-// Errors from the canopy index (ListModules, ListVersions) are
+// Errors from the bzlhub index (ListModules, ListVersions) are
 // non-fatal: we log nothing, just emit what we have and continue.
 // A partial sitemap is more useful to a crawler than a 500.
-func Stream(ctx context.Context, c api.Canopy, origin string, w io.Writer) error {
+func Stream(ctx context.Context, c api.ModuleCatalog, origin string, w io.Writer) error {
 	enc := xml.NewEncoder(w)
 
 	if _, err := io.WriteString(w, xml.Header); err != nil {
@@ -95,7 +95,7 @@ func Stream(ctx context.Context, c api.Canopy, origin string, w io.Writer) error
 	}
 
 	// Static pages always present; their lastmod is "now" because each
-	// canopy deploy can change what they render. Honest enough.
+	// bzlhub deploy can change what they render. Honest enough.
 	now := time.Now().UTC().Format("2006-01-02")
 	for _, p := range staticPages {
 		if err := writeURL(enc, urlEntry{
@@ -108,7 +108,7 @@ func Stream(ctx context.Context, c api.Canopy, origin string, w io.Writer) error
 		}
 	}
 
-	// Module + version pages — best-effort from canopy. Each lookup
+	// Module + version pages — best-effort from bzlhub. Each lookup
 	// failure just skips that subtree; the sitemap is still valid.
 	if c != nil {
 		mods, err := c.ListModules(ctx)

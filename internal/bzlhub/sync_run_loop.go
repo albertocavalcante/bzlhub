@@ -46,12 +46,11 @@ func (s *Service) SyncRunLoop(ctx context.Context, opts SyncRunOptions, interval
 // SyncRunLoop; they're surfaced via slog + callback.
 func (s *Service) runOnce(ctx context.Context, opts SyncRunOptions, onIteration func(SyncRunReceipt, error)) {
 	rec, err := s.SyncRun(ctx, opts)
+	if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+		return
+	}
 	if err != nil {
-		// ctx cancellation isn't "an error" the loop should warn
-		// about — it's the normal shutdown path.
-		if !errors.Is(err, context.Canceled) {
-			slog.Warn("sync_run iteration failed", "err", err)
-		}
+		slog.Warn("sync_run iteration failed", "err", err)
 	}
 	if onIteration != nil {
 		onIteration(rec, err)

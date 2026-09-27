@@ -1,15 +1,15 @@
-// Package purge wires canopy's publish path to a CDN cache-purge
+// Package purge wires bzlhub's publish path to a CDN cache-purge
 // provider. The Provider interface is satisfied by NoOp (the
 // default, for deployments with no CDN) and by Adapter (which wraps
 // any github.com/albertocavalcante/go-cdn-purge cdnpurge.Provider —
 // today: Cloudflare, Fastly, NoOp).
 //
 // Why a thin layer instead of importing cdnpurge directly into admit:
-//   - Different audit-log shape (canopy logs cdn-egress per call).
+//   - Different audit-log shape (bzlhub logs cdn-egress per call).
 //   - Different error tolerance (purge failures are logged, NOT
 //     fatal to the admit success path — the module is still indexed;
 //     CDN edge is just stale until the next TTL expires).
-//   - Lets us swap vendors / mock cleanly at the canopy boundary.
+//   - Lets us swap vendors / mock cleanly at the bzlhub boundary.
 package purge
 
 import (
@@ -20,7 +20,7 @@ import (
 	cdnpurge "github.com/albertocavalcante/go-cdn-purge"
 )
 
-// Provider is canopy's narrowed view of a CDN purge backend. The
+// Provider is bzlhub's narrowed view of a CDN purge backend. The
 // shape mirrors cdnpurge.Provider but doesn't expose PurgeResult
 // to callers — admit cares about "did we try" and "did anything
 // hard-fail", not per-URL receipts.
@@ -56,7 +56,7 @@ func (NoOp) Purge(context.Context, []string) error { return nil }
 func (NoOp) Name() string { return "noop" }
 
 // Adapter wraps a cdnpurge.Provider (the library's interface) into
-// canopy's narrower Provider. The adapter swallows per-URL Failures
+// bzlhub's narrower Provider. The adapter swallows per-URL Failures
 // (logged at Warn) and surfaces only function-level errors.
 type Adapter struct {
 	upstream cdnpurge.Provider

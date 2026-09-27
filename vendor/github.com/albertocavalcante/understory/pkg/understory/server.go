@@ -86,6 +86,14 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
+func writeQueryError(w http.ResponseWriter, err error) {
+	if errors.Is(err, ErrLocalSymbolRequiresFile) {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeError(w, http.StatusInternalServerError, err.Error())
+}
+
 // requireMethodGET rejects anything other than GET with a 405. Keeps
 // the API trivially curl-able; mutation endpoints are not in scope.
 func requireMethodGET(w http.ResponseWriter, r *http.Request) bool {
@@ -120,9 +128,9 @@ func definitionHandler(idx *Index) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "missing required query parameter: symbol")
 			return
 		}
-		loc, ok, err := idx.Definition(symbol)
+		loc, ok, err := idx.DefinitionInFile(r.URL.Query().Get("file"), symbol)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeQueryError(w, err)
 			return
 		}
 		if !ok {
@@ -161,9 +169,9 @@ func referencesHandler(idx *Index) http.HandlerFunc {
 			}
 			includeDef = v
 		}
-		locs, err := idx.References(symbol, includeDef)
+		locs, err := idx.ReferencesInFile(q.Get("file"), symbol, includeDef)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeQueryError(w, err)
 			return
 		}
 		if locs == nil {
@@ -186,9 +194,9 @@ func hoverHandler(idx *Index) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "missing required query parameter: symbol")
 			return
 		}
-		docs, err := idx.Hover(symbol)
+		docs, err := idx.HoverInFile(r.URL.Query().Get("file"), symbol)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeQueryError(w, err)
 			return
 		}
 		if docs == nil {

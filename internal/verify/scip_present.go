@@ -5,7 +5,7 @@ import "sort"
 // checkScipPresent surfaces indexed (module, version) pairs that have
 // no stored SCIP blob in module_scip. Warning, not Error: the module
 // is still fetchable and Bazel doesn't care — but every consumer of
-// canopy's code-nav surface (MCP lookup_symbol, the eventual web UI)
+// bzlhub's code-nav surface (MCP lookup_symbol, the eventual web UI)
 // 404s on it. The common cause is "this version was ingested before
 // scip-bazel wiring landed"; the fix is a re-ingest.
 //

@@ -91,7 +91,7 @@ func (s *Service) CollisionsSample(ctx context.Context, limit int) ([]api.Module
 	return out, nil
 }
 
-// Verify proxies to the verify package. Kept off api.Canopy because
+// Verify proxies to the verify package. Kept off api.Bzlhub because
 // verify → store → api would close an import cycle; mcpsrv accepts
 // a separate Verifier interface that Service also satisfies.
 func (s *Service) Verify(ctx context.Context, opts verify.Options) (*verify.Report, error) {

@@ -147,7 +147,7 @@ echo 'common --registry=http://localhost:8080' >> ~/.bazelrc
 <details>
 <summary><strong>Federation (multi-upstream cascade)</strong></summary>
 
-bzlhub can sit in front of multiple BCR-shape registries, returning the first one that has each `(module, version)` and surfacing a 503 with `Retry-After` only when every upstream failed transiently. The local mirror is always primary; upstreams cascade in parallel on a local miss; first-200 wins and the remaining probes either cancel (`CANOPY_DISABLE_SHADOW_DETECTION=true`) or complete to populate the collision audit.
+bzlhub can sit in front of multiple BCR-shape registries, returning the first one that has each `(module, version)` and surfacing a 503 with `Retry-After` only when every upstream failed transiently. The local mirror is always primary; upstreams cascade in parallel on a local miss; first-200 wins and the remaining probes either cancel (`BZLHUB_DISABLE_SHADOW_DETECTION=true`) or complete to populate the collision audit.
 
 ```sh
 ./bzlhub serve --root ./mirror --db ./bzlhub.db --addr :8080 \
@@ -157,11 +157,11 @@ bzlhub can sit in front of multiple BCR-shape registries, returning the first on
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `CANOPY_UPSTREAMS` | _(empty — federation disabled)_ | Comma-separated upstream URLs as an alternative to `--upstream`. Each URL must be the directory containing `bazel_registry.json`. |
-| `CANOPY_UPSTREAM_CACHE_SIZE` | `1000` | LRU response-cache capacity. Negative integer disables caching entirely. |
-| `CANOPY_PROMOTE_ON_SERVE` | `false` | When `true`, every upstream-won `(module, version)` is async-bumped into the local mirror. Changes the mirror from curated to greedy — opt-in only. |
-| `CANOPY_UPSTREAM_PROBE_INTERVAL` | `60s` | Background reachability probe interval. `0` or negative disables the loop (boot probe still runs). |
-| `CANOPY_DISABLE_SHADOW_DETECTION` | `false` | Cancel runner-up upstreams as soon as a winner returns. Saves N-1 HTTP requests per resolve at the cost of an empty collision-audit row. |
+| `BZLHUB_UPSTREAMS` | _(empty — federation disabled)_ | Comma-separated upstream URLs as an alternative to `--upstream`. Each URL must be the directory containing `bazel_registry.json`. |
+| `BZLHUB_UPSTREAM_CACHE_SIZE` | `1000` | LRU response-cache capacity. Negative integer disables caching entirely. |
+| `BZLHUB_PROMOTE_ON_SERVE` | `false` | When `true`, every upstream-won `(module, version)` is async-bumped into the local mirror. Changes the mirror from curated to greedy — opt-in only. |
+| `BZLHUB_UPSTREAM_PROBE_INTERVAL` | `60s` | Background reachability probe interval. `0` or negative disables the loop (boot probe still runs). |
+| `BZLHUB_DISABLE_SHADOW_DETECTION` | `false` | Cancel runner-up upstreams as soon as a winner returns. Saves N-1 HTTP requests per resolve at the cost of an empty collision-audit row. |
 
 Per-upstream auth is supported by embedding `oauth2:${PAT}` userinfo in the URL; bzlhub strips it at boot, renders `Authorization: Basic` per request, and sanitizes the URL before logging.
 
@@ -174,14 +174,20 @@ Full design: [`docs/plans/16-federation.md`](docs/plans/16-federation.md).
 
 The defaults target a single-user laptop install. For multi-tenant or air-gapped deployments, see the documents below.
 
-> **Egress is unrestricted by default.** Without `CANOPY_ALLOWED_HOSTS`, ingest will follow any URL a `source.json` points at (GitHub, S3, arbitrary CDNs). Set the allowlist before exposing ingest to anyone but yourself.
+> **Egress is unrestricted by default.** Without `BZLHUB_ALLOWED_HOSTS`, ingest will follow any URL a `source.json` points at (GitHub, S3, arbitrary CDNs). Set the allowlist before exposing ingest to anyone but yourself.
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `CANOPY_ALLOWED_HOSTS` | _(empty — no enforcement)_ | Comma-separated host allowlist for ingest / bump fetches. Exact host (`bcr.bazel.build`) or wildcard subdomain (`*.githubusercontent.com`). |
-| `CANOPY_TRUSTED_PROXY_CIDR` | _(empty — header trust disabled)_ | CIDRs of the reverse proxy that authenticates users. `X-Forwarded-User` / `-Email` / `-Groups` headers are honored only for requests inside one of these CIDRs. |
-| `CANOPY_INGEST_WRITE_ENABLED` | `true` on dev profile | Master switch for web-driven ingest. Set to `false` to require all writes via CLI / PR. |
-| `CANOPY_GITHUB_META_ENABLED` | `false` | Enable GitHub-side enrichment (stars / forks / languages) on a 6-hour cadence. Set `GITHUB_TOKEN[_FILE]` to upgrade from anonymous (60 req/h) to authenticated (5000 req/h). |
+| `BZLHUB_PROFILE` | `default` | Deployment posture: `default` allows egress, `mirror-only` denies all egress, and `sync-runner` audits allowlisted egress. |
+| `BZLHUB_ALLOWED_HOSTS` | _(empty — no enforcement)_ | Comma-separated host allowlist for ingest / bump fetches. Exact host (`bcr.bazel.build`) or wildcard subdomain (`*.githubusercontent.com`). |
+| `BZLHUB_EGRESS_AUDIT_FILE` | _(required for `mirror-only` and `sync-runner`)_ | Durable JSONL record of outbound requests and denials. The parent directory and file are created with owner-only permissions. |
+| `BZLHUB_TRUSTED_PROXY_CIDR` | _(empty — header trust disabled)_ | CIDRs of the reverse proxy that authenticates users. `X-Forwarded-User` / `-Email` / `-Groups` headers are honored only for requests inside one of these CIDRs. |
+| `BZLHUB_INGEST_WRITE_ENABLED` | `false` | Master switch for web-driven ingest. Startup rejects an enabled write surface without a trusted proxy unless `BZLHUB_REQUIRE_FRONT_PROXY=false` explicitly acknowledges direct exposure. |
+| `BZLHUB_MCP_HTTP_ENABLED` | `false` | Mount the Streamable HTTP MCP transport at `/mcp`. Read access is evaluated through the policy action `use_mcp_read`. |
+| `BZLHUB_MCP_WRITE_TOOLS_ENABLED` | `false` | Advertise HTTP MCP mutation tools. Enabling this requires HTTP MCP, an identity source, and a policy defining `use_mcp_write`; each request is authorized independently. |
+| `BZLHUB_IDENTITY_FILE` | _(empty)_ | Bearer-token identity registry used by HTTP auth. |
+| `BZLHUB_POLICY_FILE` | _(empty)_ | Authorization policy. Required when HTTP MCP write tools are enabled. |
+| `BZLHUB_GITHUB_META_ENABLED` | `false` | Enable GitHub-side enrichment (stars / forks / languages) on a 6-hour cadence. Set `GITHUB_TOKEN[_FILE]` to upgrade from anonymous (60 req/h) to authenticated (5000 req/h). |
 | `<NAME>_FILE` | _(per secret)_ | If set, bzlhub reads the secret from the file at this path instead of `$NAME`. Designed for compose / k8s short-lived token mounts. |
 
 - [`docs/plans/08-corporate-security.md`](docs/plans/08-corporate-security.md) — threat model, trust boundaries, auth ladder.
@@ -209,10 +215,12 @@ Before publishing bzlhub as a Go module others can `go install`, the replaces mu
 
 | Document | Scope |
 | --- | --- |
-| [`docs/ideas.md`](docs/ideas.md) | Full feature surface and rationale |
-| [`docs/plan.md`](docs/plan.md) | Phased roadmap |
+| [`docs/README.md`](docs/README.md) | Documentation map and status conventions |
+| [`docs/roadmap.md`](docs/roadmap.md) | Current release blockers and next work |
+| [`docs/ideas.md`](docs/ideas.md) | Historical product exploration and rationale |
+| [`docs/plan.md`](docs/plan.md) | Archived original phased plan |
 | [`docs/research.md`](docs/research.md) | Bzlmod internals, lockfile mechanics, Bazel `Version.java` findings |
-| [`docs/plans/`](docs/plans/) | Per-feature design notes (federation, corporate security, git-as-backend, airgap, compat analyzer, code-nav, …) |
+| [`docs/plans/`](docs/plans/) | Historical and per-feature design notes; implementation status must be verified against code and the current roadmap |
 
 ## Acknowledgements & prior art
 

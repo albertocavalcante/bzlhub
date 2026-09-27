@@ -45,10 +45,10 @@ func TestSplitModuleAtVersion(t *testing.T) {
 }
 
 func TestBranchForMode(t *testing.T) {
-	if got := branchForMode(false, "main", "canopy/add-foo-1.0.0"); got != "canopy/add-foo-1.0.0" {
+	if got := branchForMode(false, "main", "bzlhub/add-foo-1.0.0"); got != "bzlhub/add-foo-1.0.0" {
 		t.Fatalf("PR mode branch = %q", got)
 	}
-	if got := branchForMode(true, "main", "canopy/add-foo-1.0.0"); got != "main" {
+	if got := branchForMode(true, "main", "bzlhub/add-foo-1.0.0"); got != "main" {
 		t.Fatalf("commit mode branch = %q", got)
 	}
 }
@@ -62,7 +62,7 @@ func TestPublishOutput_JSONResult(t *testing.T) {
 		Version:    "0.50.1",
 		PRNumber:   42,
 		PRURL:      "https://example.test/pr/42",
-		HeadBranch: "canopy/add-rules_go-0.50.1",
+		HeadBranch: "bzlhub/add-rules_go-0.50.1",
 		BaseBranch: "main",
 		Strategy:   "pr",
 		DurationMs: 123,
@@ -93,7 +93,7 @@ func TestPublishOutput_ShowConfigRedactsToken(t *testing.T) {
 			tokenEnv:   "BZLHUB_GITHUB_TOKEN",
 			token:      "ghp_real_secret",
 			baseBranch: "main",
-			bot:        publish.Identity{Name: "canopy", Email: "canopy@example.test"},
+			bot:        publish.Identity{Name: "bzlhub", Email: "bzlhub@example.test"},
 			requester:  publish.Identity{Name: "Ada", Email: "ada@example.test"},
 		},
 		publishSource{from: "https://bcr.bazel.build"},

@@ -1,4 +1,4 @@
-// Package backend defines the storage interface that canopy speaks to. The
+// Package backend defines the storage interface that bzlhub speaks to. The
 // HTTP server is a thin BCR-protocol projection of this interface. Operators
 // pick a Backend impl based on their deployment shape — filesystem, S3,
 // SQLite-embedded, git, OCI Distribution, Postgres — without changes to the
@@ -24,7 +24,7 @@ var ErrNotFound = errors.New("not found")
 var ErrUpstreamUnavailable = errors.New("all upstreams unavailable")
 
 // Backend is the storage abstraction. All methods are read-only for Phase 0;
-// write operations will be added when canopy starts publishing.
+// write operations will be added when bzlhub starts publishing.
 //
 // Returned ReadClosers must be Closed by the caller.
 type Backend interface {

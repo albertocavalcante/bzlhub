@@ -48,11 +48,11 @@ func (c *Client) ListNewCommits(
 	}
 
 	var raw []struct {
-		ID            string    `json:"id"`
-		Message       string    `json:"message"`
-		AuthorName    string    `json:"author_name"`
-		AuthorEmail   string    `json:"author_email"`
-		AuthoredDate  time.Time `json:"authored_date"`
+		ID           string    `json:"id"`
+		Message      string    `json:"message"`
+		AuthorName   string    `json:"author_name"`
+		AuthorEmail  string    `json:"author_email"`
+		AuthoredDate time.Time `json:"authored_date"`
 	}
 	if len(trimmed) > 0 {
 		if err := json.Unmarshal(trimmed, &raw); err != nil {

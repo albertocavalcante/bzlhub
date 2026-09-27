@@ -1,4 +1,4 @@
--- canopy storage + index schema (SQLite).
+-- bzlhub storage + index schema (SQLite).
 --
 -- Two layers:
 --   * Relational tables hold the canonical structured ModuleReport content.
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS fts_meta (
 
 CREATE INDEX IF NOT EXISTS idx_fts_meta_module ON fts_meta(module_name, version);
 
--- audit_events: durable record of write operations against canopy. Read
+-- audit_events: durable record of write operations against bzlhub. Read
 -- ops (search, list) are NOT logged here — they're high-volume and the
 -- absence of an audit trail isn't a question for "what happened?"
 --
@@ -125,7 +125,7 @@ CREATE INDEX IF NOT EXISTS idx_fts_meta_module ON fts_meta(module_name, version)
 -- payload is JSON-marshaled for structured detail (deps counts,
 -- rule counts, integrity strings, etc.) without bloating the column set.
 -- Per-module SCIP indexes. Persisted as binary protobuf bytes
--- produced by canopy/internal/scip (which wraps scip-bazel). One row
+-- produced by bzlhub/internal/scip (which wraps scip-bazel). One row
 -- per (module, version); REPLACE on re-ingest. Kept in a separate
 -- table from versions(report_json) so the index can be (re)generated
 -- independently of the structured ModuleReport.
@@ -164,7 +164,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_module_ts ON audit_events(module, ts DESC);
 -- from the GitHub REST API on a 6h interval (and on every Bump). One
 -- row per indexed module; refresh sweeps update in place.
 --
--- meta_json carries the full canopy/internal/githubmeta.Meta struct
+-- meta_json carries the full bzlhub/internal/githubmeta.Meta struct
 -- (etag, language byte counts, description, etc.) so adding GitHub
 -- fields doesn't require a migration. The flat columns exist for
 -- SQL-side ordering / filtering ("modules sorted by stars").
@@ -193,7 +193,7 @@ CREATE INDEX IF NOT EXISTS idx_github_meta_fetched ON module_github_meta(fetched
 CREATE INDEX IF NOT EXISTS idx_github_meta_stars   ON module_github_meta(stars DESC);
 
 -- External URL surface — one row per (URL, platform, file, rule_name) tuple
--- per module-version. Populated by canopy/internal/external during ingest
+-- per module-version. Populated by bzlhub/internal/external during ingest
 -- via assay/interp/external.Analyze. The schema is denormalized for fast
 -- "give me every URL this module fetches" reads.
 CREATE TABLE IF NOT EXISTS external_refs (
@@ -232,7 +232,7 @@ CREATE TABLE IF NOT EXISTS external_fork_errors (
 CREATE INDEX IF NOT EXISTS idx_external_fork_errors_module ON external_fork_errors(module_name, version);
 
 -- Cross-module index of use_extension() call sites + their tag invocations.
--- Populated by canopy ingest from every module's MODULE.bazel; queried by
+-- Populated by bzlhub ingest from every module's MODULE.bazel; queried by
 -- the airgap analyzer when re-driving a producer ruleset's
 -- module_extension impls — the corpus of real tag values is what turns
 -- "default-attr extension drive" (synthetic, often empty URLs) into

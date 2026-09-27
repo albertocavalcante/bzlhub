@@ -21,7 +21,7 @@ import (
 // token + userAgent. Callers pre-validate `kind`; the default-branch
 // error is only reached if validation drifts out of sync.
 func New(kind string, repo bigorna.Repo, baseURL, token, userAgent string) (bigorna.Forge, error) {
-	httpClient := egress.NewHTTPClient(egress.Policy{})
+	httpClient := egress.DefaultHTTPClient()
 	httpClient.Timeout = 30 * time.Second
 	switch kind {
 	case "github":

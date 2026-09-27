@@ -18,9 +18,9 @@ import (
 // breaking-findings entry.
 func fixtureReport() *modulediff.Report {
 	return &modulediff.Report{
-		Module: "rules_x",
-		From:   "1.0.0",
-		To:     "2.0.0",
+		Module:             "rules_x",
+		From:               "1.0.0",
+		To:                 "2.0.0",
 		CompatibilityLevel: &modulediff.CompatChange{From: 1, To: 2},
 		Hermeticity: &modulediff.HermDiff{
 			Added:   []report.HermeticityClass{"pure-starlark"},

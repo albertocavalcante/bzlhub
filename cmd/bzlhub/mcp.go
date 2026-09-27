@@ -16,7 +16,7 @@ func newMCPCmd() *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "mcp",
-		Short: "Serve canopy as an MCP server over stdio for coding agents",
+		Short: "Serve bzlhub as an MCP server over stdio for coding agents",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			s, err := store.Open(cmd.Context(), dbPath)
 			if err != nil {
@@ -32,7 +32,7 @@ func newMCPCmd() *cobra.Command {
 			if upstream != "" {
 				svc.DefaultUpstream = upstream
 			}
-			// svc satisfies both api.Canopy and mcpsrv.Verifier; one
+			// svc satisfies both api.Bzlhub and mcpsrv.Verifier; one
 			// concrete implementation, two separate interfaces (see the
 			// Verifier doc-comment in mcpsrv for why they don't fuse).
 			return mcpsrv.Serve(cmd.Context(), svc, svc, "0.0.0")

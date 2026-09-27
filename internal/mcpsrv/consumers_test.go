@@ -43,7 +43,7 @@ func TestMCP_NewToolsAreRegisteredByName(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srv := server.NewMCPServer("canopy-test", "test")
+	srv := server.NewMCPServer("bzlhub-test", "test")
 	registerTools(srv, bzlhub.New(s), nil, true)
 
 	cases := []struct {
@@ -72,7 +72,7 @@ func TestMCP_NewToolsAreRegisteredByName(t *testing.T) {
 			args: map[string]any{
 				// Real input — at least one bazel_dep so the analyzer
 				// doesn't bail with ErrEmptyInput. The dep doesn't
-				// need to be in canopy's corpus; missing-from-corpus
+				// need to be in bzlhub's corpus; missing-from-corpus
 				// is a valid result that still produces a Summary.
 				"body": `module(name = "x", version = "1")` + "\n" +
 					`bazel_dep(name = "nonexistent_dep", version = "1.0.0")` + "\n",
@@ -159,7 +159,7 @@ func TestMCP_ConsumersTool_RoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := s.WriteScipBlob(ctx, "consumer", "1", scipBlobWithRef(t,
-		"bzlmod producer@1 rules/lib.bzl#my_rule", "uses/foo.bzl", 7,
+		"starlark bzlmod producer 1 rules/lib.bzl/my_rule#", "uses/foo.bzl", 7,
 	)); err != nil {
 		t.Fatal(err)
 	}

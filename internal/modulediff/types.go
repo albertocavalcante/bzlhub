@@ -13,7 +13,7 @@ type Report struct {
 	// FromSource / ToSource describe how each side was obtained.
 	// Set by the service layer after Compute; not populated by Compute itself.
 	//   ""         (omitted): default — typically "local"
-	//   "local":   served from the canopy index
+	//   "local":   served from the bzlhub index
 	//   "upstream": fetched + analyzed on-the-fly from an upstream registry
 	//               because the version isn't in the local index yet
 	FromSource string `json:"from_source,omitempty"`

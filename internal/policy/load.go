@@ -15,7 +15,7 @@ import (
 //go:embed profiles/*.yml
 var profilesFS embed.FS
 
-// maxPolicyFileBytes caps how much of policy.yml canopy will read at
+// maxPolicyFileBytes caps how much of policy.yml bzlhub will read at
 // boot. A real deployment's policy is ~100 lines (~5 KiB); 10 MB is
 // far past any plausible config. Symmetric with the identity-file
 // cap — both defend against mis-mounted binds.

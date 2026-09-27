@@ -12,7 +12,7 @@ import (
 
 // ErrAlreadyBootstrapped is returned when MirrorPath already
 // contains a clone of Remote.
-var ErrAlreadyBootstrapped = errors.New("canopy: mirror already bootstrapped")
+var ErrAlreadyBootstrapped = errors.New("bzlhub: mirror already bootstrapped")
 
 // SyncBootstrapOptions controls a single bootstrap call.
 type SyncBootstrapOptions struct {
@@ -59,7 +59,7 @@ func (s *Service) SyncBootstrap(ctx context.Context, opts SyncBootstrapOptions) 
 			// populate Duration so the receipt is consistent
 			// with the success path's shape. errors.Join chains
 			// both sentinels so callers can errors.Is against
-			// either ErrAlreadyBootstrapped (canopy) or
+			// either ErrAlreadyBootstrapped (bzlhub) or
 			// ErrAlreadyCloned (library).
 			return SyncBootstrapReceipt{
 				SHA:      cr.SHA,

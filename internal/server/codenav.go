@@ -57,7 +57,7 @@ func (h *handler) codeNav(w http.ResponseWriter, r *http.Request) {
 	// would under understory's own server binary, and forward the prefix
 	// via X-Forwarded-Prefix so the SPA fallback rewrites its absolute
 	// /_app/ asset URLs accordingly (otherwise the browser would fetch
-	// /_app/* from canopy's origin, which serves canopy's *own* bundle).
+	// /_app/* from bzlhub's origin, which serves bzlhub's *own* bundle).
 	prefix := "/modules/" + module + "/" + version + "/code-nav"
 	handler := ui.NewServerWithUI(idx, root)
 	stripped := http.StripPrefix(prefix, handler)
@@ -85,7 +85,7 @@ func (h *handler) codeNav(w http.ResponseWriter, r *http.Request) {
 // common case once the corpus is non-trivial — rules_python pinning
 // rules_java@7.2.0 while we have rules_java@8.6.1, for example).
 //
-// The page links to `/modules/<m>` (canopy's existing module landing)
+// The page links to `/modules/<m>` (bzlhub's existing module landing)
 // so the user can pick a version we *do* have. html/template handles
 // escaping of module/version values, defending against any pathological
 // URL params chi might forward (chi already URL-decodes — this is a
@@ -137,7 +137,7 @@ func (h *handler) codeNavLatest(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, target, http.StatusFound)
 }
 
-// codeNavNotIndexedTmpl matches canopy's main SvelteKit UI palette
+// codeNavNotIndexedTmpl matches bzlhub's main SvelteKit UI palette
 // (dark zinc/blue) so the friendly 404 doesn't visually jar against
 // the rest of the site. The colors are pinned hex rather than CSS
 // vars because this template renders without the SvelteKit app shell
@@ -146,7 +146,7 @@ var codeNavNotIndexedTmpl = template.Must(template.New("not-indexed").Parse(`<!d
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>{{.Module}} @ {{.Version}} — not indexed | canopy</title>
+  <title>{{.Module}} @ {{.Version}} — not indexed | bzlhub</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #0a0a0a; color: #e4e4e7; min-height: 100vh; }
     main { max-width: 36rem; margin: 5rem auto; padding: 0 1rem; line-height: 1.55; }
@@ -166,18 +166,18 @@ var codeNavNotIndexedTmpl = template.Must(template.New("not-indexed").Parse(`<!d
   </style>
 </head>
 <body>
-  <div class="brand"><a href="/" style="color:#60a5fa">canopy</a></div>
+  <div class="brand"><a href="/" style="color:#60a5fa">bzlhub</a></div>
   <main>
     <h1>Not indexed yet <small>· 404</small></h1>
-    <p>Canopy doesn't have a code-nav index for <code>{{.Module}} @ {{.Version}}</code>.</p>
+    <p>Bzlhub doesn't have a code-nav index for <code>{{.Module}} @ {{.Version}}</code>.</p>
     <p class="why">
       You likely got here by following a cross-module symbol whose target version
       isn't in our catalogue yet. The module pinning may reference an older release
-      than what canopy has ingested.
+      than what bzlhub has ingested.
     </p>
     <div class="actions">
       <a class="btn btn-primary" href="/modules/{{.Module}}">See indexed versions of {{.Module}} →</a>
-      <a class="btn" href="/">Back to canopy</a>
+      <a class="btn" href="/">Back to bzlhub</a>
     </div>
   </main>
 </body>
@@ -185,7 +185,7 @@ var codeNavNotIndexedTmpl = template.Must(template.New("not-indexed").Parse(`<!d
 `))
 
 // codenavResolver constructs the package-internal type the handler
-// expects out of the options + the canopy service. nil when MirrorRoot
+// expects out of the options + the bzlhub service. nil when MirrorRoot
 // is empty (no mirror to read tarballs from) OR SourcesCacheDir is
 // empty (nowhere to extract). The handler treats nil as "feature not
 // available, return 503".

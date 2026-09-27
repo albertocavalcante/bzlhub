@@ -80,8 +80,8 @@ func TestFromRegistryHappyPath(t *testing.T) {
 func TestFromRegistryFallsBackToStandaloneModuleBazel(t *testing.T) {
 	// Tarball has source files but NO MODULE.bazel.
 	tgz := buildSyntheticTarGz(t, "noroot-1.0.0", map[string]string{
-		"BUILD.bazel":    `# placeholder`,
-		"src/lib.bzl":    `def helper(): pass`,
+		"BUILD.bazel": `# placeholder`,
+		"src/lib.bzl": `def helper(): pass`,
 	})
 	sum := sha256.Sum256(tgz)
 	integrity := "sha256-" + base64.StdEncoding.EncodeToString(sum[:])

@@ -106,7 +106,7 @@ func TestProbe_ModuleDoesntExist_BothFalse(t *testing.T) {
 }
 
 func TestProbe_TransportError_PropagatesNon404(t *testing.T) {
-	// 5xx from BCR is an operational issue (canopy can't tell the
+	// 5xx from BCR is an operational issue (bzlhub can't tell the
 	// user anything useful) — must surface as error, not as a
 	// "module doesn't exist" answer.
 	boom := errors.New("GET https://bcr/...: HTTP 503")

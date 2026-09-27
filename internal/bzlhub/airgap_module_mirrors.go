@@ -8,7 +8,7 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/api"
 )
 
-// defaultRegistry is the Bazel Central Registry — canopy's default
+// defaultRegistry is the Bazel Central Registry — bzlhub's default
 // assumption for modules whose ingestion source wasn't a custom
 // registry override. Used as the LHS of the per-registry
 // --module_mirrors form (Bazel >= 8.5).
@@ -21,10 +21,10 @@ const defaultRegistry = "https://bcr.bazel.build/"
 //
 // (module, version) is currently only used for naming the rendered
 // artifact — the flag itself is registry-scoped. Future work could
-// scope per-module if canopy starts tracking each module's source
+// scope per-module if bzlhub starts tracking each module's source
 // registry.
 func (s *Service) AirgapModuleMirrors(ctx context.Context, name, version string, opts api.ModuleMirrorsOptions) (*api.ModuleMirrors, error) {
-	// Refuse to template a snippet citing a module canopy has never
+	// Refuse to template a snippet citing a module bzlhub has never
 	// indexed — a typo in the URL would otherwise produce a happy 200
 	// with a misleading artifact.
 	exists, err := s.store.VersionExists(ctx, name, version)
@@ -55,7 +55,7 @@ func (s *Service) AirgapModuleMirrors(ctx context.Context, name, version string,
 	}
 
 	var out strings.Builder
-	fmt.Fprintf(&out, "# canopy airgap --module_mirrors snippet\n")
+	fmt.Fprintf(&out, "# bzlhub airgap --module_mirrors snippet\n")
 	fmt.Fprintf(&out, "# Module:      %s@%s\n", name, version)
 	fmt.Fprintf(&out, "# Mirror:      %s\n", mirror)
 	fmt.Fprintf(&out, "# Registry:    %s\n", registry)
@@ -63,7 +63,7 @@ func (s *Service) AirgapModuleMirrors(ctx context.Context, name, version string,
 	fmt.Fprintf(&out, "# --module_mirrors covers source URLs provided by modules\n")
 	fmt.Fprintf(&out, "# obtained from a Bazel registry. It does NOT cover URLs\n")
 	fmt.Fprintf(&out, "# fetched by repo_rule / module_extension calls — for those,\n")
-	fmt.Fprintf(&out, "# pair this with --downloader_config (see canopy's\n")
+	fmt.Fprintf(&out, "# pair this with --downloader_config (see bzlhub's\n")
 	fmt.Fprintf(&out, "# airgap-downloader-config endpoint, which is the superset).\n")
 	fmt.Fprintf(&out, "#\n")
 	fmt.Fprintf(&out, "# Bazel version compatibility:\n")

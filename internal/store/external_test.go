@@ -31,16 +31,16 @@ func TestExternalRefs_RoundTrip(t *testing.T) {
 
 	refs := []store.ExternalRef{
 		{
-			URL: "https://dl.google.com/go/go1.21.0.linux-amd64.tar.gz",
+			URL:  "https://dl.google.com/go/go1.21.0.linux-amd64.tar.gz",
 			Host: "dl.google.com", Class: "vendor-http", Mutability: "immutable",
 			SHA256: "abc", APIName: "ctx.download_and_extract",
 			RuleName: "go_download_sdk_rule", Platform: "linux/amd64",
 			File: "go/private/sdk.bzl",
 		},
 		{
-			URL: "https://github.com/foo/bar/archive/v1.0.tar.gz",
+			URL:  "https://github.com/foo/bar/archive/v1.0.tar.gz",
 			Host: "github.com", Class: "github-archive", Mutability: "mutable-host",
-			APIName: "ctx.download_and_extract",
+			APIName:  "ctx.download_and_extract",
 			RuleName: "my_repo", Platform: "any",
 			File: "deps.bzl",
 		},

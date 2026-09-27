@@ -18,8 +18,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/albertocavalcante/scip-kit/scipio"
+	scipsymbol "github.com/albertocavalcante/scip-kit/symbol"
 	scip "github.com/scip-code/scip/bindings/go/scip"
-	"google.golang.org/protobuf/proto"
 )
 
 // Open reads a code intel index from path and returns an in-memory
@@ -45,6 +46,9 @@ func Open(path string) (*Index, error) {
 		// blobs) don't carry the .scip suffix. Treat anything else as
 		// SCIP protobuf and let the unmarshaler decide.
 	}
+	// #nosec G703 -- Open's entire contract is "read the index at this path".
+	// The path comes from this library's caller, who is the operator; there is
+	// no trust boundary here to traverse.
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("understory: Open %q: %w", path, err)
@@ -87,12 +91,17 @@ func OpenReader(r io.Reader) (*Index, error) {
 
 // parseSCIP unmarshals a SCIP protobuf payload and builds the in-memory
 // lookup tables.
+//
+// Decoding goes through scip-kit so understory shares one reader with the
+// producers it consumes from. The dispatch above stays here: which extensions
+// mean what, and whether an empty payload is an error, are understory's policy,
+// not the wire format's.
 func parseSCIP(b []byte) (*Index, error) {
-	var raw scip.Index
-	if err := proto.Unmarshal(b, &raw); err != nil {
+	raw, err := scipio.UnmarshalIndex(b)
+	if err != nil {
 		return nil, fmt.Errorf("understory: parse SCIP: %w", err)
 	}
-	return buildIndex(&raw), nil
+	return buildIndex(raw), nil
 }
 
 // buildIndex walks every document/occurrence and pre-computes the
@@ -100,9 +109,9 @@ func parseSCIP(b []byte) (*Index, error) {
 func buildIndex(raw *scip.Index) *Index {
 	idx := &Index{
 		documents:    raw.Documents,
-		byDefinition: make(map[string]Location),
-		byOccurrence: make(map[string][]Location),
-		bySymbolInfo: make(map[string]*scip.SymbolInformation),
+		byDefinition: make(map[symbolKey]Location),
+		byOccurrence: make(map[symbolKey][]symbolOccurrence),
+		bySymbolInfo: make(map[symbolKey]*scip.SymbolInformation),
 		byFile:       make(map[string][]docOccurrence),
 	}
 	for _, doc := range raw.Documents {
@@ -117,8 +126,9 @@ func buildIndex(raw *scip.Index) *Index {
 			// SymbolInformation to appear in multiple documents (e.g.
 			// re-exports) but for v0.1.0 Hover returns whichever was
 			// observed first.
-			if _, present := idx.bySymbolInfo[si.Symbol]; !present {
-				idx.bySymbolInfo[si.Symbol] = si
+			key := keyFor(doc.RelativePath, si.Symbol)
+			if _, present := idx.bySymbolInfo[key]; !present {
+				idx.bySymbolInfo[key] = si
 			}
 		}
 		for _, occ := range doc.Occurrences {
@@ -126,17 +136,16 @@ func buildIndex(raw *scip.Index) *Index {
 				continue
 			}
 			loc := occurrenceToLocation(doc.RelativePath, occ)
-			idx.byOccurrence[occ.Symbol] = append(idx.byOccurrence[occ.Symbol], loc)
-			if occ.SymbolRoles&int32(scip.SymbolRole_Definition) != 0 {
-				if _, present := idx.byDefinition[occ.Symbol]; !present {
-					idx.byDefinition[occ.Symbol] = loc
+			key := keyFor(doc.RelativePath, occ.Symbol)
+			isDefinition := occ.SymbolRoles&int32(scip.SymbolRole_Definition) != 0
+			entry := docOccurrence{symbol: occ.Symbol, loc: loc, isDefinition: isDefinition}
+			idx.byOccurrence[key] = append(idx.byOccurrence[key], symbolOccurrence{loc: loc, isDefinition: isDefinition})
+			if isDefinition {
+				if _, present := idx.byDefinition[key]; !present {
+					idx.byDefinition[key] = loc
 				}
 			}
-			idx.byFile[doc.RelativePath] = append(idx.byFile[doc.RelativePath], docOccurrence{
-				symbol:       occ.Symbol,
-				loc:          loc,
-				isDefinition: occ.SymbolRoles&int32(scip.SymbolRole_Definition) != 0,
-			})
+			idx.byFile[doc.RelativePath] = append(idx.byFile[doc.RelativePath], entry)
 		}
 	}
 	return idx
@@ -147,10 +156,30 @@ func buildIndex(raw *scip.Index) *Index {
 // docs/plans/architecture.md). Construct via Open; do not zero-value.
 type Index struct {
 	documents    []*scip.Document
-	byDefinition map[string]Location
-	byOccurrence map[string][]Location
-	bySymbolInfo map[string]*scip.SymbolInformation
+	byDefinition map[symbolKey]Location
+	byOccurrence map[symbolKey][]symbolOccurrence
+	bySymbolInfo map[symbolKey]*scip.SymbolInformation
 	byFile       map[string][]docOccurrence
+}
+
+// Local SCIP symbols have document scope; global symbols have index scope.
+type symbolKey struct{ file, symbol string }
+
+func keyFor(file, sym string) symbolKey {
+	if scipsymbol.IsLocal(sym) {
+		return symbolKey{file: file, symbol: sym}
+	}
+	return symbolKey{symbol: sym}
+}
+
+// ErrLocalSymbolRequiresFile means a local symbol was queried without its document.
+var ErrLocalSymbolRequiresFile = errors.New("understory: local symbol requires file context")
+
+func queryKey(file, sym string) (symbolKey, error) {
+	if scipsymbol.IsLocal(sym) && file == "" {
+		return symbolKey{}, ErrLocalSymbolRequiresFile
+	}
+	return keyFor(file, sym), nil
 }
 
 // docOccurrence is a per-file occurrence record used by SymbolAtPos
@@ -163,47 +192,64 @@ type docOccurrence struct {
 	isDefinition bool
 }
 
-// Definition returns the location where the given SCIP symbol is
-// defined.
+type symbolOccurrence struct {
+	loc          Location
+	isDefinition bool
+}
+
+// Definition returns the location where a global SCIP symbol is defined.
+// Local symbols require DefinitionInFile because their strings have document scope.
 //
 // ok is false when the symbol appears in the index only as an external
 // reference (no definition occurrence is recorded in this file) or when
 // the symbol is not present at all. Both cases return err == nil; err is
 // reserved for I/O or invariant failures.
 func (i *Index) Definition(symbol string) (loc Location, ok bool, err error) {
+	return i.DefinitionInFile("", symbol)
+}
+
+// DefinitionInFile resolves a local symbol within file, or a global symbol across the index.
+func (i *Index) DefinitionInFile(file, sym string) (loc Location, ok bool, err error) {
 	if i == nil {
 		return Location{}, false, errors.New("understory: Definition on nil *Index")
 	}
-	loc, ok = i.byDefinition[symbol]
+	key, err := queryKey(file, sym)
+	if err != nil {
+		return Location{}, false, err
+	}
+	loc, ok = i.byDefinition[key]
 	return loc, ok, nil
 }
 
-// References returns every read-access occurrence of the symbol across
-// all documents in the index. The definition occurrence is included in
-// the result iff includeDefinition is true.
+// References returns occurrences of a global symbol across all documents.
+// Local symbols require ReferencesInFile because their strings have document scope.
+// Definition-role occurrences are included iff includeDefinition is true.
 //
 // A symbol with no occurrences returns (nil, nil) — "no references" is a
 // valid, empty answer, not an error.
 func (i *Index) References(symbol string, includeDefinition bool) ([]Location, error) {
+	return i.ReferencesInFile("", symbol, includeDefinition)
+}
+
+// ReferencesInFile returns occurrences of a local symbol within file, or a global symbol across the index.
+func (i *Index) ReferencesInFile(file, sym string, includeDefinition bool) ([]Location, error) {
 	if i == nil {
 		return nil, errors.New("understory: References on nil *Index")
 	}
-	occs := i.byOccurrence[symbol]
+	key, err := queryKey(file, sym)
+	if err != nil {
+		return nil, err
+	}
+	occs := i.byOccurrence[key]
 	if len(occs) == 0 {
 		return nil, nil
 	}
-	if includeDefinition {
-		out := make([]Location, len(occs))
-		copy(out, occs)
-		return out, nil
-	}
-	defLoc, hasDef := i.byDefinition[symbol]
 	out := make([]Location, 0, len(occs))
-	for _, l := range occs {
-		if hasDef && l == defLoc {
+	for _, occ := range occs {
+		if !includeDefinition && occ.isDefinition {
 			continue
 		}
-		out = append(out, l)
+		out = append(out, occ.loc)
 	}
 	if len(out) == 0 {
 		return nil, nil
@@ -211,16 +257,26 @@ func (i *Index) References(symbol string, includeDefinition bool) ([]Location, e
 	return out, nil
 }
 
-// Hover returns the documentation strings attached to the symbol's
-// SymbolInformation record, verbatim. Most indexers emit a single
+// Hover returns the documentation strings attached to a global symbol's
+// SymbolInformation record, verbatim. Local symbols require HoverInFile.
+// Most indexers emit a single
 // markdown-formatted entry; some emit one entry per format variant.
 //
 // A symbol with no attached documentation returns (nil, nil).
 func (i *Index) Hover(symbol string) ([]string, error) {
+	return i.HoverInFile("", symbol)
+}
+
+// HoverInFile returns documentation for a local symbol within file, or a global symbol across the index.
+func (i *Index) HoverInFile(file, sym string) ([]string, error) {
 	if i == nil {
 		return nil, errors.New("understory: Hover on nil *Index")
 	}
-	si, ok := i.bySymbolInfo[symbol]
+	key, err := queryKey(file, sym)
+	if err != nil {
+		return nil, err
+	}
+	si, ok := i.bySymbolInfo[key]
 	if !ok || si == nil || len(si.Documentation) == 0 {
 		return nil, nil
 	}

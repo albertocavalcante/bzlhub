@@ -7,7 +7,7 @@ import (
 )
 
 // checkModuleBazelPresent confirms each module-version directory has a
-// MODULE.bazel that parses with the same gobzlmod parser canopy uses
+// MODULE.bazel that parses with the same gobzlmod parser bzlhub uses
 // during ingestion. A missing or unparseable MODULE.bazel makes the
 // module unusable by Bazel — same severity as a corrupted blob.
 //

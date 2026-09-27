@@ -86,7 +86,7 @@ The --format=markdown output is shaped for pasting into a PR description.`,
 				return fmt.Errorf("unknown --format %q (want text|json|markdown)", format)
 			}
 			if failIfBreaking && len(d.Breaking) > 0 {
-				fmt.Fprintf(os.Stderr, "\ncanopy diff: %d breaking change%s detected — exiting %d\n",
+				fmt.Fprintf(os.Stderr, "\nbzlhub diff: %d breaking change%s detected — exiting %d\n",
 					len(d.Breaking), plural(len(d.Breaking)), exitCodeBreaking)
 				os.Exit(exitCodeBreaking)
 			}
@@ -165,7 +165,7 @@ The --format=markdown output drops into a PR description; combine with
 				return fmt.Errorf("unknown --format %q (want text|json|markdown)", format)
 			}
 			if failIfBreaking && d.ClosureBreakingTotal > 0 {
-				fmt.Fprintf(os.Stderr, "\ncanopy diff-closure: %d closure-wide breaking finding%s across %d module%s — exiting %d\n",
+				fmt.Fprintf(os.Stderr, "\nbzlhub diff-closure: %d closure-wide breaking finding%s across %d module%s — exiting %d\n",
 					d.ClosureBreakingTotal, plural(d.ClosureBreakingTotal),
 					len(d.ClosureBreakingByModule), plural(len(d.ClosureBreakingByModule)),
 					exitCodeBreaking)

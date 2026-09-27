@@ -17,9 +17,9 @@ import (
 //   - GateAny           → always true (anonymous and authenticated)
 //   - GateAuthenticated → true when identity.IsAuthenticated()
 //   - "group:<name>"    → true when identity is authenticated AND
-//                         carries <name> in its Groups slice
+//     carries <name> in its Groups slice
 //   - GateMaintainer    → always false (per-target gate — use
-//                         Evaluator.AllowFor with the target)
+//     Evaluator.AllowFor with the target)
 //   - GateDeny / unknown → false
 //
 // Pure read against the in-memory policy; concurrent calls are safe.

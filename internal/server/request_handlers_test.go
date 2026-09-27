@@ -680,9 +680,9 @@ func TestPolicyEffective_Anonymous(t *testing.T) {
 		t.Fatalf("status = %d", w.Code)
 	}
 	var resp struct {
-		Profile  string            `json:"profile"`
-		Actions  map[string]bool   `json:"actions"`
-		Identity map[string]any    `json:"identity"`
+		Profile  string          `json:"profile"`
+		Actions  map[string]bool `json:"actions"`
+		Identity map[string]any  `json:"identity"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatal(err)

@@ -32,9 +32,12 @@
 # needs Node 20+ with corepack/pnpm support, go-builder needs Go
 # 1.26+, runtime must be alpine-family (uses `apk add`). For RHEL/UBI
 # runtimes use Dockerfile.rhel9 instead.
-ARG UI_BUILDER_BASE=node:22-alpine
-ARG GO_BUILDER_BASE=golang:1.26-alpine
-ARG RUNTIME_BASE=alpine:3
+# Multi-architecture manifest digests make rebuilds reproducible while
+# retaining the human-readable tag. Refresh deliberately with
+# `docker buildx imagetools inspect <tag>` after reviewing the image.
+ARG UI_BUILDER_BASE=node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+ARG GO_BUILDER_BASE=golang:1.26.6-alpine@sha256:1b2cb58c3df8b93b8bcb5739778692c35e491087599139deb2c8c03567cbb03e
+ARG RUNTIME_BASE=alpine:3@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
 # -------- ui-builder --------------------------------------------------------
 FROM ${UI_BUILDER_BASE} AS ui-builder
@@ -44,7 +47,13 @@ WORKDIR /src
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 # Lock files first for a cache-friendly install layer.
-COPY ui/package.json ui/pnpm-lock.yaml ./ui/
+# pnpm-workspace.yaml belongs in THIS layer, not the later `COPY ui/`: pnpm 10
+# reads `overrides` from it, and `--frozen-lockfile` compares what it read
+# against the lockfile. Without it here, pnpm sees no overrides, the lockfile
+# declares one, and the install fails with
+# ERR_PNPM_LOCKFILE_CONFIG_MISMATCH -- which reads like a stale lockfile rather
+# than a missing file.
+COPY ui/package.json ui/pnpm-lock.yaml ui/pnpm-workspace.yaml ./ui/
 RUN cd ui && pnpm install --frozen-lockfile
 
 # Then the full UI source. adapter-static emits into ui/build/.
@@ -59,9 +68,9 @@ RUN cd ui && pnpm run build
 #   - private GitHub modules pulled from tagged versions (scip-bazel,
 #     scip-starlark, understory)
 #
-# Both kinds resolve cleanly via `go mod vendor` on the dev machine
+# Both kinds resolve via tools/vendor-understory-ui.sh on the dev machine
 # (host has GitHub auth + workspace dirs visible). The ship.env's
-# PRE_BUILD_CMD ensures `go mod vendor` runs before this image build
+# PRE_BUILD_CMD must run that script before this image build
 # starts, so vendor/ is already in the build context. We then build
 # with -mod=vendor — no network, no auth, no replace gymnastics.
 FROM ${GO_BUILDER_BASE} AS go-builder
@@ -77,9 +86,8 @@ COPY --from=ui-builder /src/ui/build/ ./internal/embed/ui/
 
 # Refuse to build without a vendor/ tree — surfaces the pre-build
 # requirement as a clear error rather than a cryptic go-resolve
-# failure. Run `go mod vendor` in the source repo first (or use
-# self-hosted/scripts/ship-local.sh which automates it).
-RUN test -d vendor || (echo "ERROR: bzlhub/vendor/ missing — run 'go mod vendor' first" >&2 && exit 1)
+# failure. The vendor script also stages Understory's browser assets.
+RUN test -d vendor || (echo "ERROR: bzlhub/vendor/ missing — run 'tools/vendor-understory-ui.sh' first" >&2 && exit 1)
 
 # Guard the embed overlay too — a silent failure here ships a binary
 # with the "UI not built" stub instead of the actual UI.

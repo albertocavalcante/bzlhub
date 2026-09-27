@@ -31,9 +31,9 @@ func makeZip(t *testing.T, files map[string]string) []byte {
 
 func TestExtractZipStripsPrefix(t *testing.T) {
 	a := makeZip(t, map[string]string{
-		"foo-1.0.0/MODULE.bazel":  "module(name=\"foo\")\n",
-		"foo-1.0.0/BUILD.bazel":   "\n",
-		"foo-1.0.0/lib/defs.bzl":  "x = 1\n",
+		"foo-1.0.0/MODULE.bazel": "module(name=\"foo\")\n",
+		"foo-1.0.0/BUILD.bazel":  "\n",
+		"foo-1.0.0/lib/defs.bzl": "x = 1\n",
 	})
 	dest := t.TempDir()
 	if _, err := ExtractZip(bytes.NewReader(a), dest, "foo-1.0.0", 0); err != nil {

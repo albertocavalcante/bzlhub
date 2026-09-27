@@ -134,4 +134,3 @@ func makeAttachTestRemote(t *testing.T) string {
 	})
 	return dir
 }
-

@@ -55,7 +55,7 @@ bazel_dep(name = "rules_go", version = "0.40.0")`
 	if r.Summary.MissingFromCorpus != 1 {
 		t.Errorf("MissingFromCorpus = %d, want 1", r.Summary.MissingFromCorpus)
 	}
-	if !strings.Contains(r.PlanMarkdown, "Not in canopy index") {
+	if !strings.Contains(r.PlanMarkdown, "Not in bzlhub index") {
 		t.Error("plan should call out missing modules")
 	}
 }

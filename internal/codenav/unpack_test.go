@@ -89,10 +89,10 @@ func TestUnpackSource_StripsPrefix(t *testing.T) {
 		t.Fatal(err)
 	}
 	files := map[string]string{
-		"MODULE.bazel":   "module(name = \"foo\", version = \"1.0\")\n",
-		"BUILD.bazel":    "# build\n",
-		"src/hello.bzl":  "x = 1\n",
-		"src/world.bzl":  "y = 2\n",
+		"MODULE.bazel":  "module(name = \"foo\", version = \"1.0\")\n",
+		"BUILD.bazel":   "# build\n",
+		"src/hello.bzl": "x = 1\n",
+		"src/world.bzl": "y = 2\n",
 	}
 	tarBytes := buildFixtureTarGz(t, "foo-1.0", files)
 
@@ -161,6 +161,30 @@ func TestUnpackSource_Idempotent(t *testing.T) {
 	}
 	if string(got) != "MUTATED\n" {
 		t.Fatalf("idempotent re-extract overwrote canary: got %q", got)
+	}
+}
+
+func TestUnpackSource_AcceptsLegacyCompletionSentinel(t *testing.T) {
+	dest := t.TempDir()
+	canary := filepath.Join(dest, "MODULE.bazel")
+	if err := os.WriteFile(canary, []byte("legacy cache\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dest, legacyCompleteSentinel), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The source paths are intentionally absent. A cache hit must return before
+	// trying to read them.
+	if err := unpackSource("missing-blobs", "missing-source.json", dest); err != nil {
+		t.Fatalf("legacy cache was not accepted: %v", err)
+	}
+	got, err := os.ReadFile(canary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "legacy cache\n" {
+		t.Fatalf("legacy cache was rewritten: got %q", got)
 	}
 }
 

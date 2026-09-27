@@ -203,6 +203,34 @@ func TestCheckSafeStartup_RejectsUnsafeCombo(t *testing.T) {
 	}
 }
 
+func TestCheckMCPWriteStartup(t *testing.T) {
+	base := Flags{MCPHTTPEnabled: true, MCPWriteToolsEnabled: true}
+	tests := []struct {
+		name      string
+		flags     Flags
+		hasID     bool
+		hasPolicy bool
+		wantErr   bool
+	}{
+		{"disabled", Flags{}, false, false, false},
+		{"http-disabled", Flags{MCPWriteToolsEnabled: true}, true, true, true},
+		{"identity-missing", base, false, true, true},
+		{"policy-missing", base, true, false, true},
+		{"safe", base, true, true, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.flags.CheckMCPWriteStartup(tc.hasID, tc.hasPolicy)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("error = %v, wantErr=%v", err, tc.wantErr)
+			}
+			if err != nil && !errors.Is(err, ErrUnsafeStartup) {
+				t.Fatalf("error = %v, want ErrUnsafeStartup", err)
+			}
+		})
+	}
+}
+
 // withEnv clears BZLHUB_* and sets the given vars for the test only.
 // Using t.Setenv ensures restore at test end.
 func withEnv(t *testing.T, vars map[string]string) {

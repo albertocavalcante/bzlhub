@@ -82,7 +82,7 @@ type Options struct {
 	// only in tests where you want every row swept.
 	SweepStaleness time.Duration
 
-	// CDNBaseURL is the canopy origin reachable through the CDN
+	// CDNBaseURL is the bzlhub origin reachable through the CDN
 	// (e.g., "https://bcr.bzlhub.com"). When empty, no URLs are
 	// computed and Purger.Purge is not called even if a non-NoOp
 	// Purger is wired — operator opted into a purger but didn't
@@ -299,7 +299,7 @@ func (r *Runner) tryProcessOne(ctx context.Context) {
 // sleeps per retryBackoff and re-invokes admitOne up to maxRetries
 // times. Terminal errors deny immediately. ctx cancellation during
 // backoff returns without transitioning the row — the request stays
-// in `fetching` and the next canopy boot's sweepStuckFetching
+// in `fetching` and the next bzlhub boot's sweepStuckFetching
 // reclaims it (Plan 76 §2.3, resolved 2026-06-08).
 func (r *Runner) processOwned(ctx context.Context, req store.Request) {
 	var lastErr error
@@ -452,7 +452,13 @@ func (r *Runner) fail(ctx context.Context, req store.Request, cause error, retri
 }
 
 func (r *Runner) audit(ctx context.Context, ev store.AuditEvent) {
-	if err := r.store.RecordAudit(ctx, ev); err != nil {
+	// A terminal request transition is committed immediately before its
+	// audit event. Once that happens, caller cancellation must not leave the
+	// durable state without its corresponding audit record. Keep the write
+	// bounded so a broken store cannot indefinitely delay shutdown.
+	auditCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if err := r.store.RecordAudit(auditCtx, ev); err != nil {
 		r.log.Warn("admit: audit write failed (transition still committed)",
 			"err", err, "kind", ev.Kind)
 	}

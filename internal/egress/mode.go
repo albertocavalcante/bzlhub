@@ -1,4 +1,4 @@
-// Package egress is the single point of contact between canopy
+// Package egress is the single point of contact between bzlhub
 // and any outbound HTTP host. All callers route through Client(ctx)
 // or NewHTTPClient(policy); the golangci-lint forbidigo rule
 // banning raw http.Client construction outside this package
@@ -13,7 +13,7 @@
 //   - Audit events: a JSONL-shaped record per outbound call
 //     (success, denial, network failure).
 //
-// Mode-specific behaviour aligns with the three canopy profiles:
+// Mode-specific behaviour aligns with the three bzlhub profiles:
 //
 //   - default → ModeAllow with empty allowlist (legacy posture).
 //   - mirror-only → ModeDeny.
@@ -61,5 +61,19 @@ func (m Mode) String() string {
 		return "audit"
 	default:
 		return fmt.Sprintf("mode(%d)", int(m))
+	}
+}
+
+// ParseMode parses the stable operator-facing mode token.
+func ParseMode(s string) (Mode, error) {
+	switch s {
+	case "allow":
+		return ModeAllow, nil
+	case "deny":
+		return ModeDeny, nil
+	case "audit":
+		return ModeAudit, nil
+	default:
+		return 0, fmt.Errorf("unknown egress mode %q (valid: allow, deny, audit)", s)
 	}
 }

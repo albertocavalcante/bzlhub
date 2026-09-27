@@ -42,7 +42,7 @@ func realGitWorktree(t *testing.T) string {
 }
 
 func TestBuildPublisher_DryRunReturnsFilesystemAndCleansUp(t *testing.T) {
-	pattern := filepath.Join(os.TempDir(), "canopy-publish-dryrun-*")
+	pattern := filepath.Join(os.TempDir(), "bzlhub-publish-dryrun-*")
 	before, _ := filepath.Glob(pattern)
 
 	pub, cleanup, err := buildPublisher(publishConfig{dryRun: true})
@@ -71,7 +71,7 @@ func TestBuildPublisher_CommitModeReturnsGitDirect(t *testing.T) {
 		commitMode: true,
 		worktree:   realGitWorktree(t),
 		baseBranch: "main",
-		bot:        publish.Identity{Name: "canopy", Email: "c@example.test"},
+		bot:        publish.Identity{Name: "bzlhub", Email: "c@example.test"},
 	}
 	pub, cleanup, err := buildPublisher(cfg)
 	if err != nil {
@@ -87,7 +87,7 @@ func TestBuildPublisher_PRModeReturnsGitPR(t *testing.T) {
 	cfg := publishConfig{
 		worktree:    realGitWorktree(t),
 		baseBranch:  "main",
-		bot:         publish.Identity{Name: "canopy", Email: "c@example.test"},
+		bot:         publish.Identity{Name: "bzlhub", Email: "c@example.test"},
 		repo:        bigorna.Repo{Owner: "o", Name: "r"},
 		forgeClient: stubForge{},
 	}
@@ -108,7 +108,7 @@ func TestBuildPublisher_NonNilCleanupAlways(t *testing.T) {
 		commitMode: true,
 		worktree:   realGitWorktree(t),
 		baseBranch: "main",
-		bot:        publish.Identity{Name: "canopy", Email: "c@example.test"},
+		bot:        publish.Identity{Name: "bzlhub", Email: "c@example.test"},
 	}
 	_, cleanup, err := buildPublisher(cfg)
 	if err != nil {

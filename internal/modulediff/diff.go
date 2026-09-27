@@ -10,7 +10,7 @@
 // File layout:
 //   - types.go     wire types (Report + sub-diffs)
 //   - diff.go      Compute orchestrator + small per-domain diffs
-//                  (hermeticity, deps, names) + filter/extract helpers
+//     (hermeticity, deps, names) + filter/extract helpers
 //   - rules.go     rules domain (RulesDiff + attr-level comparison)
 //   - providers.go providers domain (ProvidersDiff + field comparison)
 //   - modexts.go   module-extension domain (tag_class comparison)

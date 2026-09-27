@@ -1,18 +1,18 @@
 // Package forgewatch is the read-side counterpart to internal/publish.
 // It polls a bigorna.Forge for new commits on a branch and dispatches
 // them to a user-supplied OnCommit callback — the callback's job is
-// the actual re-index work (canopy's wiring calls git pull + ingest).
+// the actual re-index work (bzlhub's wiring calls git pull + ingest).
 //
 // The package is forge-agnostic by design: it does not touch local
-// git, the SQLite store, or any canopy-specific state. Only the
-// callback knows about canopy. This keeps the watcher reusable and
+// git, the SQLite store, or any bzlhub-specific state. Only the
+// callback knows about bzlhub. This keeps the watcher reusable and
 // the boundary between "API polling" and "registry sync" sharp.
 //
 // Semantics
 //
 //   - At-least-once: state advances only after OnCommit returns nil.
 //     If the callback fails, the next poll re-discovers the same
-//     commits. Callbacks must be idempotent (canopy's re-ingest is).
+//     commits. Callbacks must be idempotent (bzlhub's re-ingest is).
 //
 //   - Backpressure: the next poll timer starts AFTER OnCommit returns.
 //     A slow callback delays polling; we never queue overlapping work.
@@ -105,7 +105,7 @@ type Config struct {
 	// Jitter is the ± fractional perturbation applied to each sleep
 	// (0..1; e.g. 0.1 = ±10%). Default 0 (no jitter) so ManualClock
 	// tests stay deterministic. Production callers set this to
-	// ~0.1 to break the thundering-herd pattern when many canopy
+	// ~0.1 to break the thundering-herd pattern when many bzlhub
 	// instances boot together and would otherwise poll a shared
 	// forge in lockstep.
 	Jitter float64

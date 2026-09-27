@@ -5,17 +5,17 @@
 // ------------
 // A small, focused parser that turns:
 //
-//   """Compile a binary.
+//	"""Compile a binary.
 //
-//   This produces a wrapper script.
+//	This produces a wrapper script.
 //
-//   Args:
-//       name: name of the rule.
-//       srcs: list of source files.
+//	Args:
+//	    name: name of the rule.
+//	    srcs: list of source files.
 //
-//   Returns:
-//       A struct with runfiles.
-//   """
+//	Returns:
+//	    A struct with runfiles.
+//	"""
 //
 // into a structured Docstring with separate Summary / Description /
 // Args / Returns / Examples / Deprecated / Note fields. Downstream
@@ -24,15 +24,15 @@
 //
 // What this is NOT
 // ----------------
-// - Not a Markdown renderer. Summary/Description text and arg/return
-//   doc strings are returned verbatim — pass them through your
-//   Markdown renderer of choice on the output side.
-// - Not Bazel-aware. Cross-references like `[name](#name)`, label
-//   conventions, and attribute-vs-rule disambiguation are intentionally
-//   out of scope for this package — they belong in a `bazel-doc-go`
-//   overlay that consumes a *Docstring and resolves further.
-// - Not Sphinx- or NumPy-style. Stardoc only accepts Google style.
-//   Other formats would need a different parser.
+//   - Not a Markdown renderer. Summary/Description text and arg/return
+//     doc strings are returned verbatim — pass them through your
+//     Markdown renderer of choice on the output side.
+//   - Not Bazel-aware. Cross-references like `[name](#name)`, label
+//     conventions, and attribute-vs-rule disambiguation are intentionally
+//     out of scope for this package — they belong in a `bazel-doc-go`
+//     overlay that consumes a *Docstring and resolves further.
+//   - Not Sphinx- or NumPy-style. Stardoc only accepts Google style.
+//     Other formats would need a different parser.
 //
 // Section detection
 // -----------------
@@ -402,8 +402,8 @@ func parseArgs(body []string) []Param {
 
 // splitArgLine parses one of:
 //
-//   name: doc
-//   name (type): doc
+//	name: doc
+//	name (type): doc
 //
 // Returns name, type (or empty), and doc. Leading/trailing
 // whitespace on doc is trimmed.

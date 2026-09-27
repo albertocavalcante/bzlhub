@@ -10,7 +10,7 @@ import (
 // Search dispatches across three back-ends depending on the query
 // shape: attr-name search (cross-corpus walk of rule attrs),
 // symbol-kind search (exact-name match within a kind), or FTS5
-// full-text. Defined on Service so it satisfies api.Canopy; the
+// full-text. Defined on Service so it satisfies api.Bzlhub; the
 // concrete walks below are private.
 func (s *Service) Search(ctx context.Context, q api.Query) (*api.SearchResults, error) {
 	// Attribute search bypasses the FTS5 path: attr names live in

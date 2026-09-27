@@ -42,7 +42,7 @@ func runWatch(ctx context.Context, f watchFlags) error {
 		OnCommit:    handler.handle,
 		Interval:    cfg.interval,
 		MaxInterval: cfg.maxInterval,
-		// ±10% jitter so multiple canopy instances watching the same
+		// ±10% jitter so multiple bzlhub instances watching the same
 		// forge don't poll in lockstep. Library default is 0 (tests).
 		Jitter: 0.1,
 		Logger: logger,
@@ -74,7 +74,7 @@ func runWatch(ctx context.Context, f watchFlags) error {
 // preflightWatchForge builds the forge client and runs Health(). Catches
 // token / URL / repo misconfiguration before the poll loop starts.
 func preflightWatchForge(ctx context.Context, cfg watchConfig) (bigorna.Forge, error) {
-	forgeClient, err := forge.New(cfg.forge, cfg.repo, cfg.baseURL, cfg.token, "canopy-watch/"+version.Version)
+	forgeClient, err := forge.New(cfg.forge, cfg.repo, cfg.baseURL, cfg.token, "bzlhub-watch/"+version.Version)
 	if err != nil {
 		return nil, err
 	}

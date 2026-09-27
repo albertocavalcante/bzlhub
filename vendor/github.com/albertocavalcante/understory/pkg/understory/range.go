@@ -2,28 +2,37 @@ package understory
 
 import scip "github.com/scip-code/scip/bindings/go/scip"
 
-// occurrenceToLocation normalizes a SCIP Occurrence's packed Range into
-// the explicit four-field Location shape. SCIP stores ranges as either:
+// occurrenceToLocation normalizes a SCIP Occurrence's range into the explicit
+// four-field Location shape.
 //
-//   - 3 ints: [startLine, startChar, endChar] — single-line range; the
-//     end line is implied equal to the start line.
-//   - 4 ints: [startLine, startChar, endLine, endChar] — multi-line
-//     range, fully explicit.
+// It reads through occ.SourceRange() rather than occ.Range, and that is not a
+// stylistic choice. Schema v0.9.0 replaced the flat `range` field with a typed
+// oneof (single_line_range / multi_line_range) and deprecated the old one. A
+// consumer that reads occ.Range directly sees NOTHING from any index a modern
+// producer emits -- nil for every occurrence, so every Location collapses to
+// (0,0,0,0), every query returns a zero range, and nothing anywhere reports an
+// error. understory did exactly that until this change.
 //
-// Anything else (nil, fewer than 3, more than 4) is treated as a
-// zero-length range pinned to (0, 0); the caller still gets a Location
-// it can serialize, but downstream queries (SymbolAtPos) won't match
-// any position against it. We tolerate the malformed shape rather than
-// erroring because a single bad occurrence shouldn't poison a 100k-doc
-// index.
+// SourceRange() prefers the typed form and falls back to the flat one, so both
+// old and new producers are read correctly.
+//
+// An occurrence with no readable range at all is treated as a zero-length
+// range pinned to (0, 0): the caller still gets a Location it can serialize,
+// but SymbolAtPos will not match any position against it. That is deliberate
+// tolerance -- a single malformed occurrence should not poison a 100k-document
+// index -- and is why the typed-range blindness was survivable enough to go
+// unnoticed.
 func occurrenceToLocation(file string, occ *scip.Occurrence) Location {
-	sl, sc, el, ec := unpackRange(occ.Range)
+	r, ok := occ.SourceRange()
+	if !ok {
+		return Location{File: file}
+	}
 	return Location{
 		File:      file,
-		StartLine: sl,
-		StartChar: sc,
-		EndLine:   el,
-		EndChar:   ec,
+		StartLine: r.Start.Line,
+		StartChar: r.Start.Character,
+		EndLine:   r.End.Line,
+		EndChar:   r.End.Character,
 	}
 }
 

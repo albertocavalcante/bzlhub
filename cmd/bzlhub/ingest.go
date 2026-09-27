@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/albertocavalcante/bzlhub/internal/backend"
+	bcrmirror "github.com/albertocavalcante/go-bcr-mirror"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -11,7 +13,7 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/ingest"
 	"github.com/albertocavalcante/bzlhub/internal/mirror"
 	"github.com/albertocavalcante/bzlhub/internal/resolve"
-	canopyscip "github.com/albertocavalcante/bzlhub/internal/scip"
+	bzlhubscip "github.com/albertocavalcante/bzlhub/internal/scip"
 	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
@@ -37,6 +39,19 @@ func newIngestCmd() *cobra.Command {
 				return err
 			}
 			defer s.Close()
+
+			// Where the SCIP closure gets its dependency answers: the store
+			// first (an ingested report is already parsed), then the mirror if
+			// one is being written. The mirror is what makes ingest ORDER
+			// irrelevant -- a dependency's MODULE.bazel does not care whether
+			// bzlhub has ingested it, and a --recursive run has already written
+			// every MODULE.bazel there. Both are local reads, so indexing adds
+			// no outbound traffic.
+			scipDeps := bzlhubscip.DepsFunc(bzlhubscip.DepsFromStore(s))
+			if mirrorTo != "" {
+				scipDeps = bzlhubscip.FirstOf(scipDeps,
+					bzlhubscip.DepsFromModuleBazel(backend.NewBCRMirror(bcrmirror.New(mirrorTo, ""))))
+			}
 
 			arg := args[0]
 			var r *report.ModuleReport
@@ -166,7 +181,16 @@ func newIngestCmd() *cobra.Command {
 				// don't abort the ingest (the canonical report already
 				// landed). Mirrors what bzlhub.Service.Bump does for
 				// the API-driven path.
-				if scipBlob, scipErr := canopyscip.Generate(m.Dir, module, version, r); scipErr == nil {
+				// Transitive closure from the store: by this point the recursive
+				// ingest has already written the dependency reports this walk
+				// reads, so a load() reaching a dep-of-a-dep resolves.
+				scipClosure, closureErr := bzlhubscip.TransitiveClosure(cmd.Context(), scipDeps, r)
+				if closureErr != nil {
+					fmt.Fprintf(os.Stderr, "warn: scip closure walk failed for %s@%s, using direct deps: %v\n",
+						module, version, closureErr)
+					scipClosure = bzlhubscip.DirectClosure(r)
+				}
+				if scipBlob, scipErr := bzlhubscip.Generate(m.Dir, module, version, scipClosure); scipErr == nil {
 					if werr := s.WriteScipBlob(cmd.Context(), module, version, scipBlob); werr != nil {
 						fmt.Fprintf(os.Stderr, "warn: scip blob write failed for %s@%s: %v\n", module, version, werr)
 					}
@@ -186,7 +210,16 @@ func newIngestCmd() *cobra.Command {
 					r.Version = versionOverride
 				}
 				// Same best-effort SCIP generation as the registry path.
-				if scipBlob, scipErr := canopyscip.Generate(arg, r.Name, r.Version, r); scipErr == nil {
+				// Local-dir path: the tree has no registry coordinate of its own,
+				// but its bazel_deps still name real modules, so the walk
+				// resolves whatever the store already holds.
+				scipClosure, closureErr := bzlhubscip.TransitiveClosure(cmd.Context(), scipDeps, r)
+				if closureErr != nil {
+					fmt.Fprintf(os.Stderr, "warn: scip closure walk failed for %s@%s, using direct deps: %v\n",
+						r.Name, r.Version, closureErr)
+					scipClosure = bzlhubscip.DirectClosure(r)
+				}
+				if scipBlob, scipErr := bzlhubscip.Generate(arg, r.Name, r.Version, scipClosure); scipErr == nil {
 					if werr := s.WriteScipBlob(cmd.Context(), r.Name, r.Version, scipBlob); werr != nil {
 						fmt.Fprintf(os.Stderr, "warn: scip blob write failed for %s@%s: %v\n", r.Name, r.Version, werr)
 					}

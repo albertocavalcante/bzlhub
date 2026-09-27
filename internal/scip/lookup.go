@@ -7,10 +7,11 @@ import (
 	"log/slog"
 	"sort"
 
+	scipsymbol "github.com/albertocavalcante/scip-kit/symbol"
 	"github.com/albertocavalcante/understory/pkg/understory"
 )
 
-// SymbolLookupResult is the wire shape returned by canopy's
+// SymbolLookupResult is the wire shape returned by bzlhub's
 // symbol-lookup surfaces (MCP tool today; future REST endpoint).
 //
 // Found=false means understory loaded the SCIP index for (module,
@@ -18,47 +19,62 @@ import (
 // distinct from "the blob itself isn't stored", which surfaces as a
 // not-found error from BlobReader.GetScipBlob.
 type SymbolLookupResult struct {
-	Module      string   `json:"module"`
-	Version     string   `json:"version"`
-	Symbol      string   `json:"symbol"`
-	Found       bool     `json:"found"`
-	File        string   `json:"file,omitempty"`
-	StartLine   int32    `json:"start_line,omitempty"`
-	StartColumn int32    `json:"start_column,omitempty"`
-	EndLine     int32    `json:"end_line,omitempty"`
-	EndColumn   int32    `json:"end_column,omitempty"`
+	Module      string `json:"module"`
+	Version     string `json:"version"`
+	Symbol      string `json:"symbol"`
+	Found       bool   `json:"found"`
+	File        string `json:"file,omitempty"`
+	StartLine   int32  `json:"start_line,omitempty"`
+	StartColumn int32  `json:"start_column,omitempty"`
+	EndLine     int32  `json:"end_line,omitempty"`
+	EndColumn   int32  `json:"end_column,omitempty"`
 	// Documentation carries SymbolInformation.Documentation verbatim —
 	// for Bazel-annotated symbols (which scip-bazel produces) this is
 	// the "Bazel rule defined via `rule(...)`" style line.
 	Documentation []string `json:"documentation,omitempty"`
 }
 
-// BlobReader is the slice of canopy's store interface this package
+// BlobReader is the slice of bzlhub's store interface this package
 // depends on. Kept as a one-method interface so tests can fake it
 // without dragging in a real SQLite store.
 type BlobReader interface {
 	GetScipBlob(ctx context.Context, module, version string) ([]byte, error)
 }
 
+var errLocalSymbolRequiresFile = errors.New("scip lookup: local symbol requires file context")
+
 // LookupSymbol fetches the stored SCIP index for (module, version) and
 // resolves the FULL SCIP symbol string to its definition site by
 // delegating to understory.Open + Index.Definition.
 //
-// The full SCIP symbol shape canopy emits is:
+// The full SCIP symbol shape bzlhub emits is the SCIP grammar's:
 //
-//	bzlmod <module>@<version> <relpath>#<name>
+//	<scheme> <manager> <name> <version> <descriptor>+
 //
-// e.g. `bzlmod rules_python@0.40.0 python/defs.bzl#py_library`.
-// Callers that only know the short identifier (`py_library`) can
-// construct it from bzlhub_get_module's provenance data (each rule /
-// provider / macro has a Provenance.File field giving the relpath).
+// e.g. `starlark bzlmod rules_python 0.40.0 python/defs.bzl/py_library#`.
+// The path contributes one namespace descriptor per segment and the symbol a
+// trailing type descriptor.
 //
-// Backed by understory.OpenBytes from v0.1.1 onward — canopy's SCIP
+// Do NOT format this by hand. Build it with scip-kit's symbol.Global, the same
+// function scip-starlark emits with -- a query and a stored index that disagree
+// by one byte produce an empty result rather than an error, so the mismatch is
+// silent. The previous shape, "bzlmod <module>@<version> <relpath>#<name>", was
+// rejected outright by scip.ParseSymbol: it packed the module and version into
+// one field and left the grammar a field short.
+//
+// Callers that only know the short identifier (`py_library`) can get the
+// relpath from bzlhub_get_module's provenance data (each rule / provider /
+// macro has a Provenance.File field).
+//
+// Backed by understory.OpenBytes from v0.1.1 onward — bzlhub's SCIP
 // indexes live as SQLite BLOBs, so we hand the bytes straight to
 // understory without a disk round-trip.
 func LookupSymbol(ctx context.Context, br BlobReader, module, version, symbol string) (*SymbolLookupResult, error) {
 	if module == "" || version == "" || symbol == "" {
 		return nil, errors.New("LookupSymbol: module, version, and symbol are all required")
+	}
+	if scipsymbol.IsLocal(symbol) {
+		return nil, errLocalSymbolRequiresFile
 	}
 	out := &SymbolLookupResult{Module: module, Version: version, Symbol: symbol}
 
@@ -100,11 +116,11 @@ func LookupSymbol(ctx context.Context, br BlobReader, module, version, symbol st
 // locations rather than a single definition) and the empty-set case
 // is more common (lots of symbols have zero local refs).
 type SymbolReferencesResult struct {
-	Module     string                  `json:"module"`
-	Version    string                  `json:"version"`
-	Symbol     string                  `json:"symbol"`
-	Count      int                     `json:"count"`
-	References []understory.Location   `json:"references"`
+	Module     string                `json:"module"`
+	Version    string                `json:"version"`
+	Symbol     string                `json:"symbol"`
+	Count      int                   `json:"count"`
+	References []understory.Location `json:"references"`
 }
 
 // LookupReferences fetches the SCIP blob for (module, version) and
@@ -123,6 +139,9 @@ type SymbolReferencesResult struct {
 func LookupReferences(ctx context.Context, br BlobReader, module, version, symbol string, includeDefinition bool) (*SymbolReferencesResult, error) {
 	if module == "" || version == "" || symbol == "" {
 		return nil, errors.New("LookupReferences: module, version, and symbol are all required")
+	}
+	if scipsymbol.IsLocal(symbol) {
+		return nil, errLocalSymbolRequiresFile
 	}
 	out := &SymbolReferencesResult{
 		Module:     module,
@@ -159,7 +178,7 @@ type ModuleVersion struct {
 	Version string
 }
 
-// XRefsLister is the slice of canopy's store interface LookupXRefs
+// XRefsLister is the slice of bzlhub's store interface LookupXRefs
 // depends on for enumerating indexed coordinates. Kept narrow so tests
 // can fake it.
 type XRefsLister interface {
@@ -176,7 +195,7 @@ type XRefsGroup struct {
 }
 
 // XRefsResult aggregates references to a single SCIP symbol across
-// every (module, version) canopy has an index for. Used by the
+// every (module, version) bzlhub has an index for. Used by the
 // `/api/xrefs` endpoint that the UI calls when running under a
 // per-module code-nav mount — without it, the references panel would
 // only ever see the symbol's own module, missing every consumer.
@@ -208,6 +227,9 @@ type XRefsResult struct {
 func LookupXRefs(ctx context.Context, br BlobReader, lister XRefsLister, symbol string, includeDefinition bool) (*XRefsResult, error) {
 	if symbol == "" {
 		return nil, errors.New("LookupXRefs: symbol is required")
+	}
+	if scipsymbol.IsLocal(symbol) {
+		return nil, errLocalSymbolRequiresFile
 	}
 	out := &XRefsResult{Symbol: symbol, Groups: []XRefsGroup{}}
 

@@ -147,6 +147,13 @@ func serveIndex(w http.ResponseWriter, r *http.Request, indexBytes []byte) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	// #nosec G705 -- gosec's taint analysis cannot see through safeMountPrefix.
+	// The only attacker-controlled input reaching body is X-Forwarded-Prefix,
+	// and it gets there only past an allowlist of `/` plus segments of
+	// [A-Za-z0-9._-], no `//`, no trailing slash: no quote, angle bracket or
+	// colon survives. TestServer_UIAssets_RewriteRejectsUnsafePrefix feeds it
+	// `/x"><script>alert(1)</script>`; ..._RejectsProtocolRelativePrefix feeds
+	// it `//evil.example`. Both pass.
 	_, _ = w.Write(body)
 }
 

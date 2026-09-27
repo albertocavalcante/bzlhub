@@ -1,6 +1,6 @@
 package main
 
-// E2E: real Bazel resolves a module closure THROUGH a real canopy
+// E2E: real Bazel resolves a module closure THROUGH a real bzlhub
 // serve process. Gated by BZLHUB_BAZEL_LIVE=1 because it requires
 // (a) `bazel` (or `bazelisk`) on $PATH and (b) network to
 // bcr.bazel.build for the implicit-deps cascade.
@@ -15,7 +15,7 @@ package main
 //
 //   Not hermetic — Bazel implicitly resolves rules_license,
 //   platforms, bazel_tools, etc. at module-graph time. Those are
-//   served via canopy's federation cascade to bcr.bazel.build. That's
+//   served via bzlhub's federation cascade to bcr.bazel.build. That's
 //   the headline use case the test exists to validate: a private
 //   internal registry (the fixture) + the public BCR (cascade
 //   upstream) appearing as one registry URL to Bazel.
@@ -26,8 +26,8 @@ package main
 //   - --output_user_root and --repository_cache both point at
 //     t.TempDir() so a prior Bazel run on this host doesn't seed
 //     cached deps.
-//   - canopy listens on a 127.0.0.1:0 random free port (no clash
-//     with a running canopy on :8080 from manual demos).
+//   - bzlhub listens on a 127.0.0.1:0 random free port (no clash
+//     with a running bzlhub on :8080 from manual demos).
 //   - The fixture is a static snapshot in repo; only BCR-side
 //     state can drift (a yanked rules_license@1.0.0, an outage).
 //     BCR has historically been stable enough for this to be a
@@ -53,7 +53,7 @@ import (
 const (
 	// bazelEnvGate is the explicit opt-in. CI / dev runs without it
 	// skip the test cleanly; only operators who want to exercise the
-	// real Bazel ↔ canopy ↔ BCR chain enable it.
+	// real Bazel ↔ bzlhub ↔ BCR chain enable it.
 	bazelEnvGate = "BZLHUB_BAZEL_LIVE"
 	// bazelMinMajor is the floor for bzlmod support. Bazel 7
 	// introduced bzlmod as default; earlier versions can opt in via
@@ -62,9 +62,9 @@ const (
 	bazelMinMajor = 7
 )
 
-// TestE2E_BazelModGraphResolvesViaCanopy proves the full chain:
+// TestE2E_BazelModGraphResolvesViaBzlhub proves the full chain:
 //
-//	bazel mod graph → canopy(--registry) → cascade
+//	bazel mod graph → bzlhub(--registry) → cascade
 //	                                       ├─ local fixture (test_*)
 //	                                       └─ bcr.bazel.build (implicit deps)
 //
@@ -72,9 +72,9 @@ const (
 //   - bazel mod graph exits 0
 //   - stdout contains test_root, test_mid, test_leaf at the pinned
 //     versions
-//   - canopy's stderr shows it served at least one /modules/test_root/
-//     path (proves the cascade actually routed through canopy)
-func TestE2E_BazelModGraphResolvesViaCanopy(t *testing.T) {
+//   - bzlhub's stderr shows it served at least one /modules/test_root/
+//     path (proves the cascade actually routed through bzlhub)
+func TestE2E_BazelModGraphResolvesViaBzlhub(t *testing.T) {
 	if os.Getenv(bazelEnvGate) != "1" {
 		t.Skipf("%s not set; skipping E2E Bazel test", bazelEnvGate)
 	}
@@ -89,15 +89,15 @@ func TestE2E_BazelModGraphResolvesViaCanopy(t *testing.T) {
 		t.Skipf("bazel version check failed: %v", err)
 	}
 
-	// Build canopy fresh as a test artifact so the test binary doesn't
-	// depend on /tmp/canopy from prior manual demos.
-	canopyBin := buildCanopy(t)
+	// Build bzlhub fresh as a test artifact so the test binary doesn't
+	// depend on /tmp/bzlhub from prior manual demos.
+	bzlhubBin := buildBzlhub(t)
 
-	// Free port for canopy. Listen → grab addr → close → spawn canopy
-	// on that addr. Race window exists between close + canopy's bind
+	// Free port for bzlhub. Listen → grab addr → close → spawn bzlhub
+	// on that addr. Race window exists between close + bzlhub's bind
 	// but is negligible on 127.0.0.1.
-	canopyAddr := freePort(t)
-	canopyURL := "http://" + canopyAddr
+	bzlhubAddr := freePort(t)
+	bzlhubURL := "http://" + bzlhubAddr
 
 	// Locate fixture relative to this test file's directory.
 	fixtureDir, err := filepath.Abs("testdata/bazel-fixture")
@@ -108,32 +108,32 @@ func TestE2E_BazelModGraphResolvesViaCanopy(t *testing.T) {
 		t.Fatalf("fixture missing at %s: %v", fixtureDir, err)
 	}
 
-	// Spawn canopy with the fixture as --root and BCR as the upstream
+	// Spawn bzlhub with the fixture as --root and BCR as the upstream
 	// cascade target.
-	canopyCtx, canopyCancel := context.WithCancel(t.Context())
-	defer canopyCancel()
-	canopyCmd := exec.CommandContext(canopyCtx, canopyBin, "serve",
+	bzlhubCtx, bzlhubCancel := context.WithCancel(t.Context())
+	defer bzlhubCancel()
+	bzlhubCmd := exec.CommandContext(bzlhubCtx, bzlhubBin, "serve",
 		"--root", fixtureDir,
 		"--upstream", "https://bcr.bazel.build",
-		"--addr", canopyAddr,
+		"--addr", bzlhubAddr,
 	)
 	// Disable shadow detection in the E2E to reduce log noise + BCR
 	// traffic (we don't assert collisions in this test).
-	canopyCmd.Env = append(os.Environ(), "BZLHUB_DISABLE_SHADOW_DETECTION=true")
-	var canopyLog bytes.Buffer
-	canopyCmd.Stdout = &canopyLog
-	canopyCmd.Stderr = &canopyLog
-	if err := canopyCmd.Start(); err != nil {
-		t.Fatalf("start canopy: %v", err)
+	bzlhubCmd.Env = append(os.Environ(), "BZLHUB_DISABLE_SHADOW_DETECTION=true")
+	var bzlhubLog bytes.Buffer
+	bzlhubCmd.Stdout = &bzlhubLog
+	bzlhubCmd.Stderr = &bzlhubLog
+	if err := bzlhubCmd.Start(); err != nil {
+		t.Fatalf("start bzlhub: %v", err)
 	}
 	t.Cleanup(func() {
-		_ = canopyCmd.Process.Kill()
-		_ = canopyCmd.Wait()
+		_ = bzlhubCmd.Process.Kill()
+		_ = bzlhubCmd.Wait()
 	})
 
-	// Wait for canopy to bind. 5s is generous — boot is <1s normally.
-	if err := waitForHTTP(canopyURL+"/bazel_registry.json", 5*time.Second); err != nil {
-		t.Fatalf("canopy didn't come up:\n--- canopy log ---\n%s\n--- err: %v", canopyLog.String(), err)
+	// Wait for bzlhub to bind. 5s is generous — boot is <1s normally.
+	if err := waitForHTTP(bzlhubURL+"/bazel_registry.json", 5*time.Second); err != nil {
+		t.Fatalf("bzlhub didn't come up:\n--- bzlhub log ---\n%s\n--- err: %v", bzlhubLog.String(), err)
 	}
 
 	// Build the test workspace under a temp dir. MODULE.bazel
@@ -141,7 +141,7 @@ func TestE2E_BazelModGraphResolvesViaCanopy(t *testing.T) {
 	// test_root → test_mid → test_leaf plus the implicit Bazel deps.
 	workspace := t.TempDir()
 	writeFile(t, filepath.Join(workspace, "MODULE.bazel"),
-		`module(name = "canopy_e2e_workspace", version = "0.0.0")
+		`module(name = "bzlhub_e2e_workspace", version = "0.0.0")
 bazel_dep(name = "test_root", version = "1.0.0")
 `)
 	// Empty BUILD.bazel so Bazel doesn't complain about the package.
@@ -152,7 +152,7 @@ bazel_dep(name = "test_root", version = "1.0.0")
 	outputUserRoot := t.TempDir()
 	repoCache := t.TempDir()
 
-	// Drive `bazel mod graph` against canopy. Hermetic Bazel
+	// Drive `bazel mod graph` against bzlhub. Hermetic Bazel
 	// invocation — no rc files from anywhere.
 	bazelCtx, bazelCancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer bazelCancel()
@@ -162,7 +162,7 @@ bazel_dep(name = "test_root", version = "1.0.0")
 		"--nosystem_rc",
 		"--output_user_root="+outputUserRoot,
 		"mod", "graph",
-		"--registry="+canopyURL+"/",
+		"--registry="+bzlhubURL+"/",
 		"--repository_cache="+repoCache,
 	)
 	bazelCmd.Dir = workspace
@@ -170,8 +170,8 @@ bazel_dep(name = "test_root", version = "1.0.0")
 	bazelCmd.Stdout = &bazelOut
 	bazelCmd.Stderr = &bazelOut
 	if err := bazelCmd.Run(); err != nil {
-		t.Fatalf("bazel mod graph failed: %v\n--- bazel output ---\n%s\n--- canopy log ---\n%s",
-			err, bazelOut.String(), canopyLog.String())
+		t.Fatalf("bazel mod graph failed: %v\n--- bazel output ---\n%s\n--- bzlhub log ---\n%s",
+			err, bazelOut.String(), bzlhubLog.String())
 	}
 
 	// Assert that the workspace's declared closure is present in the
@@ -184,26 +184,26 @@ bazel_dep(name = "test_root", version = "1.0.0")
 		}
 	}
 
-	// Assert canopy actually served the fixture (cascade hit local).
+	// Assert bzlhub actually served the fixture (cascade hit local).
 	// Without this check, a regression that routes everything to
 	// BCR (skipping the local primary entirely) would silently pass.
-	if !strings.Contains(canopyLog.String(), "/modules/test_root") {
-		t.Errorf("canopy log doesn't show test_root resolution — did Bazel reach canopy?\n--- canopy log ---\n%s", canopyLog.String())
+	if !strings.Contains(bzlhubLog.String(), "/modules/test_root") {
+		t.Errorf("bzlhub log doesn't show test_root resolution — did Bazel reach bzlhub?\n--- bzlhub log ---\n%s", bzlhubLog.String())
 	}
 }
 
-// buildCanopy compiles a fresh canopy binary in the test's temp dir.
-// Avoids depending on /tmp/canopy from prior manual runs and ensures
+// buildBzlhub compiles a fresh bzlhub binary in the test's temp dir.
+// Avoids depending on /tmp/bzlhub from prior manual runs and ensures
 // we test what's in the current working tree.
-func buildCanopy(t *testing.T) string {
+func buildBzlhub(t *testing.T) string {
 	t.Helper()
-	out := filepath.Join(t.TempDir(), "canopy")
+	out := filepath.Join(t.TempDir(), "bzlhub")
 	cmd := exec.Command("go", "build", "-o", out, ".")
 	if wd, err := os.Getwd(); err == nil {
 		cmd.Dir = wd
 	}
 	if buildOut, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build canopy:\n%s\nerr: %v", buildOut, err)
+		t.Fatalf("build bzlhub:\n%s\nerr: %v", buildOut, err)
 	}
 	return out
 }

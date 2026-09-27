@@ -52,7 +52,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, url string, sink io.Writer) (in
 	resp, err := f.client.Do(req)
 	if err != nil {
 		// Network-level error (DNS, connection refused, TLS, timeout,
-		// peer reset). All transient from canopy's perspective —
+		// peer reset). All transient from bzlhub's perspective —
 		// retry-with-backoff may succeed once the blip clears.
 		return 0, fmt.Errorf("%w: http get %s: %w", ErrTransient, url, err)
 	}
@@ -88,9 +88,9 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, url string, sink io.Writer) (in
 // represent caller/upstream-level mistakes that won't fix themselves.
 func isTransientStatus(code int) bool {
 	switch code {
-	case http.StatusRequestTimeout,    // 408
-		http.StatusTooEarly,           // 425
-		http.StatusTooManyRequests:    // 429
+	case http.StatusRequestTimeout, // 408
+		http.StatusTooEarly,        // 425
+		http.StatusTooManyRequests: // 429
 		return true
 	}
 	return code >= 500 && code <= 599

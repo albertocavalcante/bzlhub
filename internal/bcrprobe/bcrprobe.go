@@ -30,14 +30,14 @@ import (
 )
 
 // Result is the wire shape returned by GET /api/bcr-probe. JSON tags
-// snake_case to match the rest of canopy's API surface.
+// snake_case to match the rest of bzlhub's API surface.
 type Result struct {
-	Module             string   `json:"module"`
-	Version            string   `json:"version"`
-	VersionExists      bool     `json:"version_exists"`
-	ModuleExists       bool     `json:"module_exists"`
-	VersionsAvailable  []string `json:"versions_available,omitempty"`
-	LatestVersion      string   `json:"latest_version,omitempty"`
+	Module            string   `json:"module"`
+	Version           string   `json:"version"`
+	VersionExists     bool     `json:"version_exists"`
+	ModuleExists      bool     `json:"module_exists"`
+	VersionsAvailable []string `json:"versions_available,omitempty"`
+	LatestVersion     string   `json:"latest_version,omitempty"`
 	// RegistryURL echoes the upstream we probed so the UI can render
 	// a "checked against <url>" caption without guessing.
 	RegistryURL string `json:"registry_url"`

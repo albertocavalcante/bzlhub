@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -55,7 +54,7 @@ func (h *handler) apiCompatCheck(w http.ResponseWriter, r *http.Request) {
 
 // apiBump fetches one (module, version) from upstream, mirrors it,
 // extracts an assay report, generates a SCIP index, and persists all
-// three to canopy's store. Body: {"module": "...", "version": "...",
+// three to bzlhub's store. Body: {"module": "...", "version": "...",
 // "upstream": "..."}. Returns the produced ModuleReport on success.
 //
 // Same three gates as apiIngestRecursive: feature flag kill-switch +
@@ -66,7 +65,7 @@ func (h *handler) apiCompatCheck(w http.ResponseWriter, r *http.Request) {
 func (h *handler) apiBump(w http.ResponseWriter, r *http.Request) {
 	if !h.opts.Flags.IngestWriteEnabled {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
-			"error": "ingest writes are disabled on this canopy (BZLHUB_INGEST_WRITE_ENABLED=false)",
+			"error": "ingest writes are disabled on this bzlhub (BZLHUB_INGEST_WRITE_ENABLED=false)",
 		})
 		return
 	}
@@ -92,10 +91,7 @@ func (h *handler) apiBump(w http.ResponseWriter, r *http.Request) {
 		Version  string `json:"version"`
 		Upstream string `json:"upstream,omitempty"`
 	}
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&body); err != nil {
-		http.Error(w, "bad request: "+err.Error(), http.StatusBadRequest)
+	if !decodeJSONBody(w, r, maxActionJSONBody, &body) {
 		return
 	}
 	if body.Module == "" || body.Version == "" {
@@ -155,7 +151,7 @@ func (h *handler) apiBump(w http.ResponseWriter, r *http.Request) {
 func (h *handler) apiIngestRecursive(w http.ResponseWriter, r *http.Request) {
 	if !h.opts.Flags.IngestWriteEnabled {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
-			"error": "ingest writes are disabled on this canopy (BZLHUB_INGEST_WRITE_ENABLED=false)",
+			"error": "ingest writes are disabled on this bzlhub (BZLHUB_INGEST_WRITE_ENABLED=false)",
 		})
 		return
 	}
@@ -184,10 +180,7 @@ func (h *handler) apiIngestRecursive(w http.ResponseWriter, r *http.Request) {
 		BazelVersion      string `json:"bazel_version,omitempty"`
 		Workers           int    `json:"workers,omitempty"`
 	}
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&body); err != nil {
-		http.Error(w, "bad request: "+err.Error(), http.StatusBadRequest)
+	if !decodeJSONBody(w, r, maxActionJSONBody, &body) {
 		return
 	}
 	if body.Module == "" || body.Version == "" {
@@ -239,7 +232,7 @@ func (h *handler) apiIngestRecursive(w http.ResponseWriter, r *http.Request) {
 func (h *handler) apiIngestMissing(w http.ResponseWriter, r *http.Request) {
 	if !h.opts.Flags.IngestWriteEnabled {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
-			"error": "ingest writes are disabled on this canopy (BZLHUB_INGEST_WRITE_ENABLED=false)",
+			"error": "ingest writes are disabled on this bzlhub (BZLHUB_INGEST_WRITE_ENABLED=false)",
 		})
 		return
 	}
@@ -268,12 +261,9 @@ func (h *handler) apiIngestMissing(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
-// sourceTag returns the audit "source" string for a request. Clients
-// can opt-in via the X-Canopy-Source header (e.g., "drift-ui");
-// otherwise the caller's fallback (typically "rest") is used.
-func sourceTag(r *http.Request, fallback string) string {
-	if s := r.Header.Get("X-Canopy-Source"); s != "" {
-		return s
-	}
+// sourceTag returns a server-derived transport tag. Client-provided
+// source headers are intentionally ignored: audit attribution must
+// not be forgeable by the caller.
+func sourceTag(_ *http.Request, fallback string) string {
 	return fallback
 }

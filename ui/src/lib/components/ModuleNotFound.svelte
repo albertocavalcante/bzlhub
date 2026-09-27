@@ -132,7 +132,7 @@
         ingestState = {
           kind: 'error',
           message:
-            'Ingest writes are disabled on this bzlhub. The operator can flip CANOPY_INGEST_WRITE_ENABLED.',
+            'Ingest writes are disabled on this bzlhub. The operator can flip BZLHUB_INGEST_WRITE_ENABLED.',
           retryAfter: 0,
         };
       } else if (e instanceof IngestRateLimitedError) {

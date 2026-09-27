@@ -353,7 +353,6 @@ export async function bumpModule(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Bzlhub-Source': 'drift-ui',
     },
     body: JSON.stringify(params),
     signal,
@@ -401,7 +400,6 @@ export async function ingestRecursive(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Bzlhub-Source': 'drift-ui',
     },
     body: JSON.stringify(params),
     signal,

@@ -2,15 +2,15 @@
 // into a local temp directory, ready for assay introspection.
 //
 // The full flow:
-//   1. Fetch source.json from the registry.
-//   2. Stream-download the archive named by source.json.url.
-//   3. Verify SHA256 integrity (sha256-<base64> SRI).
-//   4. Extract honoring strip_prefix.
-//   5. If the extracted root lacks a MODULE.bazel, fetch BCR's
-//      standalone copy (modules/<m>/<v>/MODULE.bazel) and write it.
-//      Older modules in BCR commonly don't bundle MODULE.bazel in
-//      their source tarball — the registry-side copy is authoritative.
-//   6. Return the destination directory.
+//  1. Fetch source.json from the registry.
+//  2. Stream-download the archive named by source.json.url.
+//  3. Verify SHA256 integrity (sha256-<base64> SRI).
+//  4. Extract honoring strip_prefix.
+//  5. If the extracted root lacks a MODULE.bazel, fetch BCR's
+//     standalone copy (modules/<m>/<v>/MODULE.bazel) and write it.
+//     Older modules in BCR commonly don't bundle MODULE.bazel in
+//     their source tarball — the registry-side copy is authoritative.
+//  6. Return the destination directory.
 //
 // Callers MUST defer Materialized.Cleanup to remove the temp dir.
 package resolve
@@ -114,7 +114,7 @@ func detectArchiveKind(declared, url string) (archiveKind, error) {
 
 // FromRegistry fetches and extracts a (module, version) from a BCR-shape
 // HTTP registry. The returned Materialized is rooted in os.TempDir() under
-// a "canopy-resolve-*" prefix; caller MUST defer Cleanup().
+// a "bzlhub-resolve-*" prefix; caller MUST defer Cleanup().
 func FromRegistry(ctx context.Context, registryURL, module, version string) (*Materialized, error) {
 	c := fetch.NewClient()
 	return FromRegistryWithClient(ctx, c, registryURL, module, version, Options{})
@@ -186,7 +186,7 @@ func FromSource(
 		return nil, err
 	}
 
-	dir, err := os.MkdirTemp("", "canopy-resolve-")
+	dir, err := os.MkdirTemp("", "bzlhub-resolve-")
 	if err != nil {
 		return nil, fmt.Errorf("mkdir temp: %w", err)
 	}

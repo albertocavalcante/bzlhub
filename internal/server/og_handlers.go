@@ -113,7 +113,7 @@ func (h *handler) serveOGModule(w http.ResponseWriter, r *http.Request, module s
 
 // serveOGVersion renders the per-version card with hermeticity +
 // rule/dep counts pulled from the assay ModuleReport. The lookup
-// is the heaviest call canopy makes — but it's cached on disk so the
+// is the heaviest call bzlhub makes — but it's cached on disk so the
 // cost is paid once per (module, version) over the file's lifetime.
 func (h *handler) serveOGVersion(w http.ResponseWriter, r *http.Request, module, version string) {
 	host := hostFromRequest(r)
@@ -194,7 +194,7 @@ func (h *handler) serveOGCached(w http.ResponseWriter, cachePath string, spec og
 // if caching is disabled (MirrorRoot unset) or the inputs would be
 // unsafe to use in a filesystem path. The keying scheme is
 // intentionally coarse for v0 — a hermeticity-class change for a
-// cached version requires `canopy og purge` (Plan 32 §5) to
+// cached version requires `bzlhub og purge` (Plan 32 §5) to
 // invalidate. Acceptable since classification rarely drifts after
 // first ingest.
 //
@@ -222,4 +222,3 @@ func hostFromRequest(r *http.Request) string {
 	}
 	return r.Host
 }
-

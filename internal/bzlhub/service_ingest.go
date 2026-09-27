@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/albertocavalcante/bzlhub/internal/backend"
+	bcrmirror "github.com/albertocavalcante/go-bcr-mirror"
 	"log/slog"
 	"time"
 
@@ -17,7 +19,7 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/ingest"
 	"github.com/albertocavalcante/bzlhub/internal/mirror"
 	"github.com/albertocavalcante/bzlhub/internal/resolve"
-	canopyscip "github.com/albertocavalcante/bzlhub/internal/scip"
+	bzlhubscip "github.com/albertocavalcante/bzlhub/internal/scip"
 	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
@@ -46,7 +48,20 @@ func (s *Service) IngestDir(ctx context.Context, dir string) (*report.ModuleRepo
 	// assay extracted, which may be the fallback "HEAD" for local dirs
 	// without an explicit version — that's fine; the symbol prefix
 	// will just be "bzlmod <name>@HEAD".
-	if scipBlob, scipErr := canopyscip.Generate(dir, r.Name, r.Version, r); scipErr == nil {
+	// Transitive closure from the store, not just r's direct bazel_deps: a
+	// load() that reaches a dependency-of-a-dependency resolves only if that
+	// module's coordinate is in the closure. Deps not yet ingested are simply
+	// absent, leaving those references unresolved exactly as before.
+	scipClosure, closureErr := bzlhubscip.TransitiveClosure(ctx, s.scipDepSources(), r)
+	if closureErr != nil {
+		// Only a cancelled context gets here; the walk treats a missing report
+		// as "stop descending". Fall back to the direct deps rather than skip
+		// indexing altogether.
+		slog.Warn("scip closure walk failed; falling back to direct deps",
+			"module", r.Name, "version", r.Version, "err", closureErr)
+		scipClosure = bzlhubscip.DirectClosure(r)
+	}
+	if scipBlob, scipErr := bzlhubscip.Generate(dir, r.Name, r.Version, scipClosure); scipErr == nil {
 		if werr := s.store.WriteScipBlob(ctx, r.Name, r.Version, scipBlob); werr != nil {
 			slog.Warn("scip blob write failed", "module", r.Name, "version", r.Version, "err", werr)
 		} else if uerr := s.store.SetHasSourceIndex(ctx, r.Name, r.Version, scipBlobHasFiles(scipBlob)); uerr != nil {
@@ -82,7 +97,7 @@ type RefreshMetadataResult struct {
 // flaky upstream shouldn't abort the rest of the walk).
 func (s *Service) RefreshMetadata(ctx context.Context, upstream string) (*RefreshMetadataResult, error) {
 	if s.MirrorRoot == "" {
-		return nil, errors.New("refresh-metadata not available: canopy was started without --root pointing at a mirror tree")
+		return nil, errors.New("refresh-metadata not available: bzlhub was started without --root pointing at a mirror tree")
 	}
 	if upstream == "" {
 		upstream = s.DefaultUpstream
@@ -120,7 +135,7 @@ func (s *Service) RefreshMetadata(ctx context.Context, upstream string) (*Refres
 
 func (s *Service) Drift(ctx context.Context, opts api.DriftOptions) (*drift.Report, error) {
 	if s.MirrorRoot == "" {
-		return nil, errors.New("drift not available: canopy was started without --root pointing at a mirror tree")
+		return nil, errors.New("drift not available: bzlhub was started without --root pointing at a mirror tree")
 	}
 	upstream := opts.Upstream
 	if upstream == "" {
@@ -174,7 +189,7 @@ func (s *Service) Bump(ctx context.Context, opts api.BumpOptions) (rep *report.M
 	}()
 
 	if s.MirrorRoot == "" {
-		return nil, errors.New("bump not available: canopy was started without --root pointing at a mirror tree")
+		return nil, errors.New("bump not available: bzlhub was started without --root pointing at a mirror tree")
 	}
 	if opts.Module == "" || opts.Version == "" {
 		return nil, errors.New("bump: module and version are required")
@@ -272,7 +287,13 @@ func (s *Service) Bump(ctx context.Context, opts api.BumpOptions) (rep *report.M
 	// data, not part of the build-correctness guarantee. The error
 	// gets logged so an operator can investigate without losing the
 	// ingest's primary output.
-	if scipBlob, scipErr := canopyscip.Generate(mat.Dir, opts.Module, opts.Version, r); scipErr == nil {
+	scipClosure, closureErr := bzlhubscip.TransitiveClosure(ctx, s.scipDepSources(), r)
+	if closureErr != nil {
+		slog.Warn("scip closure walk failed; falling back to direct deps",
+			"module", opts.Module, "version", opts.Version, "err", closureErr)
+		scipClosure = bzlhubscip.DirectClosure(r)
+	}
+	if scipBlob, scipErr := bzlhubscip.Generate(mat.Dir, opts.Module, opts.Version, scipClosure); scipErr == nil {
 		if werr := s.store.WriteScipBlob(ctx, opts.Module, opts.Version, scipBlob); werr != nil {
 			slog.Warn("scip blob write failed", "module", opts.Module, "version", opts.Version, "err", werr)
 		} else if uerr := s.store.SetHasSourceIndex(ctx, opts.Module, opts.Version, scipBlobHasFiles(scipBlob)); uerr != nil {
@@ -339,7 +360,7 @@ func (s *Service) IngestRecursive(ctx context.Context, opts api.IngestRecursiveO
 	}()
 
 	if s.MirrorRoot == "" {
-		return nil, errors.New("ingest-recursive not available: canopy was started without --root pointing at a mirror tree")
+		return nil, errors.New("ingest-recursive not available: bzlhub was started without --root pointing at a mirror tree")
 	}
 	if opts.Module == "" || opts.Version == "" {
 		return nil, errors.New("ingest-recursive: module and version are required")
@@ -399,4 +420,26 @@ func (s *Service) IngestRecursive(ctx context.Context, opts api.IngestRecursiveO
 		})
 	}
 	return out, nil
+}
+
+// scipDepSources is where the SCIP closure gets its dependency answers.
+//
+// The store first, because an ingested module's report is already parsed and
+// local. The mirror second, because that is what makes ingest ORDER irrelevant:
+// a dependency's MODULE.bazel does not care whether bzlhub has ingested it, and
+// for a --recursive ingest the same walk that fetches the closure has already
+// written every MODULE.bazel to the mirror.
+//
+// Deliberately NOT chained to the upstream registry. Ingest stays offline: the
+// store and the mirror are both local reads, so indexing adds no outbound
+// traffic and no egress-policy surface. A deployment whose mirror is incomplete
+// resolves less, which is visible and fixable by mirroring, rather than turning
+// every ingest into network calls.
+func (s *Service) scipDepSources() bzlhubscip.DepsFunc {
+	sources := []bzlhubscip.DepsFunc{bzlhubscip.DepsFromStore(s.store)}
+	if s.MirrorRoot != "" {
+		sources = append(sources,
+			bzlhubscip.DepsFromModuleBazel(backend.NewBCRMirror(bcrmirror.New(s.MirrorRoot, ""))))
+	}
+	return bzlhubscip.FirstOf(sources...)
 }

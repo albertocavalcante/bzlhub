@@ -279,5 +279,5 @@ func TestInject_TolerantSentinelWhitespace(t *testing.T) {
 	}
 }
 
-// Ensure the package consumes api.Canopy as documented.
-var _ = func() api.Canopy { return nil }
+// Ensure the package consumes api.Bzlhub as documented.
+var _ = func() api.Bzlhub { return nil }

@@ -29,7 +29,7 @@ const (
 
 // BreakingFinding is one structural-break signal extracted from a Report.
 type BreakingFinding struct {
-	Kind   BreakingKind `json:"kind"`
+	Kind BreakingKind `json:"kind"`
 	// Symbol is the primary identifier the finding is about (rule name,
 	// provider name, extension name, etc.).
 	Symbol string `json:"symbol"`

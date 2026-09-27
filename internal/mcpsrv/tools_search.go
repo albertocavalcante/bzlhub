@@ -14,10 +14,10 @@ import (
 
 // registerSearchTools registers the read-only browsing surface:
 // search, module_report, list_versions, summary, history.
-func registerSearchTools(srv *server.MCPServer, c api.Canopy) {
+func registerSearchTools(srv *server.MCPServer, c api.MCPSearchService) {
 	srv.AddTool(
 		mcp.NewTool("bzlhub_search",
-			mcp.WithDescription("Full-text + faceted search across canopy's index of Bazel modules. Matches module names, rule names, provider names, macro names, and doc strings via FTS5 trigram tokenizer."),
+			mcp.WithDescription("Full-text + faceted search across bzlhub's index of Bazel modules. Matches module names, rule names, provider names, macro names, and doc strings via FTS5 trigram tokenizer."),
 			mcp.WithString("query", mcp.Required(), mcp.Description("Free-text search query")),
 			mcp.WithArray("hermeticity", mcp.Description("Optional hermeticity-class filter (any of pure-starlark, prebuilt-binaries-pinned, build-from-source, network-fetch-pinned, network-fetch-unpinned, requires-system-tools, repository-rule-arbitrary-code).")),
 			mcp.WithNumber("limit", mcp.Description("Max hits to return (default 50, max 10000).")),
@@ -36,7 +36,7 @@ func registerSearchTools(srv *server.MCPServer, c api.Canopy) {
 
 	srv.AddTool(
 		mcp.NewTool("bzlhub_list_versions",
-			mcp.WithDescription("List known versions of a Bazel module in canopy's index, newest first."),
+			mcp.WithDescription("List known versions of a Bazel module in bzlhub's index, newest first."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Bazel module name")),
 		),
 		listVersionsHandler(c),
@@ -44,7 +44,7 @@ func registerSearchTools(srv *server.MCPServer, c api.Canopy) {
 
 	srv.AddTool(
 		mcp.NewTool("bzlhub_summary",
-			mcp.WithDescription("Return the 'first impression' summary of one (module, version): name, version, compatibility level, declared bazel_deps, README contents, LICENSE name + path, example directories, and registry-level fields (homepage, maintainers, repository, yanked versions) when canopy's mirror has metadata.json. Use this when the user asks 'what is X@Y?' or wants a one-shot snapshot of a module without paging through rules/providers/macros (use bzlhub_module_report for the deep schema). Built on bazel-module-summary-go so the shape is stable across MCP, future CLI, and direct library consumers."),
+			mcp.WithDescription("Return the 'first impression' summary of one (module, version): name, version, compatibility level, declared bazel_deps, README contents, LICENSE name + path, example directories, and registry-level fields (homepage, maintainers, repository, yanked versions) when bzlhub's mirror has metadata.json. Use this when the user asks 'what is X@Y?' or wants a one-shot snapshot of a module without paging through rules/providers/macros (use bzlhub_module_report for the deep schema). Built on bazel-module-summary-go so the shape is stable across MCP, future CLI, and direct library consumers."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Bazel module name (e.g. rules_go)")),
 			mcp.WithString("version", mcp.Required(), mcp.Description("Module version (e.g. 0.50.1)")),
 		),
@@ -63,7 +63,7 @@ func registerSearchTools(srv *server.MCPServer, c api.Canopy) {
 	)
 }
 
-func searchHandler(c api.Canopy) server.ToolHandlerFunc {
+func searchHandler(c api.MCPSearchService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		query, _ := args["query"].(string)
@@ -89,7 +89,7 @@ func searchHandler(c api.Canopy) server.ToolHandlerFunc {
 	}
 }
 
-func moduleReportHandler(c api.Canopy) server.ToolHandlerFunc {
+func moduleReportHandler(c api.MCPSearchService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		module, _ := args["module"].(string)
@@ -105,7 +105,7 @@ func moduleReportHandler(c api.Canopy) server.ToolHandlerFunc {
 	}
 }
 
-func listVersionsHandler(c api.Canopy) server.ToolHandlerFunc {
+func listVersionsHandler(c api.MCPSearchService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		module, _ := args["module"].(string)
@@ -120,11 +120,11 @@ func listVersionsHandler(c api.Canopy) server.ToolHandlerFunc {
 	}
 }
 
-// summaryHandler maps the MCP arg surface onto api.Canopy.Summary,
-// which composes bazel-module-summary-go around canopy's mirrored
+// summaryHandler maps the MCP arg surface onto api.MCPSearchService.Summary,
+// which composes bazel-module-summary-go around bzlhub's mirrored
 // sources and metadata.json. Surface-level concerns only — the
 // library does all the actual data composition.
-func summaryHandler(c api.Canopy) server.ToolHandlerFunc {
+func summaryHandler(c api.MCPSearchService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		module, _ := args["module"].(string)
@@ -140,7 +140,7 @@ func summaryHandler(c api.Canopy) server.ToolHandlerFunc {
 	}
 }
 
-func historyHandler(c api.Canopy) server.ToolHandlerFunc {
+func historyHandler(c api.MCPSearchService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		opts := api.HistoryOptions{}

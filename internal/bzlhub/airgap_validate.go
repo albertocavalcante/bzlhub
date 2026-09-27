@@ -8,11 +8,11 @@ import (
 )
 
 // validateBazelrcURL guards the strings that get templated into
-// canopy's .bazelrc / downloader-config artifacts. Both files are
+// bzlhub's .bazelrc / downloader-config artifacts. Both files are
 // downloaded by operators and consumed by Bazel; an attacker who can
 // control a query-string value should not be able to inject an
 // additional `common --foo=...` directive (via embedded newlines) or
-// comment-out the canopy directive (via `#`).
+// comment-out the bzlhub directive (via `#`).
 //
 // Rules:
 //   - control characters (anything < 0x20 plus DEL) are rejected

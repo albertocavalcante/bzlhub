@@ -51,7 +51,7 @@ func checkDeep(ctx context.Context, s *state) []Finding {
 			continue
 		}
 
-		tmp, err := os.MkdirTemp("", "canopy-verify-deep-*")
+		tmp, err := os.MkdirTemp("", "bzlhub-verify-deep-*")
 		if err != nil {
 			out = append(out, Finding{
 				Kind:     KindDeepReportMismatch,
@@ -114,7 +114,7 @@ func checkDeep(ctx context.Context, s *state) []Finding {
 // analyzeBlob extracts the archive at blobPath into stagingDir
 // (respecting strip_prefix, matching ingest's behavior) and runs
 // assay.Analyze on the result. tar.gz is the only supported archive
-// today — that's what BCR + canopy's mirror writer produce.
+// today — that's what BCR + bzlhub's mirror writer produce.
 func analyzeBlob(ctx context.Context, blobPath, stripPrefix, stagingDir string) (*report.ModuleReport, error) {
 	f, err := os.Open(blobPath)
 	if err != nil {

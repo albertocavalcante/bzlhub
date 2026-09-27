@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
+	"strings"
 )
 
 // reasonEgressPolicyDeny is the canonical reason code embedded in
@@ -23,7 +23,7 @@ var ErrEgressForbidden = errors.New("egress forbidden by policy")
 // and the allowlist of permitted hostnames.
 //
 // The zero value (ModeAllow + empty allowlist) is the permissive
-// default; canopy callers that don't need policy enforcement get
+// default; bzlhub callers that don't need policy enforcement get
 // it for free.
 type Policy struct {
 	// Mode controls the decision shape. See mode.go.
@@ -31,8 +31,8 @@ type Policy struct {
 
 	// Allow is the hostname allowlist. Consulted only when Mode is
 	// ModeAllow or ModeAudit; ignored under ModeDeny. Hostname
-	// matching is exact (no subdomain glob); add an entry per host
-	// you intend to permit.
+	// matching is case-insensitive and accepts exact hosts or a
+	// leading "*." subdomain wildcard.
 	Allow []string
 }
 
@@ -58,8 +58,16 @@ func (p Policy) Check(req *http.Request) error {
 	if len(p.Allow) == 0 {
 		return nil
 	}
-	if slices.Contains(p.Allow, host) {
-		return nil
+	host = strings.ToLower(host)
+	for _, pattern := range p.Allow {
+		pattern = strings.ToLower(strings.TrimSpace(pattern))
+		if pattern == host {
+			return nil
+		}
+		if strings.HasPrefix(pattern, "*.") &&
+			strings.HasSuffix(host, pattern[1:]) {
+			return nil
+		}
 	}
 	return fmt.Errorf("%w: host %s not in allowlist", ErrEgressForbidden, host)
 }

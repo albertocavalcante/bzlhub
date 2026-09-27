@@ -8,7 +8,7 @@ import (
 // ComputeForVersion. It mirrors api.DriftStatus's string constants
 // but is defined here to avoid pulling internal/api into drift —
 // api already imports drift for *drift.Report, so the reverse arrow
-// would form a cycle. Callers in internal/canopy translate this
+// would form a cycle. Callers in internal/bzlhub translate this
 // string into api.DriftStatus at the assembly site.
 type VersionStatus string
 
@@ -38,14 +38,14 @@ type VersionDrift struct {
 // Semantics — status precedence (highest first):
 //
 //   - LocalOnly      when upstream is nil (module not present
-//                    upstream; caller signals via ErrModuleNotFound).
+//     upstream; caller signals via ErrModuleNotFound).
 //   - YankedUpstream when the local version is listed in upstream's
-//                    yanked_versions map (security signal > freshness
-//                    signal, per Plan 19 Idea A).
+//     yanked_versions map (security signal > freshness
+//     signal, per Plan 19 Idea A).
 //   - Behind         when upstream has strictly newer versions than
-//                    local. Behind count = number of strictly newer.
+//     local. Behind count = number of strictly newer.
 //   - InSync         otherwise — including the "local is ahead of
-//                    upstream" case (canopy's own published variants).
+//     upstream" case (bzlhub's own published variants).
 func ComputeForVersion(localVersion string, upstream *fetch.MetadataJSON) VersionDrift {
 	if upstream == nil {
 		return VersionDrift{Status: VersionStatusLocalOnly}

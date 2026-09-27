@@ -15,7 +15,7 @@ import (
 // defaultMaxCachedSources bounds the number of (module, version) source
 // roots the resolver keeps warm by default. Each cached entry holds one
 // *understory.Index (parsed SCIP, typically <10 MB) plus one *os.Root
-// file handle. 32 is generous for canopy's expected single-process
+// file handle. 32 is generous for bzlhub's expected single-process
 // serving workload — the hot set for an active site is usually <10
 // distinct modules.
 //
@@ -25,7 +25,7 @@ import (
 const defaultMaxCachedSources = 32
 
 // Resolver lazily materializes (understory.Index, *os.Root) pairs for
-// canopy module-version coordinates, caching them under a small LRU.
+// bzlhub module-version coordinates, caching them under a small LRU.
 //
 // Concurrency: per-(module, version) sync.Once guarantees the unpack
 // runs exactly once even under concurrent Resolve calls.

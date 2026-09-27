@@ -135,18 +135,18 @@ bzlhub reads two file paths and a handful of knobs from env:
 
 | Env var | Purpose | Typical value |
 |---|---|---|
-| `CANOPY_IDENTITY_FILE` | path to identity.json | `/etc/bzlhub/identity.json` |
-| `CANOPY_POLICY_FILE` | path to policy.yml | `/var/lib/bzlhub/registry/.bzlhub/policy.yml` |
-| `CANOPY_ROOT` | BCR-shape registry tree | `/var/lib/bzlhub/registry` |
-| `CANOPY_DB` | SQLite index path | `/var/lib/bzlhub/index/bzlhub.db` |
-| `CANOPY_BIND` | listen address | `0.0.0.0:8091` |
-| `CANOPY_TRUSTED_PROXY_CIDR` | reverse-proxy CIDRs | `172.16.0.0/12` (Docker bridge) |
-| `CANOPY_PREFLIGHT_WORKERS` | preflight pool size | `2` (default) |
-| `CANOPY_PREFLIGHT_POLL_EVERY` | preflight poll interval | `5s` (default) |
-| `CANOPY_REGISTRY_WORKTREE` | git worktree for commit-back | unset → uses `CANOPY_ROOT` |
-| `CANOPY_BOT_EMAIL` | committer identity for admit | `bzlhub-bot@localhost` |
+| `BZLHUB_IDENTITY_FILE` | path to identity.json | `/etc/bzlhub/identity.json` |
+| `BZLHUB_POLICY_FILE` | path to policy.yml | `/var/lib/bzlhub/registry/.bzlhub/policy.yml` |
+| `BZLHUB_ROOT` | BCR-shape registry tree | `/var/lib/bzlhub/registry` |
+| `BZLHUB_DB` | SQLite index path | `/var/lib/bzlhub/index/bzlhub.db` |
+| `BZLHUB_BIND` | listen address | `0.0.0.0:8091` |
+| `BZLHUB_TRUSTED_PROXY_CIDR` | reverse-proxy CIDRs | `172.16.0.0/12` (Docker bridge) |
+| `BZLHUB_PREFLIGHT_WORKERS` | preflight pool size | `2` (default) |
+| `BZLHUB_PREFLIGHT_POLL_EVERY` | preflight poll interval | `5s` (default) |
+| `BZLHUB_REGISTRY_WORKTREE` | git worktree for commit-back | unset → uses `BZLHUB_ROOT` |
+| `BZLHUB_BOT_EMAIL` | committer identity for admit | `bzlhub-bot@localhost` |
 
-Unset `CANOPY_POLICY_FILE` to disable policy gates entirely — the
+Unset `BZLHUB_POLICY_FILE` to disable policy gates entirely — the
 procurement endpoints then don't register. Useful for the
 read-only-public bzlhub shape (e.g., a public BCR mirror).
 
@@ -206,13 +206,13 @@ services:
     ports:
       - "127.0.0.1:8091:8091"
     environment:
-      CANOPY_BIND: 0.0.0.0:8091
-      CANOPY_ROOT: /var/lib/bzlhub/registry
-      CANOPY_DB:   /var/lib/bzlhub/index/bzlhub.db
-      CANOPY_IDENTITY_FILE: /etc/bzlhub/identity.json
-      CANOPY_POLICY_FILE:   /var/lib/bzlhub/registry/.bzlhub/policy.yml
-      CANOPY_TRUSTED_PROXY_CIDR: 172.16.0.0/12
-      CANOPY_UPSTREAMS: https://bcr.bazel.build
+      BZLHUB_BIND: 0.0.0.0:8091
+      BZLHUB_ROOT: /var/lib/bzlhub/registry
+      BZLHUB_DB:   /var/lib/bzlhub/index/bzlhub.db
+      BZLHUB_IDENTITY_FILE: /etc/bzlhub/identity.json
+      BZLHUB_POLICY_FILE:   /var/lib/bzlhub/registry/.bzlhub/policy.yml
+      BZLHUB_TRUSTED_PROXY_CIDR: 172.16.0.0/12
+      BZLHUB_UPSTREAMS: https://bcr.bazel.build
     volumes:
       - /opt/bzlhub/registry:/var/lib/bzlhub/registry
       - /opt/bzlhub/secrets/identity.json:/etc/bzlhub/identity.json:ro
@@ -380,7 +380,7 @@ to where shared secrets become unmanageable:
    (oauth2-proxy, Pomerium, or your IdP's official sidecar).
 2. Configure it to forward `X-Forwarded-User`, `X-Forwarded-Email`,
    `X-Forwarded-Groups` after successful auth.
-3. Set `CANOPY_TRUSTED_PROXY_CIDR` to the proxy's source CIDR.
+3. Set `BZLHUB_TRUSTED_PROXY_CIDR` to the proxy's source CIDR.
 4. Optionally leave bearer auth wired (bzlhub accepts both —
    bearer wins on collision, useful for CI/MCP callers that
    can't speak OIDC).
@@ -398,11 +398,11 @@ recipes with nginx + oauth2-proxy.
 - **Plaintext tokens never on the box**: the SHA-256 hash is what
   bzlhub stores; the plaintext lives in your secrets store and is
   distributed to users out-of-band.
-- **Reverse proxy CIDR**: `CANOPY_TRUSTED_PROXY_CIDR` gates whether
+- **Reverse proxy CIDR**: `BZLHUB_TRUSTED_PROXY_CIDR` gates whether
   `X-Forwarded-*` headers are honored. Set it tight (the proxy's
   exact IP, not `0.0.0.0/0`) to defang header-spoofing attacks
   from outside the trusted layer.
-- **Egress**: bzlhub fetches from `CANOPY_UPSTREAMS` (default
+- **Egress**: bzlhub fetches from `BZLHUB_UPSTREAMS` (default
   bcr.bazel.build). If your environment requires an egress
   allowlist, the upstream URLs are the entries to whitelist.
 - **Audit retention**: `audit.retain_days` in policy.yml. No
@@ -414,12 +414,12 @@ recipes with nginx + oauth2-proxy.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Boot: `CANOPY_IDENTITY_FILE=...: file not found` | env var set but file missing | Either create the file or unset the env var |
-| Boot: `CANOPY_POLICY_FILE=...: unsupported version N` | policy.yml `version:` doesn't match bzlhub's supported version | Upgrade bzlhub, or downgrade policy.yml |
+| Boot: `BZLHUB_IDENTITY_FILE=...: file not found` | env var set but file missing | Either create the file or unset the env var |
+| Boot: `BZLHUB_POLICY_FILE=...: unsupported version N` | policy.yml `version:` doesn't match bzlhub's supported version | Upgrade bzlhub, or downgrade policy.yml |
 | POST /requests returns 403 | `submit_request` gate denies | Check token has the right groups; check policy.yml's `auth.actions.submit_request` |
 | POST /approve returns 403 | reviewer's groups don't include `approver` (or whatever your gate is) | Update `identity.json` + SIGHUP |
-| Submit succeeds but state stays `pending` | preflight runner isn't running | Verify bzlhub boot log says `preflight runner starting workers=N`; check `CANOPY_POLICY_FILE` is set (no policy → no runner) |
-| Approved request stays `approved`, never `indexed` | admit runner can't reach the worktree, OR `CANOPY_ROOT` isn't a git clone (FilesystemPublisher wired — no push) | Check boot log: `admit publisher: git-direct` (good) vs `filesystem (no git push)` (admitted on disk only). Set `CANOPY_REGISTRY_WORKTREE` to a real git clone if needed. |
+| Submit succeeds but state stays `pending` | preflight runner isn't running | Verify bzlhub boot log says `preflight runner starting workers=N`; check `BZLHUB_POLICY_FILE` is set (no policy → no runner) |
+| Approved request stays `approved`, never `indexed` | admit runner can't reach the worktree, OR `BZLHUB_ROOT` isn't a git clone (FilesystemPublisher wired — no push) | Check boot log: `admit publisher: git-direct` (good) vs `filesystem (no git push)` (admitted on disk only). Set `BZLHUB_REGISTRY_WORKTREE` to a real git clone if needed. |
 | `git push` fails on admit | wrong push credentials | The error is in `denial_reason` of the failed request. Reseat the PAT (re-clone, or rewrite the GIT_ASKPASS file) and re-submit. |
 | Identity WARN: `world-readable` | file mode too loose | `chmod 600 identity.json` |
 

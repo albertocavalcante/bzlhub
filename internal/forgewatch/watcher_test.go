@@ -305,7 +305,7 @@ func TestPollOnce_OnCommitSuccessAdvancesState(t *testing.T) {
 	store := NewMemoryStore()
 	w, _ := New(Config{
 		Forge: ff, Repo: bigorna.Repo{Owner: "o", Name: "r"},
-		Store: store,
+		Store:    store,
 		OnCommit: func(context.Context, []bigorna.Commit) error { return nil },
 		Logger:   quietLogger(),
 	})
@@ -330,7 +330,7 @@ func TestPollOnce_ThreadsSinceSHAAndETag(t *testing.T) {
 	}
 	w, _ := New(Config{
 		Forge: ff, Repo: bigorna.Repo{Owner: "o", Name: "r"},
-		Store: store,
+		Store:    store,
 		OnCommit: func(context.Context, []bigorna.Commit) error { return nil },
 		Logger:   quietLogger(),
 	})
@@ -349,7 +349,7 @@ func TestPollOnce_ThreadsSinceSHAAndETag(t *testing.T) {
 
 func TestApplyBackoff_GrowsAndCapsAtMax(t *testing.T) {
 	w := &Watcher{
-		cfg: Config{Interval: time.Second, MaxInterval: 8 * time.Second},
+		cfg:      Config{Interval: time.Second, MaxInterval: 8 * time.Second},
 		interval: time.Second,
 	}
 	want := []time.Duration{
@@ -376,7 +376,7 @@ func TestPollOnce_NewCommitsResetInterval(t *testing.T) {
 	}
 	w, _ := New(Config{
 		Forge: ff, Repo: bigorna.Repo{Owner: "o", Name: "r"},
-		Store: NewMemoryStore(),
+		Store:    NewMemoryStore(),
 		OnCommit: func(context.Context, []bigorna.Commit) error { return nil },
 		Interval: 10 * time.Second, MaxInterval: 60 * time.Second,
 		Logger: quietLogger(),
@@ -403,7 +403,7 @@ func TestRun_PollsImmediatelyThenSleeps(t *testing.T) {
 	clk := bigornatest.NewManualClock(time.Unix(0, 0))
 	w, _ := New(Config{
 		Forge: ff, Repo: bigorna.Repo{Owner: "o", Name: "r"},
-		Store: NewMemoryStore(),
+		Store:    NewMemoryStore(),
 		OnCommit: func(context.Context, []bigorna.Commit) error { return nil },
 		Clock:    clk,
 		Interval: time.Second, MaxInterval: 5 * time.Second,
@@ -423,10 +423,10 @@ func TestRun_StopsOnContextCancel(t *testing.T) {
 	ff := &fakeForge{}
 	w, _ := New(Config{
 		Forge: ff, Repo: bigorna.Repo{Owner: "o", Name: "r"},
-		Store: NewMemoryStore(),
+		Store:    NewMemoryStore(),
 		OnCommit: func(context.Context, []bigorna.Commit) error { return nil },
-		Clock: bigornatest.NewManualClock(time.Unix(0, 0)),
-		Logger: quietLogger(),
+		Clock:    bigornatest.NewManualClock(time.Unix(0, 0)),
+		Logger:   quietLogger(),
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

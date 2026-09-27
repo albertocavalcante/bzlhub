@@ -403,7 +403,7 @@ func TestAirgapDownloaderConfig_RendersRewriteLines(t *testing.T) {
 
 	// Content-Disposition for browser download UX.
 	cd := res.Header.Get("Content-Disposition")
-	if !strings.Contains(cd, "canopy-downloader-config-m-1.txt") {
+	if !strings.Contains(cd, "bzlhub-downloader-config-m-1.txt") {
 		t.Errorf("Content-Disposition = %q", cd)
 	}
 }
@@ -490,7 +490,7 @@ func TestAirgapModuleMirrors_RendersBazelrcLine(t *testing.T) {
 	}
 
 	cd := res.Header.Get("Content-Disposition")
-	if !strings.Contains(cd, "canopy-module-mirrors-m-1.bazelrc") {
+	if !strings.Contains(cd, "bzlhub-module-mirrors-m-1.bazelrc") {
 		t.Errorf("Content-Disposition = %q", cd)
 	}
 }
@@ -538,11 +538,11 @@ func TestAirgapModuleMirrors_RejectsInjection(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	bad := []string{
-		"mirror=http://x/%0Acommon%20--evil",       // newline in mirror
-		"mirror=http://x/%0D",                       // CR
-		"mirror=javascript:alert(1)",                // non-http scheme
-		"registry=http://r/%0Acommon%20--evil",      // newline in registry
-		"registry=ftp://r/",                         // wrong scheme on registry
+		"mirror=http://x/%0Acommon%20--evil",   // newline in mirror
+		"mirror=http://x/%0D",                  // CR
+		"mirror=javascript:alert(1)",           // non-http scheme
+		"registry=http://r/%0Acommon%20--evil", // newline in registry
+		"registry=ftp://r/",                    // wrong scheme on registry
 	}
 	for _, q := range bad {
 		res, err := http.Get(ts.URL + paths.AirgapModuleMirrors("m", "1") + "?" + q)
@@ -647,7 +647,7 @@ func TestExternalSurface_ConditionalGET_Returns304(t *testing.T) {
 	}
 }
 
-// End-to-end: producer ruleset declares a module_extension; canopy's
+// End-to-end: producer ruleset declares a module_extension; bzlhub's
 // corpus contains a consumer module that pins a tag value on it.
 // ExternalSurface for the producer surfaces the corpus tag values in
 // CorpusUsages so the UI can show "consumer X uses this extension

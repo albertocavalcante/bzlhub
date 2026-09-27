@@ -10,11 +10,11 @@ import (
 )
 
 // ReadHelper is the read-side surface server.go needs beyond
-// api.Canopy. These methods exist on *bzlhub.Service but don't
-// belong on the cross-transport api.Canopy contract — MCP and CLI
+// api.Bzlhub. These methods exist on *bzlhub.Service but don't
+// belong on the cross-transport api.Bzlhub contract — MCP and CLI
 // callers don't need pin counts or GitHub-meta. Defining the
 // dependency at the server layer (where it's actually used) lets
-// api.Canopy stay narrow without forcing handler code to type-assert
+// api.Bzlhub stay narrow without forcing handler code to type-assert
 // to the concrete service on every augmentation.
 //
 // Wired by main via Options.Helper; tests typically leave it nil,

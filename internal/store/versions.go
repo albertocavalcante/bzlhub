@@ -64,10 +64,10 @@ func (s *Store) ListAllVersions(ctx context.Context) ([]ModuleVersion, error) {
 // for the single-query backfill / status walkers — eliminates the
 // N+1 of ListAllVersions + per-row GetDriftSummary.
 type ModuleVersionDrift struct {
-	Module      string
-	Version     string
-	DriftRaw    []byte // raw drift_summary_json column; "{}" when unset
-	IngestedAt  time.Time
+	Module     string
+	Version    string
+	DriftRaw   []byte // raw drift_summary_json column; "{}" when unset
+	IngestedAt time.Time
 }
 
 // AllVersionsWithDrift streams every (module, version) row paired

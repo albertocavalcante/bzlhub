@@ -2,7 +2,7 @@ package api
 
 // ConsumersResult is the wire shape for the cross-corpus consumer
 // view (Plan 07): every call site of a symbol defined by some
-// (module, version) across the entire indexed canopy corpus.
+// (module, version) across the entire indexed bzlhub corpus.
 //
 // "Consumers" intentionally excludes the defining module's own
 // references — operators investigating "who uses my rule?" don't
@@ -60,10 +60,10 @@ type ConsumersResult struct {
 // ConsumerEntry is one (consumer_module, consumer_version) row with
 // its call sites of the queried symbol.
 type ConsumerEntry struct {
-	Module      string     `json:"module"`
-	Version     string     `json:"version"`
-	ModuleHref  string     `json:"module_href"`
-	CallSites   []CallSite `json:"call_sites"`
+	Module     string     `json:"module"`
+	Version    string     `json:"version"`
+	ModuleHref string     `json:"module_href"`
+	CallSites  []CallSite `json:"call_sites"`
 }
 
 // CallSite is one occurrence of the symbol inside a consumer's

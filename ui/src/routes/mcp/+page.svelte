@@ -101,7 +101,7 @@
   // ---- Live tool catalogue ----------------------------------------
   //
   // POST a tools/list request to this instance's /mcp endpoint. When
-  // the endpoint isn't enabled (CANOPY_MCP_HTTP_ENABLED=false on the
+  // the endpoint isn't enabled (BZLHUB_MCP_HTTP_ENABLED=false on the
   // serving instance) the SPA fallback returns index.html which fails
   // JSON parse — we surface that as "MCP-over-HTTP not enabled on this
   // instance" rather than a stack trace.

@@ -1,8 +1,8 @@
 // Package headtags composes per-URL <head> tags (title, description,
-// canonical link, Open Graph, Twitter Card) for canopy's SPA pages
+// canonical link, Open Graph, Twitter Card) for bzlhub's SPA pages
 // and injects them into index.html at the SPA fallback handler.
 //
-// canopy ships its UI via @sveltejs/adapter-static with ssr=false +
+// bzlhub ships its UI via @sveltejs/adapter-static with ssr=false +
 // prerender=false — pure client-side rendering. Search engines see
 // the unhydrated <html> shell; Slack/Twitter/Discord/Mastodon unfurl
 // crawlers don't execute JS at all, so <svelte:head> tags inside
@@ -10,7 +10,7 @@
 //
 // This package fixes that. The Go server intercepts SPA requests,
 // matches the path against a small route table, builds a Tags struct
-// from canopy's already-indexed state (or a static fallback), and
+// from bzlhub's already-indexed state (or a static fallback), and
 // rewrites the <!-- HEADTAGS-SENTINEL --> comment in index.html with
 // real meta tags before streaming the response. The SvelteKit app
 // then boots normally; the SEO tags are already in the DOM by the
@@ -23,7 +23,7 @@
 //     the HTML escaping discipline once; callers don't have to think
 //     about it.
 //   - Self-host friendly. site_origin is derived from the request
-//     itself, not a hard-coded bzlhub.com — anyone running canopy
+//     itself, not a hard-coded bzlhub.com — anyone running bzlhub
 //     gets correct canonical URLs without config.
 package headtags
 
@@ -73,7 +73,7 @@ type Tags struct {
 	JSONLD      string // <script type="application/ld+json">…</script> block. Should already be a valid JSON string when populated; Render handles the <script> wrapping + the </script> safety escape.
 }
 
-// Compose returns Tags for the given URL path. The Canopy interface
+// Compose returns Tags for the given URL path. The Bzlhub interface
 // is optional; pass nil for paths that don't need per-module lookups
 // (eg /, /about, /drift). When non-nil, /modules/<name> and
 // /modules/<name>/<version> get module-specific titles + descriptions.
@@ -81,7 +81,7 @@ type Tags struct {
 // origin is the scheme+host the request arrived on (eg
 // "https://bzlhub.com"); used to build absolute canonical URLs without
 // hard-coding any one deployment.
-func Compose(ctx context.Context, path, origin string, c api.Canopy) Tags {
+func Compose(ctx context.Context, path, origin string, c api.ModuleSummaryReader) Tags {
 	t := Tags{
 		OGType:   "website",
 		SiteName: "bzlhub",
@@ -186,10 +186,10 @@ func Compose(ctx context.Context, path, origin string, c api.Canopy) Tags {
 }
 
 // moduleTags builds the per-module (and per-version-when-set) tag set.
-// The Canopy interface is consulted opportunistically: if the lookup
-// fails (module not indexed, or canopy is nil), we still emit a
+// The Bzlhub interface is consulted opportunistically: if the lookup
+// fails (module not indexed, or bzlhub is nil), we still emit a
 // reasonable title from the name + version so the page is indexable.
-func moduleTags(ctx context.Context, name, version, origin string, c api.Canopy) Tags {
+func moduleTags(ctx context.Context, name, version, origin string, c api.ModuleSummaryReader) Tags {
 	t := Tags{
 		OGType:   "website",
 		SiteName: "bzlhub",
@@ -205,9 +205,9 @@ func moduleTags(ctx context.Context, name, version, origin string, c api.Canopy)
 	}
 
 	// Try to enrich description from the indexed module summary.
-	// When canopy is nil or the module isn't indexed, fall back to a
+	// When bzlhub is nil or the module isn't indexed, fall back to a
 	// generic but accurate description — the title alone still beats
-	// what we had before (literally "canopy" on every page).
+	// what we had before (literally "bzlhub" on every page).
 	if c != nil {
 		if sum, err := c.GetModule(ctx, name); err == nil && sum != nil {
 			if version != "" {
@@ -230,7 +230,7 @@ func moduleTags(ctx context.Context, name, version, origin string, c api.Canopy)
 	}
 
 	// Fallback: no index hit (module hasn't been ingested yet, or
-	// canopy is nil). Generic description still names the module.
+	// bzlhub is nil). Generic description still names the module.
 	if version != "" {
 		t.Description = fmt.Sprintf("%s@%s — Bazel module on bzlhub.", name, version)
 	} else {

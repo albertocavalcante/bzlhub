@@ -98,13 +98,13 @@ func fetchBCRHeadSHA(ctx context.Context, tp token.Provider) string {
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	req.Header.Set("User-Agent", "canopy")
+	req.Header.Set("User-Agent", "bzlhub")
 	if tp != nil {
 		if tok, _ := tp.Token(ctx); tok != "" {
 			req.Header.Set("Authorization", "Bearer "+tok)
 		}
 	}
-	client := egress.NewHTTPClient(egress.Policy{})
+	client := egress.DefaultHTTPClient()
 	client.Timeout = 5 * time.Second
 	res, err := client.Do(req)
 	if err != nil {

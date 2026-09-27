@@ -63,6 +63,34 @@ func TestResolveWatchConfig_HappyPath(t *testing.T) {
 	}
 }
 
+func TestDefaultWatchStateFile(t *testing.T) {
+	home := t.TempDir()
+	preferred := filepath.Join(home, ".bzlhub", "watch-state.json")
+	legacy := filepath.Join(home, ".canopy", "watch-state.json")
+
+	if got := defaultWatchStateFile(home); got != preferred {
+		t.Fatalf("fresh install: got %q, want %q", got, preferred)
+	}
+	if err := os.MkdirAll(filepath.Dir(legacy), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacy, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := defaultWatchStateFile(home); got != legacy {
+		t.Fatalf("legacy install: got %q, want %q", got, legacy)
+	}
+	if err := os.MkdirAll(filepath.Dir(preferred), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(preferred, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := defaultWatchStateFile(home); got != preferred {
+		t.Fatalf("preferred state exists: got %q, want %q", got, preferred)
+	}
+}
+
 func TestResolveWatchConfig_Errors(t *testing.T) {
 	cases := []struct {
 		name     string

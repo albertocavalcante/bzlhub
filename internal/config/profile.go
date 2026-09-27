@@ -1,7 +1,7 @@
-// Package config holds canopy's typed configuration model.
+// Package config holds bzlhub's typed configuration model.
 //
 // Profile is the load-bearing knob. It selects which keys are valid,
-// which backends are allowed, and which egress posture canopy adopts.
+// which backends are allowed, and which egress posture bzlhub adopts.
 // See docs/plans/21-emu-and-explicit-egress.md for the full design and
 // docs/plans/22-next-steps-sequencing.md for why this scaffolds first.
 package config
@@ -16,7 +16,7 @@ type Profile int
 const (
 	// ProfileDefault is the laptop / single-binary / OSS self-host
 	// posture. Egress permitted; no mirror required. The behaviour
-	// canopy has shipped since Phase 0.
+	// bzlhub has shipped since Phase 0.
 	ProfileDefault Profile = iota
 
 	// ProfileMirrorOnly is the corp-net posture. Egress is hard-denied;

@@ -23,7 +23,7 @@ func TestNew_KnownKinds(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.kind, func(t *testing.T) {
-			f, err := New(tc.kind, bigorna.Repo{Owner: "o", Name: "r"}, tc.baseURL, "t0k3n", "canopy/test")
+			f, err := New(tc.kind, bigorna.Repo{Owner: "o", Name: "r"}, tc.baseURL, "t0k3n", "bzlhub/test")
 			if err != nil {
 				t.Fatalf("New(%q): %v", tc.kind, err)
 			}

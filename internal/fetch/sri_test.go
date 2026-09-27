@@ -10,7 +10,7 @@ import (
 )
 
 func TestVerifyingReaderRoundtrip(t *testing.T) {
-	data := []byte("hello canopy")
+	data := []byte("hello bzlhub")
 	sum := sha256.Sum256(data)
 	sri := "sha256-" + base64.StdEncoding.EncodeToString(sum[:])
 
@@ -28,7 +28,7 @@ func TestVerifyingReaderRoundtrip(t *testing.T) {
 }
 
 func TestVerifyingReaderMismatch(t *testing.T) {
-	vr := NewVerifyingReader(bytes.NewReader([]byte("hello canopy")), "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+	vr := NewVerifyingReader(bytes.NewReader([]byte("hello bzlhub")), "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
 	if _, err := io.ReadAll(vr); err != nil {
 		t.Fatalf("read: %v", err)
 	}

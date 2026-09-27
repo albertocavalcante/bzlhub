@@ -9,12 +9,12 @@ import (
 //
 // Drives the /status page (plan-65 v2 §Part 3) and any external
 // monitoring that wants a single-shot, low-cardinality view of the
-// instance. Every field is composed from state canopy already
-// tracks — no invented metrics. Fields canopy cannot honestly
+// instance. Every field is composed from state bzlhub already
+// tracks — no invented metrics. Fields bzlhub cannot honestly
 // compute today are omitted on the wire via omitempty rather than
 // emitted as 0 / false / null with theatrical confidence.
 //
-// Stability: the canopy binary version (Version) IS the schema
+// Stability: the bzlhub binary version (Version) IS the schema
 // version. Additions are backward-compatible; renames or removals
 // go through a one-minor-release deprecation cycle where both names
 // are honoured with a log warning.
@@ -33,7 +33,7 @@ type SystemStatus struct {
 	// instant-state pill and the `bzlhub status` CLI verdict. The
 	// SOURCE fields above are the inputs; Computed is the
 	// canonical conclusion. Populating happens in
-	// internal/canopy/health.Derive — see plan-65 §State rules.
+	// internal/bzlhub/health.Derive — see plan-65 §State rules.
 	Computed ComputedStatus `json:"computed"`
 }
 
@@ -76,9 +76,9 @@ type Signal struct {
 	Detail string `json:"detail"`
 }
 
-// MirrorHeader is an optional interface canopy implementations may
+// MirrorHeader is an optional interface bzlhub implementations may
 // satisfy to surface their Mirror's HEAD + LastSync on
-// /api/v1/system/status. Decoupled from api.Canopy so mock
+// /api/v1/system/status. Decoupled from api.Bzlhub so mock
 // implementations and File-backed deployments don't need to wire
 // anything Mirror-shaped.
 type MirrorHeader interface {
@@ -102,7 +102,7 @@ type MirrorStatus struct {
 
 	// LastSyncAt is the RFC3339 timestamp of the Mirror's last
 	// upstream contact, distinct from LastIngestAt (which is
-	// per-module ingest into canopy's index, not the upstream
+	// per-module ingest into bzlhub's index, not the upstream
 	// pull).
 	LastSyncAt string `json:"last_sync_at,omitempty"`
 }

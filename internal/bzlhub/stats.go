@@ -6,7 +6,7 @@ import (
 	"github.com/albertocavalcante/assay/report"
 )
 
-// CorpusStats is the aggregate "how big is this canopy" view that
+// CorpusStats is the aggregate "how big is this bzlhub" view that
 // drives the home dashboard counters. JSON-serializable.
 type CorpusStats struct {
 	Modules           int `json:"modules"`
@@ -19,7 +19,7 @@ type CorpusStats struct {
 // public-API symbol counts (rules + providers + macros + aspects +
 // repo_rules + module_extensions + toolchains).
 //
-// O(modules) report loads per call; ~5ms per load at canopy's
+// O(modules) report loads per call; ~5ms per load at bzlhub's
 // current scale. At thousands of modules this becomes a measurable
 // cost; promote to a denormalized column on the versions table at
 // that point.
@@ -61,7 +61,7 @@ func (s *Service) ComputeCorpusStats(ctx context.Context) (*CorpusStats, error) 
 }
 
 // countPublicSymbols totals the public-API symbols across all of
-// the kinds canopy renders in its documentation surface. Mirrors
+// the kinds bzlhub renders in its documentation surface. Mirrors
 // the symbol-count semantics that registry frontends advertise on
 // home dashboards.
 func countPublicSymbols(rep *report.ModuleReport) int {

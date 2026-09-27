@@ -10,7 +10,7 @@ import (
 )
 
 // Producer rulesets need their extension-bearing .bzl source available
-// at query time so canopy can re-drive the extension impl with real
+// at query time so bzlhub can re-drive the extension impl with real
 // (corpus-derived) ModuleSpec tag values. Storing just the impl-bearing
 // files (NOT the whole tarball) keeps the SQLite footprint bounded —
 // rules_go-class producers ship ~3-5 such files, each typically <10KB.

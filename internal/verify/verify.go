@@ -1,5 +1,5 @@
 // Package verify performs integrity + consistency checks over a local
-// canopy mirror.
+// bzlhub mirror.
 //
 // While `bzlhub drift` answers "is my mirror in sync with upstream?",
 // `bzlhub verify` answers "is my mirror's own state self-consistent?".

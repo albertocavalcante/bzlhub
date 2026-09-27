@@ -31,8 +31,8 @@ func newVerifyCmd() *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "verify",
-		Short: "Integrity + consistency checks over a local canopy mirror",
-		Long: `verify runs five integrity + consistency checks against a local canopy
+		Short: "Integrity + consistency checks over a local bzlhub mirror",
+		Long: `verify runs five integrity + consistency checks against a local bzlhub
 mirror, in one pass:
 
   1. blob_integrity         — tarball SHA256 matches source.json SRI

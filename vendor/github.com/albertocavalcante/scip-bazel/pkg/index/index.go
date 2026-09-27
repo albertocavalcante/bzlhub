@@ -16,9 +16,10 @@ package scipbazel
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
+	"github.com/albertocavalcante/scip-kit/symbol"
+	"github.com/albertocavalcante/scip-kit/toolinfo"
 	scipstarlark "github.com/albertocavalcante/scip-starlark/pkg/index"
 	scip "github.com/scip-code/scip/bindings/go/scip"
 	"go.starlark.net/syntax"
@@ -29,11 +30,9 @@ import (
 // indexer name can still inspect scipstarlark.IndexerName.
 const IndexerName = "scip-bazel"
 
-// IndexerVersion is the tool version written into SCIP metadata.
-// Bumped on every release; downstream consumers can read this off
-// produced indexes to feature-flag against scip-bazel behaviors.
-// Keep in lockstep with the git tag at release time.
-const IndexerVersion = "0.2.0"
+// IndexerVersion is the module version embedded in the running binary.
+// Local builds report "dev" rather than claiming a tagged release.
+var IndexerVersion = toolinfo.ModuleVersion("github.com/albertocavalcante/scip-bazel")
 
 // LoadTarget mirrors scip-starlark's LoadTarget. Re-exported so
 // consumers that integrate with scip-bazel don't need to import
@@ -53,12 +52,23 @@ type Options struct {
 	// through without changing their API later.
 	CrossModuleResolver func(target LoadTarget) string
 
-	// SymbolPrefix is forwarded to scip-starlark. Consumers that pin
-	// symbols to a (module, version) coordinate (e.g. canopy) supply
-	// this; the default is empty (scip-starlark falls back to the
-	// "starlark" prefix).
-	SymbolPrefix string
+	// Package identifies the module being indexed and is forwarded to
+	// scip-starlark, where it lands in the symbol's manager/name/version
+	// fields. Consumers that pin symbols to a (module, version) coordinate
+	// supply it; the zero value encodes as "." in each field, which is the
+	// grammar's placeholder for "unknown".
+	//
+	// This replaced a SymbolPrefix string. One string cannot express the
+	// three fields the SCIP grammar requires, which is why the symbols this
+	// package used to emit were rejected by the reference parser.
+	Package symbol.Package
 }
+
+// BzlmodManager is the package-manager value for a module resolved through
+// bzlmod. It belongs in the manager field, not the scheme: the scheme names
+// the language, and using "bzlmod" as a scheme meant a resolved reference and
+// a plain definition of the same entity could never compare equal.
+const BzlmodManager = "bzlmod"
 
 // Index runs scip-starlark with the Bazel dialect preset and then
 // annotates top-level symbols with Bazel-specific descriptors (rule,
@@ -79,7 +89,10 @@ func Index(rootDir string, opts Options) (*scip.Index, error) {
 		FileMatcher:         opts.FileMatcher,
 		Dialect:             "bazel",
 		CrossModuleResolver: opts.CrossModuleResolver,
-		SymbolPrefix:        opts.SymbolPrefix,
+		Package:             opts.Package,
+		DocumentHook: func(_ string, file *syntax.File, doc *scip.Document) {
+			annotateDocument(file, doc)
+		},
 	}
 
 	idx, err := scipstarlark.Index(absRoot, starlarkOpts)
@@ -95,31 +108,13 @@ func Index(rootDir string, opts Options) (*scip.Index, error) {
 		}
 	}
 
-	for _, doc := range idx.Documents {
-		annotateDocument(absRoot, doc)
-	}
 	return idx, nil
 }
 
-// annotateDocument re-parses the source file referenced by doc and
-// applies Bazel annotations to each SymbolInformation whose top-level
-// definition matches a known Bazel concept. Unparseable files leave
-// the document's symbols untouched.
-func annotateDocument(absRoot string, doc *scip.Document) {
+// annotateDocument applies Bazel annotations using the Starlark AST that
+// produced doc. Unparseable files never reach this hook.
+func annotateDocument(file *syntax.File, doc *scip.Document) {
 	if doc == nil || len(doc.Symbols) == 0 {
-		return
-	}
-	absPath := filepath.Join(absRoot, filepath.FromSlash(doc.RelativePath))
-	data, err := os.ReadFile(absPath)
-	if err != nil {
-		return
-	}
-	// Use FileOptions.Parse (the post-1.0 go.starlark.net API) rather
-	// than the deprecated package-level syntax.Parse. Default options
-	// are good for Bazel-flavored Starlark — we just want the AST.
-	var opts syntax.FileOptions
-	file, err := opts.Parse(absPath, data, 0)
-	if err != nil {
 		return
 	}
 	concepts := collectConcepts(file)
@@ -166,7 +161,7 @@ func collectConcepts(file *syntax.File) map[string]bazelConcept {
 			// implementations, internal utilities). Bazel macros are
 			// conventionally exported, so we don't annotate the
 			// private ones to keep counts and UI hints accurate.
-			if len(name) > 0 && name[0] == '_' {
+			if name != "" && name[0] == '_' {
 				continue
 			}
 			out[name] = conceptMacro
@@ -270,7 +265,28 @@ func applyConcept(sym *scip.SymbolInformation, c bazelConcept) {
 //
 // The Documentation field always carries the exact Bazel concept name
 // so consumers can route on it precisely when Kind isn't fine enough.
-func conceptMetadata(c bazelConcept) (scip.SymbolInformation_Kind, string) {
+// conceptMetadata maps a Bazel concept to its SCIP kind and documentation.
+//
+// Five concepts share Function and only a provider differs. That is deliberate
+// and the reasoning is in docs/symbol-kinds.md; the short version:
+//
+//   - The specific kinds in SCIP's enum are LANGUAGE-SCOPED. Extension is
+//     documented "For Dart", Contract "For Solidity", Axiom "For Lean".
+//     module_extension looks like an exact match for Extension and is not one --
+//     borrowing it would claim Dart semantics on a word coincidence. Only the
+//     universal kinds are available to us.
+//   - Among those, rule/aspect/repository_rule/module_extension/macro are all
+//     callable Starlark values, and Function describes that accurately. Class
+//     implies instantiation yielding a value; a rule invocation declares a
+//     target and returns nothing.
+//   - The precise concept is not lost: it is in the documentation string, which
+//     is distinct for every one of them.
+//
+// This is also the only layer allowed to know what rule(...) means.
+// scip-starlark assigns kinds from Starlark syntax alone -- `x = rule(...)` is
+// an assignment, so it says Variable -- and must stay that way, or Buck2,
+// Copybara and Tilt lose their dialect-agnostic base.
+func conceptMetadata(c bazelConcept) (kind scip.SymbolInformation_Kind, doc string) {
 	switch c {
 	case conceptRule:
 		return scip.SymbolInformation_Function, "Bazel rule defined via `rule(...)`"

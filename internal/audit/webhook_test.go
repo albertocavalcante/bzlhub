@@ -87,10 +87,10 @@ func TestWebhook_DeliversNewEvents(t *testing.T) {
 	// Record three events while daemon is running.
 	for i := range 3 {
 		_ = s.RecordAudit(ctx, store.AuditEvent{
-			Kind:   "test_event",
-			Source: "test",
-			OK:     true,
-			Module: "rules_x",
+			Kind:    "test_event",
+			Source:  "test",
+			OK:      true,
+			Module:  "rules_x",
 			Version: string(rune('0' + i)),
 		})
 	}

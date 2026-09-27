@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	bundle "github.com/albertocavalcante/go-bcr-bundle"
 	"github.com/albertocavalcante/bzlhub/internal/backend"
+	bundle "github.com/albertocavalcante/go-bcr-bundle"
 )
 
 // bundleFixture builds a small BCR-shape tree under t.TempDir(),
@@ -51,14 +51,14 @@ func newBundleFixture(t *testing.T) *bundleFixture {
 	}
 
 	// Write a bundle into a temp file (Open consumes the whole
-	// reader anyway, but a real file is closer to canopy's flow).
+	// reader anyway, but a real file is closer to bzlhub's flow).
 	bundlePath := filepath.Join(t.TempDir(), "bundle.tar.gz")
 	f, err := os.Create(bundlePath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := bundle.WriteBundle(context.Background(), f, src, bundle.WriteOptions{
-		CreatedBy: "canopy bundle adapter test",
+		CreatedBy: "bzlhub bundle adapter test",
 	}); err != nil {
 		_ = f.Close()
 		t.Fatalf("WriteBundle: %v", err)

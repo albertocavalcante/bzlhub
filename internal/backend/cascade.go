@@ -64,9 +64,9 @@ const collisionCoalesceWindow = 5 * time.Minute
 // importing store (which would close a cycle). The cmd-side wiring
 // just passes these strings through to LogModuleSource.
 const (
-	CollisionKindLocal     = "local"
-	CollisionKindUpstream  = "http-upstream"
-	CollisionKindShadowed  = "collision-shadowed"
+	CollisionKindLocal    = "local"
+	CollisionKindUpstream = "http-upstream"
+	CollisionKindShadowed = "collision-shadowed"
 )
 
 // Upstream is one federation upstream. Reachability is updated lazily —
@@ -183,7 +183,7 @@ func NewCascade(cfg CascadeConfig) (*Cascade, error) {
 		// audits; default permits). Profile binding happens at
 		// bzlhub serve startup; here we accept whatever policy is in
 		// effect, with a permissive zero-value if none is bound.
-		c.http = egress.NewHTTPClient(egress.Policy{})
+		c.http = egress.DefaultHTTPClient()
 		c.http.Timeout = 30 * time.Second
 	}
 	if c.logger == nil {

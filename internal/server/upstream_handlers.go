@@ -8,10 +8,10 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/backend"
 )
 
-// collisionReader is the slice of the Canopy contract that the
+// collisionReader is the slice of the Bzlhub contract that the
 // upstreams endpoint uses to surface Plan 16 Layer D state. Defined
-// here (not on api.Canopy) because the federation collision audit
-// is only meaningful when canopy is running with --root + a store;
+// here (not on api.Bzlhub) because the federation collision audit
+// is only meaningful when bzlhub is running with --root + a store;
 // requiring it on the base interface would force every mock to
 // implement an audit path that doesn't apply.
 type collisionReader interface {
@@ -22,7 +22,7 @@ type collisionReader interface {
 // apiGetUpstreams reports the federation backend's current state:
 // primary kind + per-upstream reachability snapshot (Plan 16 F3).
 //
-// When canopy serves a non-federated config (no --upstream flag /
+// When bzlhub serves a non-federated config (no --upstream flag /
 // BZLHUB_UPSTREAMS env), Upstreams is the empty array; clients can
 // treat that as "federation disabled."
 //
@@ -64,7 +64,7 @@ func (h *handler) apiGetUpstreams(w http.ResponseWriter, r *http.Request) {
 	// Plan 16 Layer D: collisions_count + collisions_sample. Read
 	// from the store when one is wired; otherwise zero+empty. The
 	// store interface lookup is via type assertion against the
-	// Canopy svc - keeps the api package out of store imports.
+	// Bzlhub svc - keeps the api package out of store imports.
 	if cl, ok := h.c.(collisionReader); ok {
 		ctx := r.Context()
 		count, err := cl.CollisionsCount(ctx)

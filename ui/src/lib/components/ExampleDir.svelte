@@ -15,14 +15,14 @@
   import { base } from '$app/paths';
   import { codeNavFileHref } from '$lib/links';
 
-  // Shiki is heavy (~500KB) but already bundled for other bzlhub
-  // surfaces. Lazy-import here so the homepage bundle stays untouched
-  // — readers who never open an example pay nothing.
+  // The selected-language Shiki core stays in a lazy chunk so readers
+  // who never open an example pay nothing. Do not import the full
+  // `shiki` bundle here: it emits every grammar into the build.
   type Highlighter = (code: string, opts: { lang: string; theme: string }) => Promise<string>;
   let codeToHtml: Highlighter | null = null;
   async function highlight(code: string, lang: string): Promise<string> {
     if (!codeToHtml) {
-      const m = await import('shiki');
+      const m = await import('$lib/highlight');
       codeToHtml = m.codeToHtml as Highlighter;
     }
     try {
@@ -48,12 +48,12 @@
     const lower = p.toLowerCase();
     const base = lower.substring(lower.lastIndexOf('/') + 1);
     if (base === 'build' || base === 'build.bazel' || base === 'module.bazel' ||
-        base === 'workspace' || base === 'workspace.bazel') return 'starlark';
+        base === 'workspace' || base === 'workspace.bazel') return 'python';
     const dot = lower.lastIndexOf('.');
     if (dot < 0) return 'text';
     const ext = lower.substring(dot + 1);
     const map: Record<string, string> = {
-      bzl: 'starlark',
+      bzl: 'python',
       py: 'python',
       sh: 'bash',
       md: 'markdown',

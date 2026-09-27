@@ -1,5 +1,5 @@
 // Package runtime hosts long-running orchestration primitives shared
-// across canopy's serve loop. Today: Reloader drives SIGHUP-triggered
+// across bzlhub's serve loop. Today: Reloader drives SIGHUP-triggered
 // configuration reloads (bearer identity, policy). Future: anything
 // that fits the "spawn one goroutine in serve.go, runs forever, ctx
 // cancellation stops it" shape.
@@ -96,7 +96,7 @@ func (r *Reloader) runOnce(ctx context.Context) {
 // timing).
 //
 // The signal subscription is released when ctx cancels. SIGHUP is
-// not portable to Windows; canopy's serve loop is Linux/macOS-only
+// not portable to Windows; bzlhub's serve loop is Linux/macOS-only
 // per existing convention.
 func SIGHUPTrigger(ctx context.Context) <-chan struct{} {
 	out := make(chan struct{}, 1)

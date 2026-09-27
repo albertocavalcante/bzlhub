@@ -31,7 +31,7 @@ const (
 	// RequestStateApproved — a reviewer with policy.approve_request
 	// said yes.
 	RequestStateApproved RequestState = "approved"
-	// RequestStateFetching — canopy is fetching the source archive.
+	// RequestStateFetching — bzlhub is fetching the source archive.
 	RequestStateFetching RequestState = "fetching"
 	// RequestStateIndexed — terminal success; module + version is
 	// in the registry mirror.
@@ -98,22 +98,22 @@ func (s RequestState) IsTerminal() bool {
 // stepped through states by the preflight runner + reviewer
 // actions via TransitionRequest.
 type Request struct {
-	ID              int64           `json:"id"`
-	SubmitterSub    string          `json:"submitter_sub"`
-	SubmitterEmail  string          `json:"submitter_email,omitempty"`
-	AuthMethod      string          `json:"auth_method"`
-	Module          string          `json:"module"`
-	Version         string          `json:"version"`
-	SourceURL       string          `json:"source_url,omitempty"`
-	SubmitterNotes  string          `json:"submitter_notes,omitempty"`
-	State           RequestState    `json:"state"`
-	StateChangedAt  time.Time       `json:"state_changed_at"`
-	CreatedAt       time.Time       `json:"created_at"`
-	PreflightJSON   json.RawMessage `json:"preflight_json,omitempty"`
-	DenialReason    string          `json:"denial_reason,omitempty"`
-	FetchedSHA      string          `json:"fetched_sha,omitempty"`
-	CommittedSHA    string          `json:"committed_sha,omitempty"`
-	RetryCount      int             `json:"retry_count"`
+	ID             int64           `json:"id"`
+	SubmitterSub   string          `json:"submitter_sub"`
+	SubmitterEmail string          `json:"submitter_email,omitempty"`
+	AuthMethod     string          `json:"auth_method"`
+	Module         string          `json:"module"`
+	Version        string          `json:"version"`
+	SourceURL      string          `json:"source_url,omitempty"`
+	SubmitterNotes string          `json:"submitter_notes,omitempty"`
+	State          RequestState    `json:"state"`
+	StateChangedAt time.Time       `json:"state_changed_at"`
+	CreatedAt      time.Time       `json:"created_at"`
+	PreflightJSON  json.RawMessage `json:"preflight_json,omitempty"`
+	DenialReason   string          `json:"denial_reason,omitempty"`
+	FetchedSHA     string          `json:"fetched_sha,omitempty"`
+	CommittedSHA   string          `json:"committed_sha,omitempty"`
+	RetryCount     int             `json:"retry_count"`
 }
 
 // RequestQuery filters a ListRequests call. Zero values disable
@@ -405,7 +405,7 @@ func (s *Store) CountOpenRequestsForUser(ctx context.Context, submitterSub strin
 // admit loop picks them up on its next poll cycle.
 //
 // Recovery path for the crash-mid-retry edge documented in Plan 76 §2.3:
-// if canopy dies while a request is mid-fetch (mid-backoff or mid-attempt),
+// if bzlhub dies while a request is mid-fetch (mid-backoff or mid-attempt),
 // the row sits in fetching forever — workerLoop only picks up auto_pass +
 // approved. Calling this at boot reclaims those rows.
 //

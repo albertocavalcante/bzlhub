@@ -41,9 +41,9 @@ func makeTarGz(t *testing.T, files map[string]string) []byte {
 
 func TestExtractStripsPrefix(t *testing.T) {
 	archive := makeTarGz(t, map[string]string{
-		"foo-1.0.0/MODULE.bazel":     "module(name=\"foo\")\n",
-		"foo-1.0.0/BUILD.bazel":      "\n",
-		"foo-1.0.0/lib/defs.bzl":     "x = 1\n",
+		"foo-1.0.0/MODULE.bazel": "module(name=\"foo\")\n",
+		"foo-1.0.0/BUILD.bazel":  "\n",
+		"foo-1.0.0/lib/defs.bzl": "x = 1\n",
 	})
 	dest := t.TempDir()
 	if _, err := ExtractTarGz(bytes.NewReader(archive), dest, "foo-1.0.0", 0); err != nil {

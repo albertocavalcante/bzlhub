@@ -36,7 +36,7 @@ func TestComposers_ShapeMatchesPlan13(t *testing.T) {
 }
 
 func TestComposers_URLEscape(t *testing.T) {
-	// Module/version inputs come from URL params today (canopy
+	// Module/version inputs come from URL params today (bzlhub
 	// doesn't allow weird names in practice), but the composers must
 	// URL-escape so callers can't accidentally build malformed URLs
 	// or smuggle path segments via crafted inputs.

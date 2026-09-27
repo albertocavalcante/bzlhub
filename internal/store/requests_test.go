@@ -264,14 +264,14 @@ func TestRequestState_CanTransitionTo(t *testing.T) {
 	illegal := []struct {
 		from, to RequestState
 	}{
-		{RequestStatePending, RequestStateIndexed},   // skip everything
+		{RequestStatePending, RequestStateIndexed}, // skip everything
 		// pending → denied is now LEGAL (escape hatch) — removed from
 		// this list. See legalTransitions comment.
-		{RequestStatePending, RequestStateApproved},  // skip preflight
-		{RequestStateIndexed, RequestStatePending},   // terminal
-		{RequestStateDenied, RequestStatePending},    // terminal
-		{RequestStateApproved, RequestStateIndexed},  // skip fetching
-		{RequestStateAutoPass, RequestStatePending},  // backwards
+		{RequestStatePending, RequestStateApproved}, // skip preflight
+		{RequestStateIndexed, RequestStatePending},  // terminal
+		{RequestStateDenied, RequestStatePending},   // terminal
+		{RequestStateApproved, RequestStateIndexed}, // skip fetching
+		{RequestStateAutoPass, RequestStatePending}, // backwards
 	}
 	for _, c := range illegal {
 		if c.from.CanTransitionTo(c.to) {

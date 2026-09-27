@@ -1,5 +1,5 @@
 // Package mirror writes BCR-shape module entries to a local destination tree,
-// turning canopy into a self-contained Bazel-module mirror as a side effect
+// turning bzlhub into a self-contained Bazel-module mirror as a side effect
 // of ingestion.
 //
 // Wire shape produced:
@@ -41,7 +41,7 @@ type Writer struct {
 	// Concurrent ingest of different versions of the same module would
 	// otherwise race on the merge step (read → modify → atomic-rename can
 	// silently drop a sibling's version when both run interleaved).
-	metaMu sync.Mutex
+	metaMu    sync.Mutex
 	metaLocks map[string]*sync.Mutex
 }
 
@@ -155,7 +155,7 @@ func (b *BlobSink) Write(p []byte) (int, error) {
 // content-addressed dedup.
 func (b *BlobSink) Close() (path, integrity string, n int64, err error) {
 	// Sync before rename so the bytes are durable on disk before any
-	// other process (or canopy itself) starts serving the content-
+	// other process (or bzlhub itself) starts serving the content-
 	// addressed path. Without this, a power loss between rename and
 	// the next checkpoint can leave a zero-byte blob exposed.
 	if err = b.tmp.Sync(); err != nil {
@@ -213,7 +213,7 @@ func (w *Writer) MergeMetadata(name, version string) error {
 // rather know about the addition and decide whether to surface it.
 //
 // "versions" is intentionally NOT in this set: the local mirror is
-// authoritative on what we've bumped, and the canopy registry serves
+// authoritative on what we've bumped, and the bzlhub registry serves
 // only those versions over its BCR endpoints.
 var upstreamMetadataLiftedFields = []string{
 	"homepage",
@@ -254,7 +254,7 @@ func (w *Writer) MergeMetadataWithUpstream(name, version string, upstreamBytes [
 
 	// Lift selected fields from the upstream metadata.json — done
 	// BEFORE the local versions merge so the local versions field
-	// (canopy-authoritative) always wins, even if upstream included
+	// (bzlhub-authoritative) always wins, even if upstream included
 	// its own.
 	if len(upstreamBytes) > 0 {
 		var upstream map[string]json.RawMessage
@@ -331,4 +331,3 @@ func atomicWrite(target string, data []byte) error {
 	cleanup = false
 	return nil
 }
-

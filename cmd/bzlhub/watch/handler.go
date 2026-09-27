@@ -14,7 +14,7 @@ import (
 )
 
 // buildSyncHandler assembles the OnCommit handler. When cfg.dbPath is
-// set the handler re-ingests changed modules into the canopy index;
+// set the handler re-ingests changed modules into the bzlhub index;
 // otherwise it stays sync-only. The returned cleanup closes the db (or
 // no-ops if none was opened).
 func buildSyncHandler(ctx context.Context, cfg watchConfig, logger *slog.Logger) (*syncHandler, func(), error) {
@@ -33,7 +33,7 @@ func buildSyncHandler(ctx context.Context, cfg watchConfig, logger *slog.Logger)
 	if err != nil {
 		return nil, noop, fmt.Errorf("bzlhub watch: open db %s: %w", cfg.dbPath, err)
 	}
-	h.canopyStore = s
+	h.indexStore = s
 	logger.Info("re-ingest enabled", "db", cfg.dbPath)
 	return h, func() { _ = s.Close() }, nil
 }
@@ -43,7 +43,7 @@ func buildSyncHandler(ctx context.Context, cfg watchConfig, logger *slog.Logger)
 //  2. Runs `git fetch <remote> <branch>` + `git reset --hard <remote>/<branch>`.
 //  3. Computes the changed `modules/<name>/<version>/` paths via
 //     `git diff --name-only <old>..<new> -- modules/`.
-//  4. If canopyStore is set, calls ingest.FromMirroredVersion for
+//  4. If indexStore is set, calls ingest.FromMirroredVersion for
 //     each changed (module, version) pair. Per-module failures are
 //     logged but don't abort the rest of the batch.
 //
@@ -52,11 +52,11 @@ func buildSyncHandler(ctx context.Context, cfg watchConfig, logger *slog.Logger)
 // (module, version) pairs replay on the next poll. FromMirroredVersion
 // is idempotent (WriteReport replaces).
 type syncHandler struct {
-	worktree    string
-	remote      string
-	branch      string
-	logger      *slog.Logger
-	canopyStore *store.Store // nil → sync-only mode, no re-ingest
+	worktree   string
+	remote     string
+	branch     string
+	logger     *slog.Logger
+	indexStore *store.Store // nil → sync-only mode, no re-ingest
 }
 
 func (h *syncHandler) handle(ctx context.Context, commits []bigorna.Commit) error {
@@ -103,7 +103,7 @@ func (h *syncHandler) handle(ctx context.Context, commits []bigorna.Commit) erro
 		return nil
 	}
 
-	if h.canopyStore == nil {
+	if h.indexStore == nil {
 		// Sync-only mode — log the diff but skip re-ingest.
 		for _, mv := range changed {
 			h.logger.Info("module changed (sync-only mode; no re-ingest)",
@@ -121,7 +121,7 @@ func (h *syncHandler) handle(ctx context.Context, commits []bigorna.Commit) erro
 	// the operator's signal to investigate, not a retry trigger.
 	var failed int
 	for _, mv := range changed {
-		if _, err := ingest.FromMirroredVersion(ctx, h.canopyStore, h.worktree, mv.module, mv.version); err != nil {
+		if _, err := ingest.FromMirroredVersion(ctx, h.indexStore, h.worktree, mv.module, mv.version); err != nil {
 			h.logger.Warn("re-ingest failed",
 				"module", mv.module, "version", mv.version, "err", err)
 			failed++

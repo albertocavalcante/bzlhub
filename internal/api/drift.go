@@ -43,7 +43,7 @@ const (
 //
 // Persisted as JSON in versions.drift_summary_json. The struct's
 // zero value (Status=DriftStatusUnknown) matches the column's '{}'
-// default; rows that predate the column or canopies without a
+// default; rows that predate the column or Bzlhub instances without a
 // configured drift source decode to this shape automatically.
 //
 // Plan 22 decision #3: kept as a struct from day one so Plan 21's

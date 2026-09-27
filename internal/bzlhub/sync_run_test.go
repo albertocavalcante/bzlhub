@@ -287,7 +287,7 @@ func TestSyncRun_NotFastForwardSucceedsWithForce(t *testing.T) {
 // TestSyncRun_SkipRefreshHonored asserts SyncRunOptions.SkipRefresh
 // prevents the post-Sync drift recompute even on the advance path.
 // Used by operators who want to inspect upstream changes before
-// canopy rewrites drift verdicts in their index.
+// bzlhub rewrites drift verdicts in their index.
 func TestSyncRun_SkipRefreshHonored(t *testing.T) {
 	ctx := t.Context()
 	svc := newTestService(t)

@@ -36,7 +36,9 @@ func (f *fakeBlobReader) GetScipBlob(_ context.Context, module, version string) 
 
 type errFakeNotFound struct{ module, version string }
 
-func (e errFakeNotFound) Error() string { return "scip blob " + e.module + "@" + e.version + " not found" }
+func (e errFakeNotFound) Error() string {
+	return "scip blob " + e.module + "@" + e.version + " not found"
+}
 
 // buildTinySCIP marshals a one-document SCIP index — enough for
 // understory.OpenBytes to succeed and Index.Files() to return at
@@ -48,9 +50,9 @@ func buildTinySCIP(t *testing.T) []byte {
 		Documents: []*scip.Document{{
 			RelativePath: "MODULE.bazel",
 			Occurrences: []*scip.Occurrence{{
-				Symbol:       "test sym",
-				Range:        []int32{0, 0, 0, 1},
-				SymbolRoles:  int32(scip.SymbolRole_Definition),
+				Symbol:      "test sym",
+				Range:       []int32{0, 0, 0, 1},
+				SymbolRoles: int32(scip.SymbolRole_Definition),
 			}},
 		}},
 	}

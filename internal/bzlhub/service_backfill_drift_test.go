@@ -12,7 +12,7 @@ import (
 
 // TestBackfillDriftSummary_EmptyStoreReturnsZero asserts the no-op
 // seam on an empty index. The function must not error on a fresh
-// canopy boot; that would break startup for every new deployment.
+// bzlhub boot; that would break startup for every new deployment.
 func TestBackfillDriftSummary_EmptyStoreReturnsZero(t *testing.T) {
 	ctx := context.Background()
 	svc := newTestService(t)

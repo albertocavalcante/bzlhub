@@ -141,7 +141,7 @@ func TestVersionComparator(t *testing.T) {
 		{"1.7.1", "1.7.1", 0},
 		{"2.0.0", "1.99.99", 1},
 		{"0.0.10", "0.0.9", 1},   // numeric, not string!
-		{"1.0.0", "1.0.0.1", -1}, // canopy variant convention
+		{"1.0.0", "1.0.0.1", -1}, // bzlhub variant convention
 		{"", "1.0.0", -1},
 	}
 	for _, c := range cases {

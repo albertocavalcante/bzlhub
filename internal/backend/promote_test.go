@@ -15,10 +15,10 @@ import (
 // must return ok=false because Bump operates on a specific version.
 func TestExtractModuleVersion(t *testing.T) {
 	cases := []struct {
-		path           string
-		wantModule     string
-		wantVersion    string
-		wantOk         bool
+		path        string
+		wantModule  string
+		wantVersion string
+		wantOk      bool
 	}{
 		{"modules/rules_go/0.50.0/source.json", "rules_go", "0.50.0", true},
 		{"modules/rules_go/0.50.0/MODULE.bazel", "rules_go", "0.50.0", true},

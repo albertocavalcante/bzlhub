@@ -292,11 +292,11 @@ func (c *Client) ListOpenPRs(ctx context.Context, repo bigorna.Repo, marker stri
 		path := c.repoBasePath() + "/issues?" + q.Encode()
 
 		var raw []struct {
-			Number      int    `json:"number"`
-			HTMLURL     string `json:"html_url"`
-			State       string `json:"state"`
-			CreatedAt   time.Time `json:"created_at"`
-			User        struct {
+			Number    int       `json:"number"`
+			HTMLURL   string    `json:"html_url"`
+			State     string    `json:"state"`
+			CreatedAt time.Time `json:"created_at"`
+			User      struct {
 				Login string `json:"login"`
 			} `json:"user"`
 			Labels []struct {
@@ -372,4 +372,3 @@ func stateFromREST(state string, merged bool) bigorna.PRState {
 		return bigorna.PRStateOpen
 	}
 }
-

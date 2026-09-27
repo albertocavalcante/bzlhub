@@ -56,8 +56,8 @@ func hasChipHref(chips []docview.Chip, href string) bool {
 	return false
 }
 
-func TestCanopyLinkResolver(t *testing.T) {
-	resolver := canopyLinkResolver{}
+func TestBzlhubLinkResolver(t *testing.T) {
+	resolver := bzlhubLinkResolver{}
 	if got, want := resolver.ModuleHref("bazel_skylib"), "/modules/bazel_skylib"; got != want {
 		t.Fatalf("ModuleHref = %q, want %q", got, want)
 	}

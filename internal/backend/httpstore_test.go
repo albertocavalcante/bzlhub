@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	httpstore "github.com/albertocavalcante/go-bcr-httpstore"
 	"github.com/albertocavalcante/bzlhub/internal/backend"
+	httpstore "github.com/albertocavalcante/go-bcr-httpstore"
 )
 
 // httpFixture spins up a httptest.Server serving a small BCR-shape
@@ -173,7 +173,7 @@ func TestHTTPStore_GetBlob_Streams(t *testing.T) {
 
 func TestHTTPStore_404MapsToErrNotFound(t *testing.T) {
 	// Empty fixture — every read 404s. Each Backend method must
-	// translate its specific httpstore sentinel to the canopy-
+	// translate its specific httpstore sentinel to the bzlhub-
 	// internal ErrNotFound so handlers render uniform 404s.
 	f := newHTTPFixture(t, map[string]string{})
 	ctx := context.Background()

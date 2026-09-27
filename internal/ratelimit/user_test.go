@@ -9,10 +9,10 @@ import (
 
 func TestParseRate(t *testing.T) {
 	cases := []struct {
-		in     string
-		count  int
-		per    time.Duration
-		errIs  error // nil for success
+		in    string
+		count int
+		per   time.Duration
+		errIs error // nil for success
 	}{
 		{"10/hour", 10, time.Hour, nil},
 		{"5/minute", 5, time.Minute, nil},

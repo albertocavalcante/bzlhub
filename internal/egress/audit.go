@@ -15,14 +15,14 @@ import (
 // that lets us add fields without bloating denial entries.
 type AuditEvent struct {
 	TS      time.Time `json:"ts"`
-	Kind    string    `json:"kind"`              // "egress" | "cdn-egress" | "cas-egress" (Plans 24, 26)
-	Verb    string    `json:"verb"`              // "http-get" | "http-put" | "grpc-read" | ...
-	Host    string    `json:"host"`              // hostname only; path goes in URL
-	URL     string    `json:"url,omitempty"`     // full URL when present
-	Actor   string    `json:"actor,omitempty"`   // canopy / sync-runner identity
-	Outcome string    `json:"outcome"`           // "ok" | "denied" | "error"
-	Reason  string    `json:"reason,omitempty"`  // policy-deny code, error class
-	Stack   string    `json:"stack,omitempty"`   // file:line of the caller (denials only)
+	Kind    string    `json:"kind"`             // "egress" | "cdn-egress" | "cas-egress" (Plans 24, 26)
+	Verb    string    `json:"verb"`             // "http-get" | "http-put" | "grpc-read" | ...
+	Host    string    `json:"host"`             // hostname only; path goes in URL
+	URL     string    `json:"url,omitempty"`    // full URL when present
+	Actor   string    `json:"actor,omitempty"`  // bzlhub / sync-runner identity
+	Outcome string    `json:"outcome"`          // "ok" | "denied" | "error"
+	Reason  string    `json:"reason,omitempty"` // policy-deny code, error class
+	Stack   string    `json:"stack,omitempty"`  // file:line of the caller (denials only)
 	BytesIn int64     `json:"bytes_in,omitempty"`
 
 	// Duration is rendered as integer milliseconds in JSON to keep

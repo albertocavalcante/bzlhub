@@ -1,6 +1,6 @@
 // Egress allowlist enforcement for fetch.Client.
 //
-// Goal: every outbound HTTP request canopy makes goes through the
+// Goal: every outbound HTTP request bzlhub makes goes through the
 // Client; the Client gates by destination host against an
 // operator-configured allowlist. Default = empty = no enforcement
 // (preserves existing behavior). Operator opts in via Client
@@ -23,7 +23,7 @@ import (
 // defaultAllowedHosts is the process-wide allowlist applied to every
 // fetch.Client created via NewClient. Set once at startup by
 // cmd/bzlhub/main.go from BZLHUB_ALLOWED_HOSTS; left empty in tests
-// and in personal-canopy where no enforcement is desired.
+// and in personal-bzlhub where no enforcement is desired.
 var (
 	defaultAllowedHostsMu sync.RWMutex
 	defaultAllowedHosts   []string

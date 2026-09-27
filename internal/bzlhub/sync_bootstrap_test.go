@@ -139,9 +139,9 @@ func TestSyncBootstrap_RefusesOnExistingCloneWithoutReinit(t *testing.T) {
 }
 
 // TestSyncBootstrap_ErrorWrapsLibrarySentinel asserts the
-// errors.Is chain: ErrAlreadyBootstrapped is canopy's wrapper
+// errors.Is chain: ErrAlreadyBootstrapped is bzlhub's wrapper
 // around bcrmirror.ErrAlreadyCloned. Callers using either sentinel
-// (canopy-level OR library-level) should match.
+// (bzlhub-level OR library-level) should match.
 func TestSyncBootstrap_ErrorWrapsLibrarySentinel(t *testing.T) {
 	ctx := t.Context()
 	svc := newTestService(t)
@@ -165,7 +165,7 @@ func TestSyncBootstrap_ErrorWrapsLibrarySentinel(t *testing.T) {
 		t.Errorf("errors.Is(err, ErrAlreadyBootstrapped) = false; want true")
 	}
 	if !errors.Is(err, bcrmirror.ErrAlreadyCloned) {
-		t.Errorf("errors.Is(err, bcrmirror.ErrAlreadyCloned) = false; want true (canopy sentinel must wrap library sentinel)")
+		t.Errorf("errors.Is(err, bcrmirror.ErrAlreadyCloned) = false; want true (bzlhub sentinel must wrap library sentinel)")
 	}
 }
 

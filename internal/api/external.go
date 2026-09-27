@@ -7,7 +7,7 @@ package api
 const DefaultPlatform = "any"
 
 // ExternalRef is one URL the module's .bzl files would fetch,
-// extracted by canopy's static analysis pipeline. JSON-shaped.
+// extracted by bzlhub's static analysis pipeline. JSON-shaped.
 type ExternalRef struct {
 	URL        string `json:"url"`
 	Host       string `json:"host"`
@@ -21,7 +21,7 @@ type ExternalRef struct {
 	Tainted    bool   `json:"tainted,omitempty"`
 	File       string `json:"file,omitempty"`
 
-	// Confidence is canopy's "how sure are we about this URL?" signal,
+	// Confidence is bzlhub's "how sure are we about this URL?" signal,
 	// derived from the static analysis state. Orthogonal to Mutability
 	// (which is about the URL's host); Confidence is about the
 	// analyzer's resolution path. Computed at API-response time from
@@ -65,7 +65,7 @@ type ExternalSurfaceResponse struct {
 	ForkErrors  []ExternalForkError `json:"fork_errors,omitempty"`
 	ClassCounts map[string]int      `json:"class_counts,omitempty"`
 	// CorpusUsages is populated when the module declares module_extensions
-	// AND canopy's indexed corpus contains consumer-side use_extension
+	// AND bzlhub's indexed corpus contains consumer-side use_extension
 	// calls for them. Each entry tells the operator "this extension is
 	// used by these N consumer modules with these tag values" — the
 	// data needed to drive the producer's extension impls with real
@@ -101,7 +101,7 @@ type ClosureSurfaceModule struct {
 	Version     string         `json:"version"`
 	RefCount    int            `json:"ref_count"`
 	ClassCounts map[string]int `json:"class_counts,omitempty"`
-	External    bool           `json:"external,omitempty"` // bazel_dep target not in canopy's index
+	External    bool           `json:"external,omitempty"` // bazel_dep target not in bzlhub's index
 }
 
 // DownloaderConfigOptions configures the downloader-config emitter.
@@ -146,7 +146,7 @@ type ModuleMirrorsOptions struct {
 	// Registry is the upstream registry to scope the mirror to. Empty
 	// emits an unscoped --module_mirrors line (Bazel >= 8.4 syntax);
 	// non-empty emits the per-registry form (Bazel >= 8.5). Defaults
-	// to https://bcr.bazel.build/ when empty in canopy's emitter.
+	// to https://bcr.bazel.build/ when empty in bzlhub's emitter.
 	Registry string
 }
 
@@ -169,11 +169,11 @@ type ModuleMirrors struct {
 // question: "every URL the entire dependency closure of <m>@<v> would
 // fetch."
 type ClosureSurfaceResponse struct {
-	Root            string                 `json:"root"`     // "<module>@<version>"
-	Modules         []ClosureSurfaceModule `json:"modules"`  // dep-closure walk, root first
-	Refs            []ExternalRef          `json:"refs"`     // unioned across closure, deduplicated
+	Root            string                 `json:"root"`    // "<module>@<version>"
+	Modules         []ClosureSurfaceModule `json:"modules"` // dep-closure walk, root first
+	Refs            []ExternalRef          `json:"refs"`    // unioned across closure, deduplicated
 	ForkErrors      []ExternalForkError    `json:"fork_errors,omitempty"`
 	ClassCounts     map[string]int         `json:"class_counts,omitempty"`
 	MaxDepthReached bool                   `json:"max_depth_reached,omitempty"`
-	MissingModules  []string               `json:"missing_modules,omitempty"` // closure references not in canopy
+	MissingModules  []string               `json:"missing_modules,omitempty"` // closure references not in bzlhub
 }

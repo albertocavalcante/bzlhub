@@ -6,7 +6,7 @@ package api
 // conventions like "HEAD", which are intentional.
 //
 // Shared by internal/server (versionEntry shaping, listing filters)
-// and internal/canopy (corpus-stat counting). The TS counterpart in
+// and internal/bzlhub (corpus-stat counting). The TS counterpart in
 // ui/src/lib/links.ts mirrors this set; if it grows, update both.
 func IsStubVersion(v string) bool {
 	switch v {

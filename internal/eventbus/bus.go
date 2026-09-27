@@ -1,10 +1,10 @@
-// Package eventbus is a small in-process pub/sub for canopy events.
+// Package eventbus is a small in-process pub/sub for bzlhub events.
 //
 // The bus is intentionally minimal: a fanout dispatcher with per-subscriber
 // buffered channels. Publishers never block — a slow subscriber drops
 // events past its buffer, surfaced via a per-subscriber drop counter.
 // Cross-process distribution (e.g., NATS, Redis) is a future concern;
-// canopy v0 runs as a single binary so a local bus is enough.
+// bzlhub v0 runs as a single binary so a local bus is enough.
 package eventbus
 
 import (
@@ -15,7 +15,7 @@ import (
 // (e.g., "module_indexed"); Data is a kind-specific payload typed at
 // the publisher and asserted at the subscriber. Keeping Data as `any`
 // avoids forcing a registry of event types into this package — the
-// canopy/server package owns the schema.
+// bzlhub/server package owns the schema.
 type Event struct {
 	Kind string
 	Data any
@@ -23,9 +23,9 @@ type Event struct {
 
 // Bus is a fanout pub/sub. The zero value is NOT usable; call New.
 type Bus struct {
-	mu      sync.Mutex
-	subs    map[*subscriber]struct{}
-	closed  bool
+	mu     sync.Mutex
+	subs   map[*subscriber]struct{}
+	closed bool
 }
 
 // New returns an empty Bus.

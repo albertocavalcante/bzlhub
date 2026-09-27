@@ -1,5 +1,5 @@
-// Package mcpsrv runs canopy as an MCP server over stdio. Coding agents
-// (Claude Code, Codex, Gemini CLI, anything MCP-capable) can ask canopy
+// Package mcpsrv runs bzlhub as an MCP server over stdio. Coding agents
+// (Claude Code, Codex, Gemini CLI, anything MCP-capable) can ask bzlhub
 // questions mid-conversation: search the index, fetch a full ModuleReport.
 //
 // Transport: JSON-RPC 2.0 over stdin/stdout via mark3labs/mcp-go. All log
@@ -26,10 +26,10 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/verify"
 )
 
-// Verifier is the slice of canopy functionality that the bzlhub_verify
-// MCP tool needs. Lives separately from api.Canopy because the verify
+// Verifier is the slice of bzlhub functionality that the bzlhub_verify
+// MCP tool needs. Lives separately from api.MCPService because the verify
 // package imports store, store imports api, and folding Verify onto
-// api.Canopy would close an import cycle. The concrete implementation
+// api.MCPService would close an import cycle. The concrete implementation
 // (bzlhub.Service) satisfies both interfaces independently.
 type Verifier interface {
 	Verify(ctx context.Context, opts verify.Options) (*verify.Report, error)
@@ -42,8 +42,8 @@ type Verifier interface {
 // write tools (bzlhub_ingest_recursive, bzlhub_bump) are always
 // registered. HTTP callers should use registerTools directly and
 // pass writeEnabled=false for anonymous-read deployments.
-func Serve(ctx context.Context, c api.Canopy, v Verifier, version string) error {
-	srv := server.NewMCPServer("canopy", version)
+func Serve(ctx context.Context, c api.MCPService, v Verifier, version string) error {
+	srv := server.NewMCPServer("bzlhub", version)
 	registerTools(srv, c, v, true)
 	// ServeStdio doesn't take a context in the current API; the function
 	// returns when stdin closes. Cancellation hooks can be added if/when
@@ -65,7 +65,7 @@ func Serve(ctx context.Context, c api.Canopy, v Verifier, version string) error 
 // (bzlhub.com) passes false so anonymous visitors can't ingest or
 // bump via tools/call; stdio and trusted-internal HTTP deployments
 // pass true.
-func registerTools(srv *server.MCPServer, c api.Canopy, v Verifier, writeEnabled bool) {
+func registerTools(srv *server.MCPServer, c api.MCPService, v Verifier, writeEnabled bool) {
 	registerSearchTools(srv, c)
 	registerSurfaceTools(srv, c)
 	registerDiffTools(srv, c)

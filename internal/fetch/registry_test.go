@@ -283,7 +283,7 @@ func TestGetModuleBazel_ReturnsRawBytes(t *testing.T) {
 }
 
 func TestFetchArchive_VerifiesIntegrity(t *testing.T) {
-	payload := []byte("hello canopy")
+	payload := []byte("hello bzlhub")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(payload)
 	}))

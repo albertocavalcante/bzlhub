@@ -49,8 +49,8 @@ func renderShell(r *Result) string {
 	var b strings.Builder
 	b.WriteString("#!/usr/bin/env bash\n")
 	b.WriteString("#\n")
-	b.WriteString("# canopy-generated migration script.\n")
-	b.WriteString("# Source: canopy compat-check analyzer\n")
+	b.WriteString("# bzlhub-generated migration script.\n")
+	b.WriteString("# Source: bzlhub compat-check analyzer\n")
 	if r.Self.Name != "" {
 		fmt.Fprintf(&b, "# Module: %s@%s\n", r.Self.Name, r.Self.Version)
 	}
@@ -147,7 +147,7 @@ func renderFinding(b *strings.Builder, f modulediff.BreakingFinding) {
 // escapeForDoubleQuote escapes the characters that have meaning
 // inside a bash double-quoted string: backslash, double-quote, and
 // the unescaped `$` and backtick that would re-trigger expansion.
-// Hints come from canopy's classification (no user input), so the
+// Hints come from bzlhub's classification (no user input), so the
 // failure mode of bad escaping is a misformatted message, not a
 // shell injection; the escape is for legibility.
 func escapeForDoubleQuote(s string) string {

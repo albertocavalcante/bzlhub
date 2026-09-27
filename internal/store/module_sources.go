@@ -9,7 +9,7 @@ import (
 )
 
 // ModuleSourceKind discriminates how a (module, version) entry was
-// served by canopy. Mirrors the SQL CHECK constraint on
+// served by bzlhub. Mirrors the SQL CHECK constraint on
 // module_sources.source_kind in schema.sql.
 type ModuleSourceKind string
 

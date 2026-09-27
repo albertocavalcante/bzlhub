@@ -262,8 +262,8 @@ func TestClassifyBreaking(t *testing.T) {
 		CompatibilityLevel: 2, // shift
 		Rules: []report.RuleSpec{
 			rule("kept_stable"),
-			rule("will_lose_attr"),                                                          // attr removed
-			rule("will_become_strict", attr("now_required", "string", "", true)),            // mandatory flip false→true
+			rule("will_lose_attr"), // attr removed
+			rule("will_become_strict", attr("now_required", "string", "", true)), // mandatory flip false→true
 			// "will_be_removed" gone
 		},
 		Providers: []report.ProviderSpec{
@@ -278,7 +278,7 @@ func TestClassifyBreaking(t *testing.T) {
 		},
 		RepositoryRules: []report.RepoRuleSpec{
 			{Name: "kept_repo_rule"},
-			{Name: "will_lose_attr_rr"},                                                              // attr removed
+			{Name: "will_lose_attr_rr"}, // attr removed
 			{Name: "will_become_strict_rr", Attrs: []report.AttrSpec{attr("now_required_rr", "string", "", true)}}, // mandatory flip
 			// will_be_removed_rr gone
 		},

@@ -13,7 +13,7 @@ import (
 )
 
 // TestNewFromRoot_FileForPlainDir asserts a plain directory (no
-// .git/) yields a File backend. The operator who points `canopy
+// .git/) yields a File backend. The operator who points `bzlhub
 // serve --root <dir>` at a hand-assembled BCR tree shouldn't be
 // forced through the git-aware path.
 func TestNewFromRoot_FileForPlainDir(t *testing.T) {

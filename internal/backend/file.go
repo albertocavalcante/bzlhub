@@ -24,7 +24,7 @@ import (
 //	      source.json
 //	      patches/<filename>
 //	      overlay/<path>
-//	blobs/<key>     (optional; for tarballs canopy mirrors)
+//	blobs/<key>     (optional; for tarballs bzlhub mirrors)
 type File struct {
 	Root string
 }

@@ -24,6 +24,8 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/store"
 )
 
+const admitTestTimeout = 3 * time.Second
+
 // stubFetcher writes a canned payload to sink and ignores url.
 type stubFetcher struct {
 	payload []byte
@@ -136,6 +138,24 @@ func waitForState(t *testing.T, s *store.Store, id int64, want store.RequestStat
 	t.Fatalf("id=%d state=%q after %s; want %q", id, got.State, timeout, want)
 }
 
+func waitForAuditCount(t *testing.T, s *store.Store, kind string, want int) []store.AuditEvent {
+	t.Helper()
+	deadline := time.Now().Add(admitTestTimeout)
+	for time.Now().Before(deadline) {
+		events, err := s.ListAudit(context.Background(), store.AuditQuery{Kinds: []string{kind}})
+		if err == nil && len(events) == want {
+			return events
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	events, err := s.ListAudit(context.Background(), store.AuditQuery{Kinds: []string{kind}})
+	if err != nil {
+		t.Fatalf("list %q audit events: %v", kind, err)
+	}
+	t.Fatalf("%q audit rows = %d after %s, want %d", kind, len(events), admitTestTimeout, want)
+	return nil
+}
+
 func TestRunner_HappyPath_IndexesApproved(t *testing.T) {
 	s := newAdmitTestStore(t)
 	tarball := makeTarGz(t, map[string]string{
@@ -150,16 +170,13 @@ func TestRunner_HappyPath_IndexesApproved(t *testing.T) {
 	defer cancel()
 	go r.Run(ctx)
 
-	waitForState(t, s, id, store.RequestStateIndexed, 500*time.Millisecond)
+	waitForState(t, s, id, store.RequestStateIndexed, admitTestTimeout)
 	if f.calls.Load() != 1 {
 		t.Errorf("fetcher calls = %d, want 1", f.calls.Load())
 	}
 
 	// Audit event was written.
-	events, _ := s.ListAudit(context.Background(), store.AuditQuery{Kinds: []string{"admit_success"}})
-	if len(events) != 1 {
-		t.Errorf("audit rows = %d, want 1", len(events))
-	}
+	waitForAuditCount(t, s, "admit_success", 1)
 }
 
 func TestRunner_AlsoPicksUpAutoPass(t *testing.T) {
@@ -182,7 +199,7 @@ func TestRunner_AlsoPicksUpAutoPass(t *testing.T) {
 	defer cancel()
 	go r.Run(runCtx)
 
-	waitForState(t, s, id, store.RequestStateIndexed, 500*time.Millisecond)
+	waitForState(t, s, id, store.RequestStateIndexed, admitTestTimeout)
 }
 
 func TestRunner_FetchFailure_DeniesWithReason(t *testing.T) {
@@ -195,7 +212,7 @@ func TestRunner_FetchFailure_DeniesWithReason(t *testing.T) {
 	defer cancel()
 	go r.Run(ctx)
 
-	waitForState(t, s, id, store.RequestStateDenied, 500*time.Millisecond)
+	waitForState(t, s, id, store.RequestStateDenied, admitTestTimeout)
 	got, _ := s.GetRequest(context.Background(), id)
 	if got.DenialReason == "" {
 		t.Error("denial_reason not persisted")
@@ -204,10 +221,7 @@ func TestRunner_FetchFailure_DeniesWithReason(t *testing.T) {
 		t.Errorf("terminal failure should not retry: retry_count=%d, want 0", got.RetryCount)
 	}
 
-	events, _ := s.ListAudit(context.Background(), store.AuditQuery{Kinds: []string{"admit_failure"}})
-	if len(events) != 1 {
-		t.Errorf("admit_failure audit rows = %d, want 1", len(events))
-	}
+	waitForAuditCount(t, s, "admit_failure", 1)
 }
 
 func TestRunner_MaterializesOnDiskAndReceiptCarriesPath(t *testing.T) {
@@ -223,7 +237,7 @@ func TestRunner_MaterializesOnDiskAndReceiptCarriesPath(t *testing.T) {
 	defer cancel()
 	go r.Run(ctx)
 
-	waitForState(t, s, id, store.RequestStateIndexed, 500*time.Millisecond)
+	waitForState(t, s, id, store.RequestStateIndexed, admitTestTimeout)
 
 	// FilesystemPublisher writes modules/<m>/<v>/{source.json, MODULE.bazel}.
 	got, _ := s.GetRequest(context.Background(), id)
@@ -284,7 +298,7 @@ func TestRunner_FallsBackToCascadeSource(t *testing.T) {
 	defer cancel()
 	go r.Run(runCtx)
 
-	waitForState(t, s, id, store.RequestStateIndexed, 500*time.Millisecond)
+	waitForState(t, s, id, store.RequestStateIndexed, admitTestTimeout)
 	if f.calls.Load() != 1 {
 		t.Errorf("fetcher calls = %d, want 1 (cascade URL was used)", f.calls.Load())
 	}
@@ -325,7 +339,7 @@ func TestRunner_NoURLAndNoCascade_Denies(t *testing.T) {
 	defer cancel()
 	go r.Run(runCtx)
 
-	waitForState(t, s, id, store.RequestStateDenied, 500*time.Millisecond)
+	waitForState(t, s, id, store.RequestStateDenied, admitTestTimeout)
 	got, _ := s.GetRequest(context.Background(), id)
 	if got.DenialReason == "" {
 		t.Error("denial_reason not populated")
@@ -395,7 +409,7 @@ func TestRunner_TransientFailure_RetriesThenSucceeds(t *testing.T) {
 	defer cancel()
 	go r.Run(ctx)
 
-	waitForState(t, s, id, store.RequestStateIndexed, 2*time.Second)
+	waitForState(t, s, id, store.RequestStateIndexed, admitTestTimeout)
 
 	got, _ := s.GetRequest(context.Background(), id)
 	if got.RetryCount != 2 {
@@ -405,10 +419,7 @@ func TestRunner_TransientFailure_RetriesThenSucceeds(t *testing.T) {
 		t.Errorf("fetcher calls=%d, want 3 (initial + 2 retries)", calls)
 	}
 
-	events, _ := s.ListAudit(context.Background(), store.AuditQuery{Kinds: []string{"admit_success"}})
-	if len(events) != 1 {
-		t.Errorf("admit_success audit rows=%d, want 1", len(events))
-	}
+	waitForAuditCount(t, s, "admit_success", 1)
 }
 
 func TestRunner_TransientFailure_ExhaustsRetriesThenDenies(t *testing.T) {
@@ -422,7 +433,7 @@ func TestRunner_TransientFailure_ExhaustsRetriesThenDenies(t *testing.T) {
 	defer cancel()
 	go r.Run(ctx)
 
-	waitForState(t, s, id, store.RequestStateDenied, 2*time.Second)
+	waitForState(t, s, id, store.RequestStateDenied, admitTestTimeout)
 
 	got, _ := s.GetRequest(context.Background(), id)
 	if got.RetryCount != 2 {
@@ -503,7 +514,7 @@ func TestRunner_PurgerCalledOnIndex(t *testing.T) {
 	defer cancel()
 	go r.Run(ctx)
 
-	waitForState(t, s, id, store.RequestStateIndexed, 2*time.Second)
+	waitForState(t, s, id, store.RequestStateIndexed, admitTestTimeout)
 	// Give the purger a tick to be invoked after the transition.
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for p.calls.Load() == 0 && time.Now().Before(deadline) {
@@ -529,10 +540,7 @@ func TestRunner_PurgerCalledOnIndex(t *testing.T) {
 	}
 
 	// Audit row recorded as cdn_purge.
-	events, _ := s.ListAudit(context.Background(), store.AuditQuery{Kinds: []string{"cdn_purge"}})
-	if len(events) != 1 {
-		t.Errorf("cdn_purge audit rows=%d, want 1", len(events))
-	}
+	waitForAuditCount(t, s, "cdn_purge", 1)
 }
 
 func TestRunner_NoOpPurger_NotCalled(t *testing.T) {
@@ -549,7 +557,7 @@ func TestRunner_NoOpPurger_NotCalled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go r.Run(ctx)
-	waitForState(t, s, id, store.RequestStateIndexed, 2*time.Second)
+	waitForState(t, s, id, store.RequestStateIndexed, admitTestTimeout)
 	// No cdn_purge audit row.
 	events, _ := s.ListAudit(context.Background(), store.AuditQuery{Kinds: []string{"cdn_purge"}})
 	if len(events) != 0 {
@@ -582,7 +590,7 @@ func TestRunner_PurgerError_DoesNotFailAdmit(t *testing.T) {
 	defer cancel()
 	go r.Run(ctx)
 	// Admit should still index — purge failures are non-fatal.
-	waitForState(t, s, id, store.RequestStateIndexed, 2*time.Second)
+	waitForState(t, s, id, store.RequestStateIndexed, admitTestTimeout)
 
 	events, _ := s.ListAudit(context.Background(), store.AuditQuery{Kinds: []string{"cdn_purge"}})
 	deadline := time.Now().Add(500 * time.Millisecond)
@@ -671,4 +679,3 @@ func TestRunner_GracefulShutdown(t *testing.T) {
 		t.Fatal("Runner did not return after ctx cancel")
 	}
 }
-

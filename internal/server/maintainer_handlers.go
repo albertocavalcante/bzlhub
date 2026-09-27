@@ -2,7 +2,7 @@
 // module_maintainers store + policy `grant_maintainer` / `view_maintainers`
 // gates into the procurement HTTP surface.
 //
-// Today these endpoints have no canopy-internal consumer — the
+// Today these endpoints have no bzlhub-internal consumer — the
 // `maintain_module` policy gate is reachable via the Evaluator
 // from chunk 6 but no handler invokes it yet. Shipping the
 // grant/revoke wire lets operators script the population step
@@ -11,7 +11,6 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -42,10 +41,7 @@ func (h *requestHandlers) apiGrantMaintainer(w http.ResponseWriter, r *http.Requ
 	var body struct {
 		Email string `json:"email"`
 	}
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&body); err != nil {
-		http.Error(w, "bad request: "+err.Error(), http.StatusBadRequest)
+	if !decodeJSONBody(w, r, maxMaintainerJSONBody, &body) {
 		return
 	}
 	email := strings.TrimSpace(body.Email)

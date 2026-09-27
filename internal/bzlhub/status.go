@@ -10,7 +10,7 @@ import (
 )
 
 // MirrorStatusReport is the operator's at-a-glance health view of
-// one canopy install. Mirror-side fields are zero when no Mirror
+// one bzlhub install. Mirror-side fields are zero when no Mirror
 // is wired (File-backed install).
 type MirrorStatusReport struct {
 	IndexedModules  int            `json:"indexed_modules"`

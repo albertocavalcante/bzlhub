@@ -2,6 +2,7 @@ package bzlhub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -17,7 +18,7 @@ type SyncRunOptions struct {
 
 	// SkipRefresh suppresses the post-Sync drift recompute. Used
 	// when the operator wants to inspect upstream changes before
-	// canopy rewrites drift verdicts in their index.
+	// bzlhub rewrites drift verdicts in their index.
 	SkipRefresh bool
 }
 
@@ -47,6 +48,9 @@ func (s *Service) SyncRun(ctx context.Context, opts SyncRunOptions) (SyncRunRece
 	start := time.Now()
 	sr, err := s.mirror.Sync(ctx, bcrmirror.SyncOptions{Force: opts.Force})
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+			return rec, context.Canceled
+		}
 		s.recordSyncRunAudit(ctx, "sync_run_failure", start, sr, 0, err, nil)
 		return rec, fmt.Errorf("bzlhub.SyncRun: %w", err)
 	}
@@ -99,4 +103,3 @@ func (s *Service) recordSyncRunAudit(ctx context.Context, kind string, start tim
 		DriftRefreshError:  refreshErrMsg,
 	})
 }
-

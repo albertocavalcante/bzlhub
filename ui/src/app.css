@@ -34,8 +34,8 @@
   --color-drift-local:  oklch(58% 0.02 240);
   --color-drift-error:  oklch(55% 0.03 0);
 
-  /* Activity pulse (Plan 19 Idea J): tied to brand so the "canopy
-     is alive" affordance reads as canopy-coloured, not as a third
+  /* Activity pulse (Plan 19 Idea J): tied to brand so the "bzlhub
+     is alive" affordance reads as bzlhub-coloured, not as a third
      hue competing with herm-pure green or drift-behind blue. */
   --color-activity-pulse: var(--color-accent);
 

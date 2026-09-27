@@ -9,7 +9,7 @@ Dockerfile
 
 # Test caches + binary outputs from local builds.
 *.test
-testdata/canopy.db
+testdata/bzlhub.db
 testdata/mirror/
 
 # Any locally-checked-out ingest output the user may have.
@@ -21,7 +21,7 @@ mirror/
 .idea/
 .vscode/
 
-# UI workspace junk (canopy's SvelteKit shell isn't built into this
+# UI workspace junk (bzlhub's SvelteKit shell isn't built into this
 # image yet; whenever it lands these get filtered before send).
 ui/node_modules/
 ui/.svelte-kit/

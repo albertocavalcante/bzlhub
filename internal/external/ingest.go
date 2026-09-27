@@ -1,6 +1,6 @@
 // Package external connects assay's external-surface analyzer to
-// canopy's SQLite store. IngestModule is the single entry point;
-// callers from canopy/internal/ingest invoke it post-WriteReport.
+// bzlhub's SQLite store. IngestModule is the single entry point;
+// callers from bzlhub/internal/ingest invoke it post-WriteReport.
 package external
 
 import (

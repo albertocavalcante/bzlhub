@@ -24,8 +24,8 @@ func TestBuildSyncHandler_SyncOnlyWithoutDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildSyncHandler: %v", err)
 	}
-	if h.canopyStore != nil {
-		t.Error("canopyStore must stay nil in sync-only mode")
+	if h.indexStore != nil {
+		t.Error("indexStore must stay nil in sync-only mode")
 	}
 	if cleanup == nil {
 		t.Fatal("cleanup must be non-nil even in sync-only mode")
@@ -48,8 +48,8 @@ func TestBuildSyncHandler_OpensDBWhenPathSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildSyncHandler: %v", err)
 	}
-	if h.canopyStore == nil {
-		t.Error("canopyStore must be populated when dbPath is set")
+	if h.indexStore == nil {
+		t.Error("indexStore must be populated when dbPath is set")
 	}
 	if cleanup == nil {
 		t.Fatal("cleanup must be non-nil when db is open")

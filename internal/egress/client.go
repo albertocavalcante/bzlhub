@@ -10,7 +10,7 @@ import (
 )
 
 // Default per-request timeout for clients constructed by this
-// package. Canopy callers that need a different timeout should
+// package. Bzlhub callers that need a different timeout should
 // override on the returned client; the default is "long enough for
 // a slow public registry, short enough to fail loud."
 const defaultTimeout = 30 * time.Second
@@ -34,7 +34,7 @@ func WithSink(s Sink) ClientOption {
 
 // NewHTTPClient returns a *http.Client whose RoundTripper consults
 // the supplied policy before every outbound request. This is the
-// only sanctioned way to construct an HTTP client inside canopy;
+// only sanctioned way to construct an HTTP client inside bzlhub;
 // the lint check in lint_test.go prevents callers from rolling
 // their own.
 func NewHTTPClient(p Policy, opts ...ClientOption) *http.Client {
@@ -80,7 +80,7 @@ func NewHTTPClientWithTransport(p Policy, inner http.RoundTripper, opts ...Clien
 //     outcome=ok (success) or outcome=error (inner transport
 //     failure). The sync-runner posture.
 //  3. ModeAllow + permitted round-trip → SILENT. No event. The
-//     default-profile posture; canopy must not generate audit-log
+//     default-profile posture; bzlhub must not generate audit-log
 //     spam when egress is unconstrained.
 type policyTransport struct {
 	policy Policy
@@ -200,7 +200,7 @@ func redactURL(u string) string {
 
 // callerStack walks the call stack and returns the first frame that
 // is neither in stdlib net/http nor in this egress package. That's
-// the line of canopy code that initiated the request — the only
+// the line of bzlhub code that initiated the request — the only
 // useful information for "who tried to egress?" diagnostics.
 //
 // Returns an empty string if no frame is found (highly unusual; the
@@ -234,17 +234,17 @@ func isFrameSkipped(name string) bool {
 	if strings.HasPrefix(name, "net/http") {
 		return true
 	}
-	if strings.Contains(name, "/canopy/internal/egress") {
+	if strings.Contains(name, "/bzlhub/internal/egress.") {
 		return true
 	}
 	return false
 }
 
 // shortFile renders an absolute file path as a repo-relative one
-// when possible. Cheap string trim against the canopy module path;
+// when possible. Cheap string trim against the bzlhub module path;
 // falls back to basename when no module-prefix match is found.
 func shortFile(path string) string {
-	const marker = "/canopy/"
+	const marker = "/bzlhub/"
 	if i := strings.LastIndex(path, marker); i >= 0 {
 		return path[i+len(marker):]
 	}
@@ -294,23 +294,27 @@ func WithPolicy(parent context.Context, p Policy) context.Context {
 // callers that want to inspect the active policy without
 // constructing a full client.
 func PolicyFromContext(ctx context.Context) Policy {
-	if ctx == nil {
-		return Policy{Mode: ModeAllow}
+	if ctx != nil {
+		if p, ok := ctx.Value(policyContextKey{}).(Policy); ok {
+			return p
+		}
 	}
-	if p, ok := ctx.Value(policyContextKey{}).(Policy); ok {
-		return p
-	}
-	return Policy{Mode: ModeAllow}
+	p, _ := defaultSnapshot()
+	return p
 }
 
-// Client returns a *http.Client wired with the policy from ctx.
-// When ctx has no bound policy, returns a permissive default —
-// unit tests do not need to thread WithPolicy through every
-// helper they call.
-//
-// This is the entry point called from every refactored HTTP caller
-// in commits C5–C8 (Plan 28). Production wiring binds the policy
-// once at startup in cmd/bzlhub/serve.go.
+func sinkFromContext(ctx context.Context) Sink {
+	_, sink := defaultSnapshot()
+	if sink == nil {
+		return NopSink{}
+	}
+	return sink
+}
+
+// Client returns a *http.Client wired with the policy from ctx and
+// the process-wide audit sink. A context policy overrides only the
+// decision posture; audit routing remains consistent process-wide.
 func Client(ctx context.Context) *http.Client {
-	return NewHTTPClient(PolicyFromContext(ctx))
+	p := PolicyFromContext(ctx)
+	return NewHTTPClient(p, WithSink(sinkFromContext(ctx)))
 }

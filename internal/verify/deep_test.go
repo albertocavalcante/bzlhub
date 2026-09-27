@@ -39,7 +39,7 @@ func TestCheckDeep_TamperedStoredReport(t *testing.T) {
 
 	// Hand-edit the stored report to remove rule_b: GetReport returns
 	// what we WriteReport, so writing a tampered version models a JSON
-	// edit done outside canopy.
+	// edit done outside bzlhub.
 	stored, err := fm.store.GetReport(context.Background(), key.name, key.version)
 	if err != nil {
 		t.Fatalf("GetReport: %v", err)

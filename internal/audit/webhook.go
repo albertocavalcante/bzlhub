@@ -51,7 +51,7 @@ const (
 // endpoint via best-effort-once POSTs.
 //
 // Watermark semantics: the daemon stamps its boot watermark at
-// MaxAuditID(store) on start, so events recorded before canopy
+// MaxAuditID(store) on start, so events recorded before bzlhub
 // started are NOT re-delivered. After that every new event with
 // id > watermark is POSTed once. Failed deliveries still advance
 // the watermark — we don't retry, to avoid spamming the endpoint
@@ -96,7 +96,7 @@ func NewWebhookDaemon(source WebhookSource, opts WebhookOptions) *WebhookDaemon 
 		opts.BatchSize = defaultWebhookBatchSize
 	}
 	if opts.Client == nil {
-		opts.Client = egress.NewHTTPClient(egress.Policy{})
+		opts.Client = egress.DefaultHTTPClient()
 		opts.Client.Timeout = defaultWebhookTimeout
 	}
 	if opts.Log == nil {
@@ -112,7 +112,7 @@ func NewWebhookDaemon(source WebhookSource, opts WebhookOptions) *WebhookDaemon 
 	}
 	// Stamp boot watermark synchronously when URL is wired.
 	// Failure is non-fatal; we start from 0 (events recorded
-	// before canopy gets replayed once — operator-visible).
+	// before bzlhub gets replayed once — operator-visible).
 	if opts.URL != "" {
 		if max, err := source.MaxAuditID(context.Background()); err == nil {
 			d.watermark.Store(max)

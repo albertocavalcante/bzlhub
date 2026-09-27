@@ -166,7 +166,7 @@ func (h *handler) apiXRefs(w http.ResponseWriter, r *http.Request) {
 
 // apiGetConsumers serves the cross-corpus consumer view (Plan 07):
 // every call site of the named rule/provider/macro/repo_rule/
-// module_extension across canopy's indexed corpus.
+// module_extension across bzlhub's indexed corpus.
 //
 // Path: GET /api/v1/modules/{module}/versions/{version}/consumers/{name}
 // Query: ?include_self=true keeps the defining module's own occurrences

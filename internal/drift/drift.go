@@ -1,8 +1,8 @@
-// Package drift compares a local canopy mirror against an upstream
+// Package drift compares a local bzlhub mirror against an upstream
 // BCR-shape registry and surfaces divergence: new versions available,
 // versions we have that were yanked upstream, modules we don't have at all,
 // and "local-only" entries (we hold something upstream doesn't, possibly a
-// canopy-published variant).
+// bzlhub-published variant).
 //
 // The library only diffs modules already present in the mirror — it does
 // NOT walk all of upstream BCR's catalog. That's a future feature; for now,
@@ -37,7 +37,7 @@ const (
 	// YankedUpstream — at least one version we hold was yanked upstream.
 	YankedUpstream Status = "yanked-upstream"
 
-	// LocalOnly — module not present upstream at all (private / canopy-published).
+	// LocalOnly — module not present upstream at all (private / bzlhub-published).
 	LocalOnly Status = "local-only"
 
 	// UpstreamError — couldn't fetch upstream metadata; reason in Error.
@@ -46,25 +46,25 @@ const (
 
 // ModuleDrift describes the divergence for one module.
 type ModuleDrift struct {
-	Name               string   `json:"name"`
-	Status             Status   `json:"status"`
-	LocalVersions      []string `json:"local_versions"`
-	UpstreamVersions   []string `json:"upstream_versions,omitempty"`
-	LocalLatest        string   `json:"local_latest,omitempty"`
-	UpstreamLatest     string   `json:"upstream_latest,omitempty"`
-	NewerUpstream      []string `json:"newer_upstream,omitempty"`      // versions upstream has that we don't AND are newer than our latest
-	MissingLocally     []string `json:"missing_locally,omitempty"`     // ALL upstream-only versions (includes older if any)
-	YankedAtUpstream   []string `json:"yanked_at_upstream,omitempty"`  // versions we hold that upstream yanked
-	LocalOnlyVersions  []string `json:"local_only_versions,omitempty"` // versions we hold upstream doesn't (may be canopy-published)
-	Error              string   `json:"error,omitempty"`
+	Name              string   `json:"name"`
+	Status            Status   `json:"status"`
+	LocalVersions     []string `json:"local_versions"`
+	UpstreamVersions  []string `json:"upstream_versions,omitempty"`
+	LocalLatest       string   `json:"local_latest,omitempty"`
+	UpstreamLatest    string   `json:"upstream_latest,omitempty"`
+	NewerUpstream     []string `json:"newer_upstream,omitempty"`      // versions upstream has that we don't AND are newer than our latest
+	MissingLocally    []string `json:"missing_locally,omitempty"`     // ALL upstream-only versions (includes older if any)
+	YankedAtUpstream  []string `json:"yanked_at_upstream,omitempty"`  // versions we hold that upstream yanked
+	LocalOnlyVersions []string `json:"local_only_versions,omitempty"` // versions we hold upstream doesn't (may be bzlhub-published)
+	Error             string   `json:"error,omitempty"`
 }
 
 // Report is the full mirror drift report.
 type Report struct {
-	UpstreamURL string         `json:"upstream_url"`
-	MirrorRoot  string         `json:"mirror_root"`
-	Modules     []ModuleDrift  `json:"modules"`
-	Summary     ReportSummary  `json:"summary"`
+	UpstreamURL string        `json:"upstream_url"`
+	MirrorRoot  string        `json:"mirror_root"`
+	Modules     []ModuleDrift `json:"modules"`
+	Summary     ReportSummary `json:"summary"`
 }
 
 // ReportSummary tallies module statuses.
@@ -384,4 +384,3 @@ func statusRank(s Status) int {
 		return 0
 	}
 }
-

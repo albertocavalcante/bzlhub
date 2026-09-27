@@ -54,7 +54,7 @@ type Evaluator struct {
 	cacheMax int
 
 	mu    sync.Mutex
-	list  *list.List               // *cacheEntry (front=newest)
+	list  *list.List // *cacheEntry (front=newest)
 	index map[cacheKey]*list.Element
 }
 

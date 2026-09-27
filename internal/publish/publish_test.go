@@ -122,7 +122,7 @@ func TestFilesystemPublisher_DoublePublishAppendsVersions(t *testing.T) {
 	if err := json.Unmarshal(b, &meta); err != nil {
 		t.Fatal(err)
 	}
-	// MergeMetadata sorts lexicographically; canopy uses 4-component
+	// MergeMetadata sorts lexicographically; bzlhub uses 4-component
 	// variants where Bazel's numeric comparator wins at resolve time.
 	want := []string{"1.0.0", "1.0.1", "1.1.0"}
 	if !slices.Equal(meta.Versions, want) {

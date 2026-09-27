@@ -21,17 +21,17 @@ import (
 
 // Plan 07 cross-corpus consumer endpoint. The pipeline:
 //
-//   1. resolve (module, version, name) → SCIP symbol via the
-//      ModuleReport's Rule/Provider/Macro/RepoRule/ModuleExtension
-//      provenance
-//   2. LookupXRefs(symbol, includeDefinition=false)
-//   3. filter the defining module's own occurrences (unless
-//      include_self=true)
-//   4. return grouped ConsumersResult
+//  1. resolve (module, version, name) → SCIP symbol via the
+//     ModuleReport's Rule/Provider/Macro/RepoRule/ModuleExtension
+//     provenance
+//  2. LookupXRefs(symbol, includeDefinition=false)
+//  3. filter the defining module's own occurrences (unless
+//     include_self=true)
+//  4. return grouped ConsumersResult
 //
 // Test seeds two modules:
 //   - producer@1 declares my_rule at rules/lib.bzl. SCIP symbol:
-//     "bzlmod producer@1 rules/lib.bzl#my_rule"
+//     "starlark bzlmod producer 1 rules/lib.bzl/my_rule#"
 //   - consumer@1 has a SCIP blob with a non-definition occurrence
 //     of that symbol at uses/foo.bzl line 7.
 //
@@ -62,7 +62,7 @@ func TestConsumers_EndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := s.WriteScipBlob(ctx, "consumer", "1", scipBlobWithReference(t,
-		"bzlmod producer@1 rules/lib.bzl#my_rule",
+		"starlark bzlmod producer 1 rules/lib.bzl/my_rule#",
 		"uses/foo.bzl", 7,
 	)); err != nil {
 		t.Fatal(err)
@@ -91,7 +91,7 @@ func TestConsumers_EndToEnd(t *testing.T) {
 		if got.File != "rules/lib.bzl" {
 			t.Errorf("file = %q, want rules/lib.bzl", got.File)
 		}
-		if got.Symbol != "bzlmod producer@1 rules/lib.bzl#my_rule" {
+		if got.Symbol != "starlark bzlmod producer 1 rules/lib.bzl/my_rule#" {
 			t.Errorf("symbol = %q", got.Symbol)
 		}
 		if got.ConsumerCount != 1 {

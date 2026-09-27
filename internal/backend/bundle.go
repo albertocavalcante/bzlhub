@@ -13,8 +13,8 @@ import (
 )
 
 // Bundle is a Backend backed by a go-bcr-bundle archive. Designed
-// for airgap deployments where canopy serves from a tar.gz
-// bundle imported via canopy's `bundle import` flow rather than
+// for airgap deployments where bzlhub serves from a tar.gz
+// bundle imported via bzlhub's `bundle import` flow rather than
 // from a live HTTP store or mirror.
 //
 // The bundle library's read sentinels translate to backend.ErrNotFound
@@ -25,16 +25,16 @@ import (
 // The caller supplies an already-opened *bundle.Bundle. The
 // library's bundle.Open is the right place for integrity
 // verification + (v0.2.0+) signature validation; this adapter
-// trusts what it's given. canopy is responsible for the bundle's
+// trusts what it's given. bzlhub is responsible for the bundle's
 // lifecycle — call b.Close() (which closes the underlying
 // *bundle.Bundle and removes its extraction tempdir) when the
-// canopy server shuts down.
+// bzlhub server shuts down.
 type Bundle struct {
 	b *bundle.Bundle
 }
 
 // NewBundle wraps an already-opened *bundle.Bundle. Returns the
-// adapter; canopy must call Close() at shutdown to clean up the
+// adapter; bzlhub must call Close() at shutdown to clean up the
 // bundle's tempdir.
 func NewBundle(b *bundle.Bundle) *Bundle { return &Bundle{b: b} }
 
@@ -120,7 +120,7 @@ func (a *Bundle) GetBlob(ctx context.Context, key string) (io.ReadCloser, error)
 //
 // Path-not-found inside the bundle uses the library's ErrNotFound;
 // blob-key-not-found uses ErrBlobNotFound. Both translate to
-// canopy's single ErrNotFound — the caller (HTTP handler) doesn't
+// bzlhub's single ErrNotFound — the caller (HTTP handler) doesn't
 // need to distinguish "no such module" from "no such blob" at the
 // 404 level; the request path already disambiguates.
 func translateBundleErr(err error) error {
@@ -136,17 +136,17 @@ func translateBundleErr(err error) error {
 }
 
 // stripPathSeparators is a defensive helper for module + version
-// path components — exposed here because canopy currently doesn't
+// path components — exposed here because bzlhub currently doesn't
 // pre-validate module/version names everywhere. The bundle
 // library's Read uses path.Join which collapses ../ safely against
 // the extracted root, but a module name like "foo/bar" would land
 // at modules/foo/bar/... and resolve as a sub-tree — operator-
 // surprising. Reject early when we see embedded separators.
 //
-// Unused as of v0.0.1 — kept inline for the inevitable canopy-side
+// Unused as of v0.0.1 — kept inline for the inevitable bzlhub-side
 // hardening pass on module-name validation.
 //
-//nolint:unused // reserved for upcoming canopy module-name hardening
+//nolint:unused // reserved for upcoming bzlhub module-name hardening
 func stripPathSeparators(s string) (string, error) {
 	if strings.ContainsAny(s, `/\`) {
 		return "", fmt.Errorf("bundle adapter: name %q contains path separators", s)

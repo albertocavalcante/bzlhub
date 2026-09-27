@@ -1,4 +1,4 @@
-// Package auth carries the authenticated-identity types canopy
+// Package auth carries the authenticated-identity types bzlhub
 // uses across HTTP, MCP, and CLI surfaces.
 //
 // Pure types + context plumbing. The actual identity-extraction
@@ -16,7 +16,7 @@ package auth
 
 import "context"
 
-// Source enumerates how canopy determined the request's identity.
+// Source enumerates how bzlhub determined the request's identity.
 // Distinct from the actual claims so downstream policy can vary
 // per-source (e.g., bearer tokens may have a narrower role default
 // than SSO-authenticated users).
@@ -24,7 +24,7 @@ type Source string
 
 const (
 	// SourceAnonymous indicates the request had no recognizable
-	// identity. Most reads on personal-canopy installs operate
+	// identity. Most reads on personal-bzlhub installs operate
 	// under this source.
 	SourceAnonymous Source = "anonymous"
 	// SourceHeader indicates identity came from X-Forwarded-*
@@ -34,7 +34,7 @@ const (
 	// bearer token (CI runners, MCP clients with a configured
 	// token). Shipped in Phase 2B Step 2 — Sprint 4.
 	SourceBearer Source = "bearer"
-	// SourceOIDC indicates canopy validated an OIDC token
+	// SourceOIDC indicates bzlhub validated an OIDC token
 	// directly (no reverse-proxy proxying). Shipped Sprint 5.
 	SourceOIDC Source = "oidc"
 )

@@ -156,19 +156,20 @@ This avoids three traps of the more obvious `kubectl exec` design:
 no SQLite contention from a second process opening the index, no
 `pods/exec` RBAC blast radius, and no second image dependency.
 
-**Security implication.** The ingest endpoint is gated by a feature
-flag — `CANOPY_INGEST_WRITE_ENABLED=true`. The chart **refuses to
-render** the ingest CronJob unless you set this flag on the running
-bzlhub server. Once it's on, any HTTP client able to reach the bzlhub
-Service can trigger ingests. Inside the cluster that's fine; **do not
-expose bzlhub via Ingress in this mode** until bzlhub ships auth (and
-the chart README will say so when it does).
+**Security implication.** The ingest endpoint is gated by
+`BZLHUB_INGEST_WRITE_ENABLED=true`, and startup requires a trusted
+front proxy unless the operator explicitly disables that safeguard.
+The chart **refuses to render** the ingest CronJob unless the flag is
+set. The ingest route itself does not apply the MCP/procurement policy
+gates, so any HTTP client able to reach the Service can trigger it.
+Keep the Service network-private and expose it only through an
+authenticating proxy.
 
 Example values for a weekly recursive ingest + daily drift:
 
 ```yaml
 env:
-  CANOPY_INGEST_WRITE_ENABLED: "true"   # required for cronjobs.ingest
+  BZLHUB_INGEST_WRITE_ENABLED: "true"   # required for cronjobs.ingest
 
 cronjobs:
   ingest:

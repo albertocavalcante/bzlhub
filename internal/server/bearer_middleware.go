@@ -13,13 +13,13 @@
 // AND passing through Authorization).
 //
 // Per Plan 72 §C3 + §CC3 — bearer is the stronger signal
-// (server-side validated against canopy's local registry) versus
+// (server-side validated against bzlhub's local registry) versus
 // X-Forwarded-* (only proven by network-CIDR trust).
 //
 // Authorization headers from outside the reverse-proxy CIDR are
 // validated UNCHANGED — bearer auth doesn't depend on the
 // trusted-proxy gate (the token's hash in identity.json IS the
-// proof). This is intentional: bearer is canopy's "agent/CI/MCP
+// proof). This is intentional: bearer is bzlhub's "agent/CI/MCP
 // client" path, not a "reverse proxy did the work" path.
 
 package server
@@ -44,7 +44,7 @@ import (
 // auth.FromContext. No HTTP response side-effects on success or
 // miss — the request continues to the next handler regardless.
 // Authorization failures (a bearer token that doesn't match
-// anything) are anonymous from canopy's perspective; policy gates
+// anything) are anonymous from bzlhub's perspective; policy gates
 // downstream decide whether anonymous is allowed for the requested
 // action.
 func bearerAuth(reg *auth.IdentityRegistry, log *slog.Logger) func(http.Handler) http.Handler {
@@ -102,7 +102,7 @@ func bearerAuth(reg *auth.IdentityRegistry, log *slog.Logger) func(http.Handler)
 //
 // Does NOT trim the token itself — bearer tokens may legitimately
 // contain whitespace-significant base64 padding in some schemes.
-// canopy's tokens are operator-generated hex, so this doesn't
+// bzlhub's tokens are operator-generated hex, so this doesn't
 // matter in practice, but the contract is "give me whatever
 // follows the scheme byte-for-byte."
 func extractBearerToken(header string) string {

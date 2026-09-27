@@ -25,10 +25,10 @@ import (
 // keeping the SQLite index in sync (or deliberately out of sync, as the
 // agreement-check tests need).
 type mirrorLayout struct {
-	modules     []moduleSpec
-	indexRows   []indexRow
-	extraBlobs  []extraBlob
-	skipDB      bool // build without a *store.Store; tests for the no-db path
+	modules    []moduleSpec
+	indexRows  []indexRow
+	extraBlobs []extraBlob
+	skipDB     bool // build without a *store.Store; tests for the no-db path
 }
 
 type moduleSpec struct {
@@ -53,10 +53,10 @@ type extraBlob struct {
 }
 
 type fakeMirror struct {
-	root  string
-	dbDir string
+	root   string
+	dbDir  string
 	dbPath string
-	store *store.Store
+	store  *store.Store
 }
 
 func buildFakeMirror(t *testing.T, layout mirrorLayout) *fakeMirror {
@@ -198,4 +198,3 @@ func storeOpen(t *testing.T, path string) (*store.Store, error) {
 	t.Helper()
 	return store.Open(context.Background(), path)
 }
-

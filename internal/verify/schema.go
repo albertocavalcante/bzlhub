@@ -6,12 +6,12 @@ import (
 )
 
 // checkSourceJSONSchema validates per-module source.json against
-// canopy's expectations: file readable + parseable, type=="archive"
+// bzlhub's expectations: file readable + parseable, type=="archive"
 // (the only supported kind today), url present, integrity present and
 // well-formed ("sha256-<base64>" decoding to 32 bytes).
 //
 // This check is intentionally narrower than a JSON-Schema validator —
-// we surface only the fields canopy actually relies on at fetch time.
+// we surface only the fields bzlhub actually relies on at fetch time.
 // Adding broader semantic checks here would create false positives
 // against valid BCR data that just doesn't carry optional fields.
 func checkSourceJSONSchema(s *state) []Finding {
@@ -41,7 +41,7 @@ func checkSourceJSONSchema(s *state) []Finding {
 		// The BCR convention is type=="archive" for tarball downloads.
 		// Empty type is also accepted because real BCR source.json files
 		// frequently omit the field (the canonical mirror under
-		// /tmp/canopy-diff-mirror does). Treat "" as "archive" — only
+		// /tmp/bzlhub-diff-mirror does). Treat "" as "archive" — only
 		// a non-empty non-archive value is an error.
 		if src.Type != "" && src.Type != "archive" {
 			out = append(out, Finding{
@@ -50,8 +50,8 @@ func checkSourceJSONSchema(s *state) []Finding {
 				Module:   k.name,
 				Version:  k.version,
 				Path:     path,
-				Message:  fmt.Sprintf("unsupported source.json type %q (canopy only handles archive)", src.Type),
-				Fix:      "this module uses a non-archive source.json (git_repository, etc.); canopy can't mirror it currently",
+				Message:  fmt.Sprintf("unsupported source.json type %q (bzlhub only handles archive)", src.Type),
+				Fix:      "this module uses a non-archive source.json (git_repository, etc.); bzlhub can't mirror it currently",
 				Details:  map[string]any{"type": src.Type},
 			})
 		}
@@ -86,7 +86,7 @@ func checkSourceJSONSchema(s *state) []Finding {
 				Version:  k.version,
 				Path:     path,
 				Message:  fmt.Sprintf("integrity %q is not in sha256-<base64> form", src.Integrity),
-				Fix:      "canopy currently supports only sha256 SRI",
+				Fix:      "bzlhub currently supports only sha256 SRI",
 				Details:  map[string]any{"integrity": src.Integrity},
 			})
 		} else if m.expectedBlobHex == "" {

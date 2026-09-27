@@ -114,11 +114,11 @@ When booted with empty state:
   "rehydrating, N/M modules" banner is a contract goal not yet
   implemented (depends on §3.2).
 - Cache misses on the BCR surface MAY write to `mirror/`, gated by
-  `CANOPY_PROMOTE_ON_SERVE=true` (default: off — "curated, not
+  `BZLHUB_PROMOTE_ON_SERVE=true` (default: off — "curated, not
   greedy"). When off, pull-through serves the response from upstream
   without persisting. *(Verified — `serve.go:176`)*
 
-Edge case — empty upstream list (`CANOPY_UPSTREAMS` unset):
+Edge case — empty upstream list (`BZLHUB_UPSTREAMS` unset):
 
 - BCR endpoints return `404` for any module not already in `mirror/`;
   no upstream lookup is attempted. *(Verified — cascade.go:156 "no-op
@@ -184,8 +184,8 @@ default install must not depend on any of them.
 
 All configuration MUST be expressible through environment variables.
 Secrets MUST also be readable from files via an `*_FILE` env-var
-indirection (e.g. `CANOPY_FOO_FILE=/run/secrets/foo`). The plain-value
-env var (`CANOPY_FOO`) MAY be supported for non-secret config and
+indirection (e.g. `BZLHUB_FOO_FILE=/run/secrets/foo`). The plain-value
+env var (`BZLHUB_FOO`) MAY be supported for non-secret config and
 local development. Rationale: secrets that exist only as env vars leak
 into `docker inspect`, `/proc/<pid>/environ`, crash dumps, and child
 processes. File-mounted secrets do not.
@@ -303,7 +303,7 @@ For client identity, bzlhub honours `X-Forwarded-User`,
 `X-Forwarded-Email`, and `X-Forwarded-Groups` from clients whose
 source IP falls within a configured trust list.
 
-**The trust gate is `CANOPY_TRUSTED_PROXY_CIDR`** — a comma-separated
+**The trust gate is `BZLHUB_TRUSTED_PROXY_CIDR`** — a comma-separated
 list of CIDR blocks. Identity headers are honoured ONLY for requests
 arriving from one of those CIDRs. Requests from anywhere else have
 their `X-Forwarded-*` headers ignored. *(Verified —
@@ -325,7 +325,7 @@ Defence-in-depth recommendations:
   proxy / ingress controller pods. The CIDR trust list AND the
   network policy enforce the same boundary — belt and braces.
 - On a single-host VPS: bzlhub binds to `127.0.0.1` (compose service
-  port binding) AND `CANOPY_TRUSTED_PROXY_CIDR=127.0.0.1/32`.
+  port binding) AND `BZLHUB_TRUSTED_PROXY_CIDR=127.0.0.1/32`.
 
 Note: bzlhub deliberately does NOT honour `X-Forwarded-For` for
 client-IP determination — only the source IP of the connection itself
@@ -334,7 +334,7 @@ forwards a forged XFF" exploit.
 
 For unauthenticated public deployments (bzlhub as a read-only mirror),
 no trusted-edge configuration is needed; write endpoints are gated by
-`CANOPY_INGEST_WRITE_ENABLED` (default: off).
+`BZLHUB_INGEST_WRITE_ENABLED` (default: off).
 
 ---
 
@@ -375,7 +375,7 @@ only `index/`, snapshot publisher tarballing both separately).
 
 | Property | Value |
 |---|---|
-| Listen port | 8090 (default; overridable via `CANOPY_BIND`) |
+| Listen port | 8090 (default; overridable via `BZLHUB_BIND`) |
 | Protocol | plain HTTP/1.1 + HTTP/2 cleartext (`h2c`) on the same port |
 | Host networking | MUST NOT be required |
 | Multiple ports | MUST NOT be required |
@@ -545,7 +545,7 @@ securityContext:
 service:
   type: ClusterIP
   port: 80                       # Service port
-  targetPort: 8090               # Container port (matches CANOPY_BIND default)
+  targetPort: 8090               # Container port (matches BZLHUB_BIND default)
 
 ingress:
   enabled: false
@@ -575,38 +575,38 @@ Today's actual env vars (verified by reading `cmd/bzlhub/serve.go`):
 
 | Variable | Purpose | Default | Required? |
 |---|---|---|---|
-| `CANOPY_BIND` | Listen address | `0.0.0.0:8090` | no |
-| `CANOPY_ROOT` | Path to the `mirror/` tree | `/var/lib/bzlhub/mirror` | no |
-| `CANOPY_DB` | Path to the SQLite index file | `/var/lib/bzlhub/index/bzlhub.db` | no |
-| `CANOPY_MIRROR_BASE_URL` | If set, bzlhub advertises itself as a tarball mirror via `bazel_registry.json.mirrors` | unset | no |
-| `CANOPY_UPSTREAMS` | Comma-separated list of upstream BCR-shape registry URLs (federation cascade) | unset → no federation | no |
-| `CANOPY_UPSTREAM_CACHE_SIZE` | Federation response cache size; negative disables | `1000` | no |
-| `CANOPY_UPSTREAM_PROBE_INTERVAL` | Background probe interval for upstream reachability | per code default | no |
-| `CANOPY_DISABLE_SHADOW_DETECTION` | Disable the shadow-module detection during federation | unset | no |
-| `CANOPY_PROMOTE_ON_SERVE` | If `true`, async-bump every upstream-won path into local mirror (greedy mode) | `false` | no |
-| `CANOPY_TRUSTED_PROXY_CIDR` | Comma-separated CIDRs allowed to supply `X-Forwarded-*` identity headers | unset → no headers honoured | when running behind an auth proxy |
-| `CANOPY_INGEST_WRITE_ENABLED` | Master switch for write endpoints (e.g. `POST /api/ingest-recursive`) | `false` | when write features are needed |
-| `CANOPY_INGEST_ALLOW_CUSTOM_UPSTREAM` | Whether the ingest API may target arbitrary upstreams | `false` | rarely |
-| `CANOPY_INGEST_RATE_LIMIT_PER_MIN` | Per-IP rate limit for ingest endpoint | per code default | no |
-| `CANOPY_INGEST_MAX_CONCURRENT` | Concurrent-ingest cap | per code default | no |
-| `CANOPY_INGEST_RATE_BYPASS_IPS` | IPs exempt from ingest rate-limit | unset | no |
+| `BZLHUB_BIND` | Listen address | `0.0.0.0:8090` | no |
+| `BZLHUB_ROOT` | Path to the `mirror/` tree | `/var/lib/bzlhub/mirror` | no |
+| `BZLHUB_DB` | Path to the SQLite index file | `/var/lib/bzlhub/index/bzlhub.db` | no |
+| `BZLHUB_MIRROR_BASE_URL` | If set, bzlhub advertises itself as a tarball mirror via `bazel_registry.json.mirrors` | unset | no |
+| `BZLHUB_UPSTREAMS` | Comma-separated list of upstream BCR-shape registry URLs (federation cascade) | unset → no federation | no |
+| `BZLHUB_UPSTREAM_CACHE_SIZE` | Federation response cache size; negative disables | `1000` | no |
+| `BZLHUB_UPSTREAM_PROBE_INTERVAL` | Background probe interval for upstream reachability | per code default | no |
+| `BZLHUB_DISABLE_SHADOW_DETECTION` | Disable the shadow-module detection during federation | unset | no |
+| `BZLHUB_PROMOTE_ON_SERVE` | If `true`, async-bump every upstream-won path into local mirror (greedy mode) | `false` | no |
+| `BZLHUB_TRUSTED_PROXY_CIDR` | Comma-separated CIDRs allowed to supply `X-Forwarded-*` identity headers | unset → no headers honoured | when running behind an auth proxy |
+| `BZLHUB_INGEST_WRITE_ENABLED` | Master switch for write endpoints (e.g. `POST /api/ingest-recursive`) | `false` | when write features are needed |
+| `BZLHUB_INGEST_ALLOW_CUSTOM_UPSTREAM` | Whether the ingest API may target arbitrary upstreams | `false` | rarely |
+| `BZLHUB_INGEST_RATE_LIMIT_PER_MIN` | Per-IP rate limit for ingest endpoint | per code default | no |
+| `BZLHUB_INGEST_MAX_CONCURRENT` | Concurrent-ingest cap | per code default | no |
+| `BZLHUB_INGEST_RATE_BYPASS_IPS` | IPs exempt from ingest rate-limit | unset | no |
 
 Future / planned env vars (NOT implemented today; documented to
 reserve the shape):
 
 | Variable | Purpose | Status |
 |---|---|---|
-| `CANOPY_UPSTREAMS_<N>_TYPE/URL/AUTH_*` | Per-upstream typed config when git + Artifactory backends land | planned with those backends |
-| `CANOPY_REHYDRATION_ON_COLD_START` | Enable §3.2 auto-ingest | planned with §3.2 |
-| `CANOPY_REHYDRATION_STRATEGY` | `eager` / `pullthrough` / `hybrid` | planned with §3.2 |
-| `CANOPY_SNAPSHOT_*` | Snapshot addon (see §3.6) | planned with §3.6 |
-| `CANOPY_MCP_HTTP_ENABLED` and friends | MCP-over-HTTP addon (see plan 18) | planned with plan 18 |
-| Feature flags (`CANOPY_FEAT_*`) | Per-feature kill-switches | partially shipped; per-flag naming varies today |
+| `BZLHUB_UPSTREAMS_<N>_TYPE/URL/AUTH_*` | Per-upstream typed config when git + Artifactory backends land | planned with those backends |
+| `BZLHUB_REHYDRATION_ON_COLD_START` | Enable §3.2 auto-ingest | planned with §3.2 |
+| `BZLHUB_REHYDRATION_STRATEGY` | `eager` / `pullthrough` / `hybrid` | planned with §3.2 |
+| `BZLHUB_SNAPSHOT_*` | Snapshot addon (see §3.6) | planned with §3.6 |
+| `BZLHUB_MCP_HTTP_ENABLED` and friends | MCP-over-HTTP addon (see plan 18) | planned with plan 18 |
+| Feature flags (`BZLHUB_FEAT_*`) | Per-feature kill-switches | partially shipped; per-flag naming varies today |
 
 Secrets, when added, get an `*_FILE` companion (e.g.
-`CANOPY_FOO_FILE=/run/secrets/foo`) per the §3.4 convention.
+`BZLHUB_FOO_FILE=/run/secrets/foo`) per the §3.4 convention.
 
-Secrets get an `*_FILE` companion (e.g. `CANOPY_UPSTREAMS_0_AUTH_TOKEN_FILE`)
+Secrets get an `*_FILE` companion (e.g. `BZLHUB_UPSTREAMS_0_AUTH_TOKEN_FILE`)
 pointing at a file-mounted path.
 
 ### Standard env vars honoured
@@ -633,14 +633,14 @@ named in `docs/plans/17-upstream-proxy.md` §4 (`R1`), and it benefits
 bzlhub even outside the proxy use case (consistent timeouts, retries,
 observability).
 
-**Design note — array env vars**: the `CANOPY_UPSTREAMS_<N>_*` pattern
+**Design note — array env vars**: the `BZLHUB_UPSTREAMS_<N>_*` pattern
 is a numbered-index convention; alternatives considered were
-`CANOPY_UPSTREAMS=<json>` and a config file. Numbered envs were
+`BZLHUB_UPSTREAMS=<json>` and a config file. Numbered envs were
 chosen because they compose cleanly with K8s ConfigMaps (one key per
 variable, easy to template) and Helm `range` over `upstreams[]`,
 without needing a JSON serializer in the values pipeline. Operators
 wanting fewer env vars can switch to a config file via the
-`CANOPY_CONFIG_FILE` env var (still env-driven).
+`BZLHUB_CONFIG_FILE` env var (still env-driven).
 
 The env-var schema MUST stay backward-compatible within a major
 version. Renames require a deprecation cycle (both names honoured for
@@ -681,13 +681,13 @@ Updated 2026-05-28 after a direct source audit. Status legend:
 |---|---|---|---|
 | 3.1 | Boots cleanly with empty `mirror/` and empty `index/` | ✅ | `cascade.go:156` — "Upstreams may be empty — no-op wrapper" |
 | 3.1 | UI degraded state ("rehydrating, X/Y") | ❌ | UX depends on §3.2 self-rehydration which isn't implemented; today UI likely renders as if registry happens to be empty |
-| 3.1 | Cache misses trigger upstream pull-through write to `mirror/` | ⚠️ | Pull-through reads work; the *write* is gated by `CANOPY_PROMOTE_ON_SERVE=true` (off by default — "curated, not greedy") per `serve.go:176` |
+| 3.1 | Cache misses trigger upstream pull-through write to `mirror/` | ⚠️ | Pull-through reads work; the *write* is gated by `BZLHUB_PROMOTE_ON_SERVE=true` (off by default — "curated, not greedy") per `serve.go:176` |
 | 3.2 | Self-rehydration goroutine triggers on empty index | ❌ | Not implemented; operator runs `bzlhub ingest` manually OR enables `cronjobs.ingest` Helm addon |
 | 3.2 | `eager` / `pullthrough` / `hybrid` strategy selector | ❌ | Single mode today (federation pull-through + opt-in promote-on-serve) |
 | 3.3 | No required external services | ✅ | No S3/Postgres/broker; SQLite-only |
-| 3.4 | All config via env vars | ✅ | Every operational knob has a `CANOPY_*` env var |
+| 3.4 | All config via env vars | ✅ | Every operational knob has a `BZLHUB_*` env var |
 | 3.4 | Secrets via `*_FILE` indirection | ❌ | Not yet — no secret-bearing features today; adopt convention before first one ships |
-| 3.4 | Upstream env-var schema as documented (`CANOPY_UPSTREAMS_<N>_*`) | ⚠️ | Reality is `CANOPY_UPSTREAMS=url1,url2` flat comma-separated; no per-upstream type. The per-type schema becomes relevant when git/Artifactory backends land |
+| 3.4 | Upstream env-var schema as documented (`BZLHUB_UPSTREAMS_<N>_*`) | ⚠️ | Reality is `BZLHUB_UPSTREAMS=url1,url2` flat comma-separated; no per-upstream type. The per-type schema becomes relevant when git/Artifactory backends land |
 | 3.5 | `upstreams` empty is a valid configuration | ✅ | `serve.go:67` guards `if len(upstreams) > 0` |
 | 3.6 | Pluggable snapshot store | 📋 | Not implemented; design in §3.6 |
 | 3.7 | `/healthz` endpoint | ✅ | `internal/server/server.go:217` |
@@ -695,8 +695,8 @@ Updated 2026-05-28 after a direct source audit. Status legend:
 | 3.8 | Helm chart deploys as `StatefulSet` with `replicas: 1` | ✅ | `deploy/helm/bzlhub/templates/statefulset.yaml:11` |
 | 3.9 | Non-root UID in image | ✅ | `Dockerfile` `USER bzlhub` (UID 65532) |
 | 3.9 | Helm `securityContext` complete | ✅ | Reality is *richer* than the contract — `runAsNonRoot`, `readOnlyRootFilesystem`, `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]`, `seccompProfile: RuntimeDefault`, plus `fsGroupChangePolicy: OnRootMismatch` to avoid expensive recursive chowns |
-| 3.10 | Serves plain HTTP only | ✅ | `CANOPY_BIND=0.0.0.0:8090` in Dockerfile |
-| 3.10 | Trusted-edge X-Forwarded-* header handling | ✅ | Reality is *stronger* than the original framing — `CANOPY_TRUSTED_PROXY_CIDR` gates header trust by source IP CIDR. Auth middleware at `internal/server/auth_middleware.go` |
+| 3.10 | Serves plain HTTP only | ✅ | `BZLHUB_BIND=0.0.0.0:8090` in Dockerfile |
+| 3.10 | Trusted-edge X-Forwarded-* header handling | ✅ | Reality is *stronger* than the original framing — `BZLHUB_TRUSTED_PROXY_CIDR` gates header trust by source IP CIDR. Auth middleware at `internal/server/auth_middleware.go` |
 | 4.1 | `mirror/` and `index/` are separate volumes | ✅ | `values.yaml` has `persistence.mirror` and `persistence.index` as separate PVCs |
 | 5 | Single port, no host networking | ✅ | `containerPort: 8090`, plain ClusterIP service |
 | 6 | All addons off in `values.yaml` defaults | ✅ | `cronjobs.{ingest,drift}.enabled: false`, `ingress.enabled: false`, `gateway.enabled: false` |

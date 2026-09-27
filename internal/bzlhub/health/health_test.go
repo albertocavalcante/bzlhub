@@ -42,7 +42,7 @@ func healthyPayload() api.SystemStatus {
 				CacheHitRate:       0.9,
 			}},
 		},
-		Drift: api.DriftStatusInfo{},
+		Drift:  api.DriftStatusInfo{},
 		Addons: api.AddonsStatus{},
 	}
 }

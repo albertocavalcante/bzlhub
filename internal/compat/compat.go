@@ -1,5 +1,5 @@
-// Package compat is canopy's compatibility analyzer (A1 — the
-// killer feature that distinguishes canopy from peer registries).
+// Package compat is bzlhub's compatibility analyzer (A1 — the
+// killer feature that distinguishes bzlhub from peer registries).
 //
 // Input: a MODULE.bazel text blob from the caller.
 // Output: a per-dep migration report telling the caller "if you bump
@@ -28,7 +28,7 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/modulediff"
 )
 
-// ReportSource is the read-only view of canopy's index the analyzer
+// ReportSource is the read-only view of bzlhub's index the analyzer
 // needs. *bzlhub.Service satisfies it via its existing methods,
 // keeping this package decoupled from the broader service surface.
 type ReportSource interface {
@@ -60,7 +60,7 @@ type Result struct {
 	// Self is the analyzed MODULE.bazel's own (name, version) when
 	// the input declared a `module(name = "...", version = "...")`.
 	// Empty fields when the block is absent or malformed.
-	Self SelfInfo `json:"self"`
+	Self SelfInfo   `json:"self"`
 	Deps []DepEntry `json:"deps"`
 	// Summary aggregates per-dep counts; cheap for the UI to render
 	// without re-walking the report.
@@ -91,28 +91,28 @@ type DepEntry struct {
 	Name        string `json:"name"`
 	FromVersion string `json:"from_version"`         // pinned in input
 	ToVersion   string `json:"to_version,omitempty"` // latest in corpus; empty when InCorpus is false
-	// InCorpus reports whether canopy's index has the module at all.
+	// InCorpus reports whether bzlhub's index has the module at all.
 	// False entries can't be diffed but still appear in the result so
 	// the UI can prompt the operator to ingest them.
-	InCorpus      bool                       `json:"in_corpus"`
+	InCorpus bool `json:"in_corpus"`
 	// SameVersion reports whether FromVersion == ToVersion (already on
 	// latest). UI hides the dep from the "needs attention" view but
 	// keeps it in the full list for completeness.
-	SameVersion   bool                       `json:"same_version,omitempty"`
-	FromIndexed   bool                       `json:"from_indexed"`            // pinned version present in index
-	BreakingCount int                        `json:"breaking_count"`          // 0 when from→to is clean
-	Report        *modulediff.Report         `json:"report,omitempty"`        // nil when InCorpus=false or no change
+	SameVersion   bool               `json:"same_version,omitempty"`
+	FromIndexed   bool               `json:"from_indexed"`     // pinned version present in index
+	BreakingCount int                `json:"breaking_count"`   // 0 when from→to is clean
+	Report        *modulediff.Report `json:"report,omitempty"` // nil when InCorpus=false or no change
 	// Findings is a stable-sorted copy of Report.Breaking. Pulled up
 	// to the entry level so consumers can render summaries without
 	// dereferencing nested fields.
-	Findings      []modulediff.BreakingFinding `json:"findings,omitempty"`
+	Findings []modulediff.BreakingFinding `json:"findings,omitempty"`
 }
 
 // Summary is the at-a-glance counter the UI's banner reads.
 type Summary struct {
 	TotalDeps         int `json:"total_deps"`
 	BreakingDeps      int `json:"breaking_deps"`       // deps with >= 1 breaking finding
-	MissingFromCorpus int `json:"missing_from_corpus"` // deps not indexed in canopy
+	MissingFromCorpus int `json:"missing_from_corpus"` // deps not indexed in bzlhub
 	AlreadyLatest     int `json:"already_latest"`      // deps pinned to the latest indexed version
 }
 
@@ -194,7 +194,7 @@ func Analyze(ctx context.Context, src ReportSource, body string, opts Options) (
 		toReport, _ := src.GetReport(ctx, d.Name, latest)
 		if fromReport == nil || toReport == nil {
 			// One side missing — common when consumers pin a version
-			// canopy hasn't ingested yet. Surface the bump
+			// bzlhub hasn't ingested yet. Surface the bump
 			// recommendation without breaking-finding detail.
 			out.Deps = append(out.Deps, entry)
 			continue
@@ -257,7 +257,7 @@ func renderPlan(r *Result) string {
 		fmt.Fprintf(&b, "- **%d** with breaking changes\n", r.Summary.BreakingDeps)
 	}
 	if r.Summary.MissingFromCorpus > 0 {
-		fmt.Fprintf(&b, "- **%d** not yet ingested in canopy\n", r.Summary.MissingFromCorpus)
+		fmt.Fprintf(&b, "- **%d** not yet ingested in bzlhub\n", r.Summary.MissingFromCorpus)
 	}
 	if r.Summary.AlreadyLatest > 0 {
 		fmt.Fprintf(&b, "- **%d** already on latest\n", r.Summary.AlreadyLatest)
@@ -299,7 +299,7 @@ func renderPlan(r *Result) string {
 		}
 	}
 	if len(notIngested) > 0 {
-		b.WriteString("## Not in canopy index\n\n")
+		b.WriteString("## Not in bzlhub index\n\n")
 		b.WriteString("These deps aren't ingested yet — analyzer can't compare against a known-good version.\n\n")
 		for _, x := range notIngested {
 			fmt.Fprintf(&b, "- `%s`\n", x)

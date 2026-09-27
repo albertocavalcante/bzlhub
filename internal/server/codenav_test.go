@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	scip "github.com/scip-code/scip/bindings/go/scip"
@@ -150,7 +151,7 @@ func TestCodeNavMount(t *testing.T) {
 	cs.MirrorRoot = mirrorRoot
 
 	ts := httptest.NewServer(server.NewWithOptions(nil, cs, nil, server.Options{
-		MirrorRoot:    mirrorRoot,
+		MirrorRoot:      mirrorRoot,
 		SourcesCacheDir: sourcesRoot,
 	}))
 	t.Cleanup(ts.Close)
@@ -181,8 +182,8 @@ func TestCodeNavMount(t *testing.T) {
 // falls back to understory's index.html, the mount prefix must be
 // substituted into the embedded `/_app/` references and the inline
 // `base: ""` placeholder so the browser fetches assets through the
-// canopy mount instead of the bare origin (where canopy's own bundle
-// lives). This is the e2e contract between canopy's codenav handler
+// bzlhub mount instead of the bare origin (where bzlhub's own bundle
+// lives). This is the e2e contract between bzlhub's codenav handler
 // (sets X-Forwarded-Prefix) and understory.ui (rewrites the body).
 func TestCodeNavSPAFallbackRewritesAssets(t *testing.T) {
 	mirrorRoot, sourcesRoot, s := seedCodeNavFixture(t, "foo", "1.0")
@@ -212,9 +213,27 @@ func TestCodeNavSPAFallbackRewritesAssets(t *testing.T) {
 	if !bytes.Contains(body, []byte(wantPrefix+"/_app/")) {
 		t.Errorf("SPA fallback missing rewritten %s/_app/ refs", wantPrefix)
 	}
+	start := strings.Index(s2, wantPrefix+"/_app/")
+	if start < 0 {
+		t.Fatal("SPA fallback contains no bundled asset path")
+	}
+	assetPath := s2[start:]
+	end := strings.IndexByte(assetPath, '"')
+	if end < 0 {
+		t.Fatal("unterminated bundled asset path")
+	}
+	assetPath = assetPath[:end]
+	asset, err := http.Get(ts.URL + assetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer asset.Body.Close()
+	if asset.StatusCode != http.StatusOK || strings.HasPrefix(asset.Header.Get("Content-Type"), "text/html") {
+		t.Fatalf("bundled asset %s: status=%d content-type=%q; want a real asset", assetPath, asset.StatusCode, asset.Header.Get("Content-Type"))
+	}
 }
 
-// TestCodeNavNotIndexedReturnsFriendlyHTML — when canopy has a working
+// TestCodeNavNotIndexedReturnsFriendlyHTML — when bzlhub has a working
 // codenav resolver but the requested coordinate has no SCIP blob (e.g.
 // rules_kotlin's MODULE.bazel pins rules_java@7.2.0 but we only have
 // 8.6.1 indexed), the handler must:
@@ -271,7 +290,7 @@ func TestCodeNavUnknownCoordinate(t *testing.T) {
 	cs.MirrorRoot = mirrorRoot
 
 	ts := httptest.NewServer(server.NewWithOptions(nil, cs, nil, server.Options{
-		MirrorRoot:    mirrorRoot,
+		MirrorRoot:      mirrorRoot,
 		SourcesCacheDir: sourcesRoot,
 	}))
 	t.Cleanup(ts.Close)

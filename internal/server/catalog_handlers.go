@@ -47,7 +47,7 @@ func (h *handler) apiGetModule(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, api.ErrModuleNotFound) {
 			writeJSON(w, http.StatusNotFound, map[string]string{
-				"error": "module " + name + " not indexed in this canopy",
+				"error": "module " + name + " not indexed in this bzlhub",
 			})
 			return
 		}

@@ -109,7 +109,7 @@ func TestRenderShell_GoldenScript(t *testing.T) {
 }
 
 // Sanity check that double-quote / backtick / $ in hints don't
-// produce malformed bash. Canopy controls all hint strings, so this
+// produce malformed bash. Bzlhub controls all hint strings, so this
 // is correctness-of-rendering, not shell-injection defense.
 func TestRenderShell_EscapesSpecialCharsInHint(t *testing.T) {
 	r := &Result{

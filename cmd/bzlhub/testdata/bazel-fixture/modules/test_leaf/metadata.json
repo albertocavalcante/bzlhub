@@ -1,6 +1,6 @@
 {
   "homepage": "https://example.test/test_leaf",
-  "maintainers": [{"name": "canopy E2E test", "email": "noreply@example.test"}],
+  "maintainers": [{"name": "bzlhub E2E test", "email": "noreply@example.test"}],
   "repository": ["github:example/test_leaf"],
   "versions": ["1.0.0"],
   "yanked_versions": {}

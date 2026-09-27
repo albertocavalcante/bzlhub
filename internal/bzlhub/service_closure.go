@@ -23,7 +23,7 @@ const closureMaxDepth = 10
 // External nodes: any (name, version) referenced as a bazel_dep
 // child but not present in the local store. They appear as leaf
 // External=true nodes; the renderer dims them so the reader sees
-// where the closure escapes canopy's index.
+// where the closure escapes bzlhub's index.
 func (s *Service) Closure(ctx context.Context, name, version string) (*api.ClosureGraph, error) {
 	g := &api.ClosureGraph{
 		Root:  nodeKey(name, version),

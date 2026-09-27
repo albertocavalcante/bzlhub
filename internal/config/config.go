@@ -2,15 +2,15 @@ package config
 
 import "fmt"
 
-// Config is canopy's typed deployment configuration. It is the
+// Config is bzlhub's typed deployment configuration. It is the
 // single source of truth for runtime policy decisions: which profile
 // is active, which hosts may be reached for egress, which backends
 // are configured, and so on. Wire format (YAML) lives elsewhere; this
 // type is what every consumer reads after parsing + validation.
 //
 // The zero value is intentionally a working configuration:
-// profile=default, no egress allowlist. A canopy invoked with no
-// config file behaves exactly like a canopy invoked with an empty
+// profile=default, no egress allowlist. A bzlhub invoked with no
+// config file behaves exactly like a bzlhub invoked with an empty
 // one.
 type Config struct {
 	// Profile selects the deployment posture. See profile.go and
@@ -37,13 +37,14 @@ type EgressConfig struct {
 	// a configuration error.
 	Allow []string
 
-	// Mode is reserved for the egress-package wiring. Empty string
-	// today; populated in the C3 commit.
+	// Mode is the resolved transport posture: allow, deny, or audit.
+	// Operators select a profile; LoadEnvironment derives this field
+	// so profile and mode cannot drift.
 	Mode string
 }
 
 // Validate walks the config and returns the first inconsistency that
-// would make canopy unsafe to run. Diagnostics name both the offending
+// would make bzlhub unsafe to run. Diagnostics name both the offending
 // profile and the offending key — the caller renders them; we don't
 // truncate.
 //
@@ -59,8 +60,15 @@ func (c *Config) Validate() error {
 	if c.Profile == ProfileMirrorOnly && len(c.Egress.Allow) > 0 {
 		return fmt.Errorf(
 			"profile %q forbids egress.allow entries (%d configured); "+
-				"mirror-only canopies must have an empty egress.allow list",
+				"mirror-only Bzlhub instances must have an empty egress.allow list",
 			c.Profile, len(c.Egress.Allow),
+		)
+	}
+	if c.Profile == ProfileSyncRunner && len(c.Egress.Allow) == 0 {
+		return fmt.Errorf(
+			"profile %q requires at least one egress.allow entry; "+
+				"sync-runner must never have unrestricted egress",
+			c.Profile,
 		)
 	}
 

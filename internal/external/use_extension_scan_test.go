@@ -19,7 +19,7 @@ import (
 //     attrs as a string-keyed map.
 //
 // Used by bzlhub ingest to build a cross-module index of
-// "which canopy-indexed module uses which extension with which
+// "which bzlhub-indexed module uses which extension with which
 // tag values" — the foundation of the consumer-corpus aggregation
 // that fills in real tag values when re-driving a producer
 // ruleset's module_extension impls.

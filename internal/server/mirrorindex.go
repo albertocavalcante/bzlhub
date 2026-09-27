@@ -20,7 +20,7 @@ import (
 // archive URL, strips the scheme, and appends the rest to each mirror
 // prefix. So a mirror request URL looks like:
 //
-//     <mirror-prefix><host>[:port]/<path>[?<query>]
+//	<mirror-prefix><host>[:port]/<path>[?<query>]
 //
 // The handler routes that suffix back through mirrorIndex to find the
 // blob we stored under blobs/<sha256-hex>.
@@ -32,7 +32,7 @@ import (
 type mirrorIndex struct {
 	root string
 
-	mu      sync.RWMutex
+	mu       sync.RWMutex
 	urlToHex map[string]string
 	built    bool
 }

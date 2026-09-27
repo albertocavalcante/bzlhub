@@ -17,10 +17,10 @@ import (
 // returns a configurable PR. The other methods aren't exercised in G3
 // tests so they return zero values.
 type fakeForge struct {
-	mu       sync.Mutex
-	opened   []bigorna.OpenPROpts
-	nextPR   bigorna.PR
-	openErr  error
+	mu      sync.Mutex
+	opened  []bigorna.OpenPROpts
+	nextPR  bigorna.PR
+	openErr error
 }
 
 func (f *fakeForge) OpenPR(_ context.Context, opts bigorna.OpenPROpts) (bigorna.PR, error) {

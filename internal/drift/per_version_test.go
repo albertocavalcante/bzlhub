@@ -70,8 +70,8 @@ func TestComputeForVersion_LocalOnly(t *testing.T) {
 }
 
 // TestComputeForVersion_LocalVersionAheadOfUpstream covers the
-// "canopy holds a version upstream doesn't have, and it's the highest
-// overall" case (canopy's own published variant). Treated as in-sync
+// "bzlhub holds a version upstream doesn't have, and it's the highest
+// overall" case (bzlhub's own published variant). Treated as in-sync
 // — we're not behind; we're ahead.
 func TestComputeForVersion_LocalVersionAheadOfUpstream(t *testing.T) {
 	up := &fetch.MetadataJSON{Versions: []string{"1.0.0", "1.1.0"}}

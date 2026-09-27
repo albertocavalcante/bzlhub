@@ -128,10 +128,7 @@ type submitBody struct {
 // the caller's flow stays linear.
 func parseSubmitBody(w http.ResponseWriter, r *http.Request) (submitBody, bool) {
 	var body submitBody
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&body); err != nil {
-		http.Error(w, "bad request: "+err.Error(), http.StatusBadRequest)
+	if !decodeJSONBody(w, r, maxRequestJSONBody, &body) {
 		return body, false
 	}
 	body.Module = strings.TrimSpace(body.Module)
@@ -442,10 +439,7 @@ func (h *requestHandlers) transitionByReviewer(w http.ResponseWriter, r *http.Re
 		var body struct {
 			Reason string `json:"reason"`
 		}
-		dec := json.NewDecoder(r.Body)
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&body); err != nil {
-			http.Error(w, "bad request: "+err.Error(), http.StatusBadRequest)
+		if !decodeJSONBody(w, r, maxTransitionJSONBody, &body) {
 			return
 		}
 		reason = strings.TrimSpace(body.Reason)
@@ -473,9 +467,9 @@ func (h *requestHandlers) transitionByReviewer(w http.ResponseWriter, r *http.Re
 	// race where state changes between our Get and our Transition.
 	if !slices.Contains(cfg.allowedFroms, current.State) {
 		writeJSON(w, http.StatusConflict, map[string]any{
-			"error":            "request is in state " + string(current.State) + "; " + cfg.action + " not allowed",
-			"current_state":    current.State,
-			"allowed_from":     cfg.allowedFroms,
+			"error":         "request is in state " + string(current.State) + "; " + cfg.action + " not allowed",
+			"current_state": current.State,
+			"allowed_from":  cfg.allowedFroms,
 		})
 		return
 	}
@@ -531,8 +525,8 @@ func (h *requestHandlers) transitionByReviewer(w http.ResponseWriter, r *http.Re
 // Returns the per-caller view of every action gate as a
 // {action → bool} map, the resolved profile, AND the caller's
 // resolved identity. UI uses this on every page load to:
-//   1. decide button visibility (actions map)
-//   2. render "signed in as X" affordances (identity field)
+//  1. decide button visibility (actions map)
+//  2. render "signed in as X" affordances (identity field)
 //
 // The identity field works for every auth source — bearer
 // (Authorization header), header (X-Forwarded-* from a trusted

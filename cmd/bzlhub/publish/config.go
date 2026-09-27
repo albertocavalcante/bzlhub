@@ -99,11 +99,11 @@ func resolvePublishConfig(f publishFlags) (publishConfig, error) {
 		}
 	}
 
-	// Bot identity (always required — Committer on the canopy commit).
+	// Bot identity (always required — Committer on the bzlhub commit).
 	hostname, _ := os.Hostname()
 	cfg.bot = publish.Identity{
-		Name:  firstNonEmpty(f.botName, os.Getenv("BZLHUB_BOT_NAME"), "canopy"),
-		Email: firstNonEmpty(f.botEmail, os.Getenv("BZLHUB_BOT_EMAIL"), "canopy@"+hostname),
+		Name:  firstNonEmpty(f.botName, os.Getenv("BZLHUB_BOT_NAME"), "bzlhub"),
+		Email: firstNonEmpty(f.botEmail, os.Getenv("BZLHUB_BOT_EMAIL"), "bzlhub@"+hostname),
 	}
 
 	// Requester identity: flag → git config → error.

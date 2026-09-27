@@ -61,5 +61,5 @@ func TestBuildModuleSpecsFromConsumers_DifferentTagsKeepBuckets(t *testing.T) {
 }
 
 // toStarlarkValue coverage lives in starlark-go-bazel/conv (as
-// TestFromGo_*). The converter moved out of canopy when it became
+// TestFromGo_*). The converter moved out of bzlhub when it became
 // reusable by compat-analyzer + future scip-bazel callers.

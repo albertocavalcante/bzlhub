@@ -28,9 +28,9 @@ type CascadeHit struct {
 // CascadeProbe asks an upstream BCR registry whether it already
 // publishes a given (module, version) AND returns the upstream's
 // source location when it does. Hits enable two things:
-//   1. Preflight auto_pass — skip human review for known modules.
-//   2. Admit fetch — when the request had no source_url, fall
-//      back to the cascade-supplied URL so admit can still proceed.
+//  1. Preflight auto_pass — skip human review for known modules.
+//  2. Admit fetch — when the request had no source_url, fall
+//     back to the cascade-supplied URL so admit can still proceed.
 //
 // Implementations should return nil + nil err for "not found"
 // (the canonical 404 signal in BCR-shape registries), and (nil,

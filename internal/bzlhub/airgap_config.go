@@ -30,7 +30,7 @@ import (
 // --module_mirrors=<registry>=<mirror1>,<mirror2>,... The two flags
 // are complementary: downloader config covers every URL (repo rules
 // + extensions + registry); --module_mirrors only covers registry
-// sources. Canopy's downloader-config output already covers the
+// sources. Bzlhub's downloader-config output already covers the
 // registry slice, so --module_mirrors is optional, not a replacement —
 // for the .bazelrc-shaped sibling artifact, see AirgapModuleMirrors.
 //
@@ -101,7 +101,7 @@ func (s *Service) AirgapDownloaderConfig(ctx context.Context, name, version stri
 	if opts.Recursive {
 		scope = "closure-wide"
 	}
-	fmt.Fprintf(&out, "# canopy airgap downloader config\n")
+	fmt.Fprintf(&out, "# bzlhub airgap downloader config\n")
 	fmt.Fprintf(&out, "# Module:      %s@%s (%s)\n", name, version, scope)
 	fmt.Fprintf(&out, "# Mirror base: %s\n", mirror)
 	fmt.Fprintf(&out, "# Use via:    Bazel >= 9.0.0  --downloader_config=<this file>\n")
@@ -131,7 +131,7 @@ func (s *Service) AirgapDownloaderConfig(ctx context.Context, name, version stri
 		totalURLs += b.urls
 	}
 
-	// Allow the mirror host so canopy-rewritten requests aren't
+	// Allow the mirror host so bzlhub-rewritten requests aren't
 	// recursively re-rewritten. The hostname is extracted from the
 	// mirror base.
 	if mirrorHost := extractMirrorHost(mirror); mirrorHost != "" {

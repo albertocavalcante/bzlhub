@@ -251,7 +251,7 @@ func TestHTTPStoreConfig_Artifactory_E2E_ReadsBCRShape(t *testing.T) {
 		t.Fatalf("Build: %v", err)
 	}
 
-	// 1. Read metadata.json through the canopy Backend interface.
+	// 1. Read metadata.json through the bzlhub Backend interface.
 	rc, err := hs.GetMetadata(context.Background(), "rules_go")
 	if err != nil {
 		t.Fatalf("GetMetadata: %v", err)

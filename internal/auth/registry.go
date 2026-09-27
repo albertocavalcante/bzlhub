@@ -12,11 +12,11 @@ import (
 	"sync"
 )
 
-// maxIdentityFileBytes caps how much of the identity file canopy
+// maxIdentityFileBytes caps how much of the identity file bzlhub
 // will read at boot. A real deployment carries one entry (~150 B)
 // per authorized human/service; 10 MB holds ~70k tokens which is
-// far past any plausible canopy install. Anything past this is
-// almost certainly a mis-mounted bind that would OOM canopy.
+// far past any plausible bzlhub install. Anything past this is
+// almost certainly a mis-mounted bind that would OOM bzlhub.
 const maxIdentityFileBytes = 10 * 1024 * 1024
 
 // IdentityRegistry maps bearer-token SHA-256 hashes to the
@@ -25,9 +25,9 @@ const maxIdentityFileBytes = 10 * 1024 * 1024
 //
 // The JSON carries hashes, never plaintext tokens. Operators compute
 // the hash locally (`printf '%s' "$TOKEN" | shasum -a 256`) and
-// commit only the hex digest. Compromising the canopy host yields
+// commit only the hex digest. Compromising the bzlhub host yields
 // the hash table, not the tokens; an attacker would have to invert
-// SHA-256 to recover any usable token. (Canopy doesn't claim this
+// SHA-256 to recover any usable token. (Bzlhub doesn't claim this
 // is bcrypt/argon2 strength — bearer tokens here are
 // operator-generated 32-byte random strings, so SHA-256 against the
 // well-randomized input is sufficient. Defense-in-depth, not
@@ -183,7 +183,7 @@ func (r *IdentityRegistry) Replace(other *IdentityRegistry) {
 
 // Size reports the count of registered tokens. Used for boot-log
 // observability ("identity registry loaded with N tokens") so the
-// operator can confirm canopy sees what they wrote.
+// operator can confirm bzlhub sees what they wrote.
 func (r *IdentityRegistry) Size() int {
 	if r == nil {
 		return 0

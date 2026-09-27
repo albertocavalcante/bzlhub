@@ -15,7 +15,6 @@
 
   import { page } from '$app/state';
   import { getConsumers, type ConsumersResult } from '$api/client';
-  import { parseScipSymbol } from '$api/scip';
   import { readParam, writeParam, boolField, stringList } from '$lib/url-state';
   import ShareLink from '$components/ShareLink.svelte';
 
@@ -88,17 +87,23 @@
     return `${f.slice(0, 30)}…${f.slice(-30)}`;
   }
 
-  // Humanized symbol parts: prefer the API response (the canonical
-  // source) and fall back to URL-parsed bits during the initial load
-  // so the header renders something readable even before getConsumers
-  // returns. Both can be partially populated; render defensively.
-  const fallback = $derived(parseScipSymbol(page.params.symbol));
+  // Humanized symbol parts come from the API response, which is the canonical
+  // source and already returns them parsed. Module and version also sit in the
+  // route, so the header renders those immediately; name falls back to the raw
+  // symbol for the moment before getConsumers returns.
+  //
+  // There used to be a TypeScript parser here for that moment. It was a second
+  // understanding of the SCIP symbol grammar that Go could not share, and it
+  // went stale the moment the grammar changed -- returning null for every real
+  // symbol while its own tests stayed green, because they asserted against
+  // hand-written strings. A sub-second flash of the raw symbol is a much better
+  // trade than owning a parser that can drift silently.
   const display = $derived({
-    name: result?.name ?? fallback?.name ?? page.params.symbol ?? '',
-    file: result?.file ?? fallback?.file ?? '',
+    name: result?.name ?? page.params.symbol ?? '',
+    file: result?.file ?? '',
     kind: result?.kind ?? '',
-    module: result?.module ?? fallback?.module ?? page.params.name ?? '',
-    version: result?.version ?? fallback?.version ?? page.params.version ?? '',
+    module: result?.module ?? page.params.name ?? '',
+    version: result?.version ?? page.params.version ?? '',
   });
 </script>
 

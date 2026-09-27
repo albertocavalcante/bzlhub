@@ -18,7 +18,7 @@ func buildPublisher(cfg publishConfig) (publish.Publisher, func(), error) {
 	noop := func() {}
 	switch {
 	case cfg.dryRun:
-		scratch, err := os.MkdirTemp("", "canopy-publish-dryrun-*")
+		scratch, err := os.MkdirTemp("", "bzlhub-publish-dryrun-*")
 		if err != nil {
 			return nil, noop, fmt.Errorf("bzlhub publish: alloc dry-run scratch: %w", err)
 		}

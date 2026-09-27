@@ -82,11 +82,11 @@ func TestLookupXRefs_OneMatch(t *testing.T) {
 	symbol := "bzlmod bazel_skylib@1.7.1 lib/paths.bzl#paths"
 	store := &fakeXRefStore{
 		versions: []ModuleVersion{
-			{"bar", "2.0"},          // has the symbol
+			{"bar", "2.0"},         // has the symbol
 			{"unrelated", "0.0.1"}, // doesn't
 		},
 		blobs: map[string][]byte{
-			"bar@2.0":           scipBlobForRef(t, "bar/use.bzl", symbol, false),
+			"bar@2.0":         scipBlobForRef(t, "bar/use.bzl", symbol, false),
 			"unrelated@0.0.1": scipBlobForRef(t, "u.bzl", "bzlmod other 1.0 x.bzl#x", false),
 		},
 	}
@@ -214,5 +214,13 @@ func TestLookupXRefs_RejectsEmptySymbol(t *testing.T) {
 	_, err := LookupXRefs(context.Background(), store, store, "", false)
 	if err == nil {
 		t.Error("LookupXRefs(symbol=\"\") = nil err; want validation error")
+	}
+}
+
+func TestLookupXRefs_RejectsDocumentScopedSymbol(t *testing.T) {
+	t.Parallel()
+	store := &fakeXRefStore{}
+	if _, err := LookupXRefs(context.Background(), store, store, "local 0", false); err == nil {
+		t.Fatal("cross-module lookup accepted a document-scoped local symbol")
 	}
 }

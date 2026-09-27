@@ -1,0 +1,84 @@
+# Auto-generated 2026-09-03 — build output, caches, and binaries.
+# Reviewed before this directory gets a git remote.
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# --- secrets (belt and braces; canonical home is ws/secrets/) ---
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+id_rsa*
+.netrc
+*.token
+*.pwd
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# --- generic binaries / archives ---
+*.a
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+*.class
+*.jar
+*.zip
+*.tar
+*.tar.*
+*.tgz
+*.xip
+*.dmg
+*.iso
+
+# --- Go ---
+/bin/
+vendor/
+*.test
+*.out
+coverage.*
+
+
+# --- UNIVERSAL build-output dirs (match at ANY depth) ---
+# Stack detection can miss nested projects, so these are unconditional.
+node_modules/
+target/
+build/
+.build/
+dist/
+out/
+.output/
+.venv/
+venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+zig-out/
+zig-cache/
+.zig-cache/
+.gradle/
+.next/
+.nuxt/
+.svelte-kit/
+.turbo/
+.astro/
+.parcel-cache/
+DerivedData/
+.swiftpm/
+cmake-build-*/
+CMakeFiles/
+coverage/
+.nyc_output/
+bazel-*

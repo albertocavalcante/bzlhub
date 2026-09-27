@@ -1,4 +1,4 @@
-// Package paths is canopy's single source of truth for HTTP API path
+// Package paths is bzlhub's single source of truth for HTTP API path
 // shape. Every site that registers a route, composes a URL, or tests an
 // endpoint goes through here.
 //
@@ -57,11 +57,11 @@ func moduleVersion(m, v string) string {
 
 // Top-level + collections.
 
-func Search() string         { return Prefix + "/search" }
-func XRefs() string          { return Prefix + "/xrefs" }
-func Drift() string          { return Prefix + "/drift" }
-func Upstreams() string      { return Prefix + "/upstreams" }
-func ModulesIndex() string   { return Prefix + "/modules" }
+func Search() string       { return Prefix + "/search" }
+func XRefs() string        { return Prefix + "/xrefs" }
+func Drift() string        { return Prefix + "/drift" }
+func Upstreams() string    { return Prefix + "/upstreams" }
+func ModulesIndex() string { return Prefix + "/modules" }
 func ModuleVersions(m string) string {
 	return Prefix + "/modules/" + url.PathEscape(m) + "/versions"
 }
@@ -83,22 +83,25 @@ func ModuleDiffClosure(m string) string { return ModuleDiff(m) + "/closure" }
 
 // Version-scoped.
 
-func ModuleVersionDetail(m, v string) string    { return moduleVersion(m, v) }
-func External(m, v string) string               { return moduleVersion(m, v) + "/external" }
-func Scip(m, v string) string                   { return moduleVersion(m, v) + "/scip" }
-func Docs(m, v string) string                   { return moduleVersion(m, v) + "/docs" }
-func ExampleFiles(m, v string) string           { return moduleVersion(m, v) + "/example-files" }
-func ClosureGraph(m, v string) string           { return moduleVersion(m, v) + "/closure/graph" }
-func ClosureReverseDeps(m, v string) string     { return moduleVersion(m, v) + "/closure/reverse-deps" }
+func ModuleVersionDetail(m, v string) string { return moduleVersion(m, v) }
+func External(m, v string) string            { return moduleVersion(m, v) + "/external" }
+func Scip(m, v string) string                { return moduleVersion(m, v) + "/scip" }
+func Docs(m, v string) string                { return moduleVersion(m, v) + "/docs" }
+func ExampleFiles(m, v string) string        { return moduleVersion(m, v) + "/example-files" }
+func ClosureGraph(m, v string) string        { return moduleVersion(m, v) + "/closure/graph" }
+func ClosureReverseDeps(m, v string) string  { return moduleVersion(m, v) + "/closure/reverse-deps" }
+
 // Consumers is Plan 07's cross-corpus consumer view — every call
 // site of the named rule/provider/macro/repo_rule/module_extension
-// across canopy's indexed corpus.
+// across bzlhub's indexed corpus.
 func Consumers(m, v, name string) string {
 	return moduleVersion(m, v) + "/consumers/" + url.PathEscape(name)
 }
-func AirgapSurface(m, v string) string          { return moduleVersion(m, v) + "/airgap/surface" }
-func AirgapDownloaderConfig(m, v string) string { return moduleVersion(m, v) + "/airgap/downloader-config" }
-func AirgapModuleMirrors(m, v string) string    { return moduleVersion(m, v) + "/airgap/module-mirrors" }
+func AirgapSurface(m, v string) string { return moduleVersion(m, v) + "/airgap/surface" }
+func AirgapDownloaderConfig(m, v string) string {
+	return moduleVersion(m, v) + "/airgap/downloader-config"
+}
+func AirgapModuleMirrors(m, v string) string { return moduleVersion(m, v) + "/airgap/module-mirrors" }
 
 // Actions (RPC writes).
 

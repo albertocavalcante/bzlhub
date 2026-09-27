@@ -11,7 +11,7 @@
 //	GET /repos/{owner}/{repo}/languages  → map[language]bytes
 //
 // Anonymous access works at GitHub's default 60 req/h per IP, which
-// is enough for canopy's small-corpus default but not for active
+// is enough for bzlhub's small-corpus default but not for active
 // refresh sweeps. Operators set GITHUB_TOKEN (file-mounted) for the
 // 5000 req/h authenticated bucket; the TokenProvider abstraction lets
 // the Sprint-4 GitHubApp slot in later without consumer changes.
@@ -36,9 +36,9 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/githubapi/token"
 )
 
-// Meta is the canopy-internal shape we persist + render. It's a
+// Meta is the bzlhub-internal shape we persist + render. It's a
 // projection of GitHub's repo + languages endpoints into the fields
-// the UI consumes; new GitHub fields don't reach canopy unless
+// the UI consumes; new GitHub fields don't reach bzlhub unless
 // surfaced here.
 type Meta struct {
 	Owner string `json:"owner"`
@@ -64,7 +64,7 @@ type Meta struct {
 	// request from counting against the hourly bucket.
 	ETag string `json:"etag,omitempty"`
 
-	// FetchedAt is when canopy last received a 200 (fresh data) for
+	// FetchedAt is when bzlhub last received a 200 (fresh data) for
 	// this repo. RFC3339Nano UTC.
 	FetchedAt time.Time `json:"fetched_at"`
 }
@@ -89,7 +89,7 @@ var ErrNotModified = errors.New("githubmeta: not modified")
 // misbehaving GitHub proxies serving multi-GB JSON. Real repo
 // responses are <2KB; languages responses <10KB. 16MB is orders
 // of magnitude above legitimate use but well below the OOM
-// threshold for canopy's typical deployment.
+// threshold for bzlhub's typical deployment.
 const MaxJSONResponseBytes = 16 * 1024 * 1024
 
 // ErrResponseTooLarge is returned when an upstream response body
@@ -136,10 +136,10 @@ func ParseRepoLabel(label string) (owner, repo string, ok bool) {
 // across calls so connection pooling kicks in across the refresh
 // sweep.
 type Client struct {
-	HTTP     *http.Client
-	Token    token.Provider
-	BaseURL  string // override for tests; defaults to "https://api.github.com"
-	UserAgent string // optional; defaults to "canopy"
+	HTTP      *http.Client
+	Token     token.Provider
+	BaseURL   string // override for tests; defaults to "https://api.github.com"
+	UserAgent string // optional; defaults to "bzlhub"
 }
 
 // NewClient returns a Client wired with sensible defaults. The
@@ -148,13 +148,13 @@ func NewClient(tp token.Provider) *Client {
 	if tp == nil {
 		tp = token.Anonymous{}
 	}
-	hc := egress.NewHTTPClient(egress.Policy{})
+	hc := egress.DefaultHTTPClient()
 	hc.Timeout = 30 * time.Second
 	return &Client{
 		HTTP:      hc,
 		Token:     tp,
 		BaseURL:   "https://api.github.com",
-		UserAgent: "canopy",
+		UserAgent: "bzlhub",
 	}
 }
 

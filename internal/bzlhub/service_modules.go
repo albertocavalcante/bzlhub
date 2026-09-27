@@ -24,7 +24,7 @@ import (
 // to enrich registry-level fields (homepage, maintainers, yanked).
 //
 // Two soft conditions:
-//   - SourcesCacheDir empty → returns an error explaining the canopy
+//   - SourcesCacheDir empty → returns an error explaining the bzlhub
 //     was started without a sources cache.
 //   - Source root missing → returns an error suggesting (re-)Bump.
 //
@@ -33,7 +33,7 @@ import (
 // can still render.
 func (s *Service) Summary(ctx context.Context, name, version string) (*bzlsummary.Summary, error) {
 	if s.SourcesCacheDir == "" || s.MirrorRoot == "" {
-		return nil, errors.New("summary not available: canopy was started without both --root (mirror) and a sources cache")
+		return nil, errors.New("summary not available: bzlhub was started without both --root (mirror) and a sources cache")
 	}
 	// MaterializeSource unpacks the tarball on demand if it isn't
 	// already cached — same machinery codenav uses for browse
@@ -70,7 +70,7 @@ func (s *Service) GetTarballSize(ctx context.Context, name, version string) (int
 
 // ListVersionsWithMeta is ListVersions plus ingested_at per row.
 // Exposed (uppercase) so the HTTP layer can type-assert to Service
-// for this without widening the cross-transport api.Canopy
+// for this without widening the cross-transport api.Bzlhub
 // interface — same fall-through pattern as ComputeUsageCounts.
 func (s *Service) ListVersionsWithMeta(ctx context.Context, name string) ([]store.VersionRow, error) {
 	return s.store.ListVersionsWithMeta(ctx, name)

@@ -16,8 +16,8 @@ import (
 	doc "github.com/albertocavalcante/starlark-doc-go"
 )
 
-// LinkResolver builds canopy URLs from Bazel labels. Implementations
-// know which paths are routable at this canopy install (only
+// LinkResolver builds bzlhub URLs from Bazel labels. Implementations
+// know which paths are routable at this bzlhub install (only
 // `/modules/<name>` for the module landing, plus per-(module,
 // version) code-nav for same-repo file labels).
 type LinkResolver interface {
@@ -44,15 +44,15 @@ type Owner struct {
 // starlark-doc-go's Docstring + bazeldoc.Enriched so the frontend
 // type can stay close to the existing ParsedDoc interface.
 type Doc struct {
-	Summary     string         `json:"Summary,omitempty"`
-	Description string         `json:"Description,omitempty"`
-	Args        []doc.Param    `json:"Args,omitempty"`
-	Returns     *doc.Return    `json:"Returns,omitempty"`
-	Yields      *doc.Return    `json:"Yields,omitempty"`
-	Raises      []doc.Raise    `json:"Raises,omitempty"`
-	Examples    []doc.Example  `json:"Examples,omitempty"`
-	Deprecated  string         `json:"Deprecated,omitempty"`
-	Note        string         `json:"Note,omitempty"`
+	Summary     string        `json:"Summary,omitempty"`
+	Description string        `json:"Description,omitempty"`
+	Args        []doc.Param   `json:"Args,omitempty"`
+	Returns     *doc.Return   `json:"Returns,omitempty"`
+	Yields      *doc.Return   `json:"Yields,omitempty"`
+	Raises      []doc.Raise   `json:"Raises,omitempty"`
+	Examples    []doc.Example `json:"Examples,omitempty"`
+	Deprecated  string        `json:"Deprecated,omitempty"`
+	Note        string        `json:"Note,omitempty"`
 
 	// Refs are the in-prose label references, each carrying the
 	// resolved Href when one exists (empty when the label has no
@@ -104,7 +104,7 @@ var fileTargetExact = []string{"BUILD", "BUILD.bazel", "MODULE.bazel", "WORKSPAC
 
 // Build converts a *bazeldoc.Enriched into the presentation-ready
 // Doc. owner names the module being viewed (used to resolve same-
-// repo //pkg labels); resolver builds canopy URLs. Either nil
+// repo //pkg labels); resolver builds bzlhub URLs. Either nil
 // input or a Docstring with no fields yields nil so the caller's
 // "omit when empty" logic still works.
 func Build(e *bazeldoc.Enriched, owner Owner, resolver LinkResolver) *Doc {
@@ -163,7 +163,7 @@ func Build(e *bazeldoc.Enriched, owner Owner, resolver LinkResolver) *Doc {
 	return out
 }
 
-// resolveLabelHref maps a label ref to a canopy URL or "".
+// resolveLabelHref maps a label ref to a bzlhub URL or "".
 //   - @repo prefix → /modules/<repo> (we don't know the latest
 //     version of an arbitrary referenced module at render time)
 //   - same-repo //pkg:file.bzl → owning module's code-nav

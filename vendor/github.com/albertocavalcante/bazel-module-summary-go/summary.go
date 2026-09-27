@@ -161,8 +161,8 @@ func ParseMetadataJSON(b []byte) (*RegistryMetadata, error) {
 type Option func(*options)
 
 type options struct {
-	metadataPath  string
-	metadataBytes []byte
+	metadataPath     string
+	metadataBytes    []byte
 	canonicalName    string
 	canonicalVersion string
 }

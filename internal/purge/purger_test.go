@@ -21,12 +21,12 @@ func TestNoOp_PurgeNoErr(t *testing.T) {
 
 // fakeUpstream is a hand-rolled cdnpurge.Provider for adapter tests.
 type fakeUpstream struct {
-	purges      [][]string
-	returnErr   error
-	failures    map[string]error
-	submitted   []string
-	requests    int
-	name        string
+	purges    [][]string
+	returnErr error
+	failures  map[string]error
+	submitted []string
+	requests  int
+	name      string
 }
 
 func (f *fakeUpstream) Purge(_ context.Context, urls []string) (cdnpurge.PurgeResult, error) {

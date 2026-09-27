@@ -13,7 +13,7 @@ import (
 
 // ErrNoMirrorForDrift is returned when drift recompute is invoked
 // against a Service with no git-aware Mirror attached.
-var ErrNoMirrorForDrift = errors.New("canopy: drift refresh requires a git-aware mirror")
+var ErrNoMirrorForDrift = errors.New("bzlhub: drift refresh requires a git-aware mirror")
 
 // RefreshDriftSummary recomputes drift verdicts for every
 // (module, version) row, overwriting prior payloads. Unlike

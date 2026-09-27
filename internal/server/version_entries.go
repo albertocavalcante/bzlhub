@@ -14,7 +14,7 @@ func (h *handler) apiListVersions(w http.ResponseWriter, r *http.Request) {
 	module := chi.URLParam(r, "module")
 	// Prefer ListVersionsWithMeta on the real Service (one query
 	// yields versions + per-row metadata). Fall back to the leaner
-	// ListVersions for mock/test implementations of api.Canopy that
+	// ListVersions for mock/test implementations of api.Bzlhub that
 	// don't carry the richer query.
 	type rowMeta struct {
 		ingestedAt  time.Time
@@ -153,13 +153,13 @@ type versionEntry struct {
 	// users don't mistake them for real releases.
 	IsStub bool `json:"is_stub,omitempty"`
 	// IngestedAt is when this (module, version) row was first
-	// written to canopy's index, RFC3339-formatted. The UI badges
+	// written to bzlhub's index, RFC3339-formatted. The UI badges
 	// each row with a relative-time display ("23h ago"). Empty
 	// when not available (test/mock backends).
 	IngestedAt string `json:"ingested_at,omitempty"`
 	// CadenceLabel is a compact "+timedelta" hint vs the next-
 	// older version's IngestedAt — "+3d", "+2.4mo", "+10h". v0.2
-	// semantic: this is *ingest* cadence (when canopy got it),
+	// semantic: this is *ingest* cadence (when bzlhub got it),
 	// not necessarily upstream publish cadence. Empty for the
 	// oldest version or when one of the timestamps is missing.
 	CadenceLabel string `json:"cadence_label,omitempty"`
@@ -177,7 +177,7 @@ type versionEntry struct {
 	YankedReason string `json:"yanked_reason,omitempty"`
 	// PinCount is the number of distinct consumer modules that pin
 	// exactly this (module, version) via a bazel_dep declaration in
-	// canopy's indexed corpus. Zero / missing means "no consumers
+	// bzlhub's indexed corpus. Zero / missing means "no consumers
 	// pin this version" — which is the common case for old releases
 	// once the corpus rolls forward. The UI badges rows with
 	// pin_count > 0 to surface adoption among the rest.

@@ -99,6 +99,16 @@ func TestPolicyCheck_AllowMode_WithAllowlist(t *testing.T) {
 			t.Errorf("error %q does not name the offending host", err)
 		}
 	})
+
+	t.Run("subdomain wildcard passes but apex does not", func(t *testing.T) {
+		wildcard := Policy{Mode: ModeAllow, Allow: []string{"*.example.com"}}
+		if err := wildcard.Check(mustReq(t, "https://registry.example.com/module")); err != nil {
+			t.Errorf("wildcard subdomain: Check = %v; expected nil", err)
+		}
+		if err := wildcard.Check(mustReq(t, "https://example.com/module")); !errors.Is(err, ErrEgressForbidden) {
+			t.Errorf("wildcard apex: Check = %v; want ErrEgressForbidden", err)
+		}
+	})
 }
 
 // TestPolicyCheck_AuditMode_PassesThroughAllHosts asserts audit mode

@@ -1,8 +1,8 @@
 # strict profile — Plan 71 default.
 #
 # Anonymous browse; authenticated writes; group-gated approvals.
-# This is canopy's default posture — corp.bzlhub.com and the
-# personal-canopy install both start here.
+# This is bzlhub's default posture — corp.bzlhub.com and the
+# personal-bzlhub install both start here.
 version: 1
 profile: strict
 

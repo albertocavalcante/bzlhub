@@ -14,7 +14,7 @@ import (
 //     address isn't claimed by any module's integrity field;
 //   - non-canonical files (anything that doesn't match the 64-hex
 //     blobs/<sha256-hex> convention) — these were either written by an
-//     older canopy version or hand-placed, and definitely warrant a
+//     older bzlhub version or hand-placed, and definitely warrant a
 //     finding.
 func checkOrphanBlobs(s *state) []Finding {
 	var out []Finding
@@ -30,9 +30,9 @@ func checkOrphanBlobs(s *state) []Finding {
 			Severity: SevInfo,
 			Path:     "blobs/" + hex,
 			Message:  "blob not referenced by any source.json",
-			Fix:      "safe to delete; consider `canopy mirror prune` once that exists, or `rm` directly",
+			Fix:      "safe to delete; consider `bzlhub mirror prune` once that exists, or `rm` directly",
 			Details: map[string]any{
-				"size_bytes":  b.size,
+				"size_bytes": b.size,
 				"sha256_hex": hex,
 			},
 		})
@@ -70,7 +70,7 @@ func checkOrphanBlobs(s *state) []Finding {
 			Severity: SevInfo,
 			Path:     "blobs/" + name,
 			Message:  "non-canonical file in blobs/ (not a content-addressed sha256-hex name)",
-			Fix:      "rename or delete; canopy's mirror writer only produces lowercase-hex sha256 filenames",
+			Fix:      "rename or delete; bzlhub's mirror writer only produces lowercase-hex sha256 filenames",
 			Details: map[string]any{
 				"size_bytes": size,
 				"filename":   name,

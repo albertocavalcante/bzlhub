@@ -13,7 +13,7 @@ import (
 
 // FileStore persists State to a single JSON file on disk. Keyed by
 // (repo, branch), so a single file can hold state for multiple
-// (repo, branch) pairs — useful when a canopy instance watches more
+// (repo, branch) pairs — useful when a bzlhub instance watches more
 // than one branch / repo over its lifetime, even though the typical
 // deployment watches just one.
 //

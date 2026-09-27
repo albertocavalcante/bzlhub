@@ -72,7 +72,7 @@ func TestMirrorServeRouting(t *testing.T) {
 
 	b := backend.NewFile(root)
 	ts := httptest.NewServer(server.NewWithOptions(b, nil, nil, server.Options{
-		MirrorBaseURL: "http://canopy/m/",
+		MirrorBaseURL: "http://bzlhub/m/",
 		MirrorRoot:    root,
 	}))
 	t.Cleanup(ts.Close)
@@ -187,7 +187,7 @@ var _ backend.Backend = (*backend.File)(nil)
 // TestVersion_EndpointReturnsJSON pins the wire shape of /api/version.
 // The values themselves are -ldflags-injected at build time; tests run
 // against the "dev"/"unknown" sentinels. We only assert the three
-// fields are present and Content-Type is JSON — both apps (canopy +
+// fields are present and Content-Type is JSON — both apps (bzlhub +
 // understory) ship the same contract so tooling can probe either.
 func TestVersion_EndpointReturnsJSON(t *testing.T) {
 	ts := httptest.NewServer(server.New(nil, nil, nil))
@@ -290,7 +290,7 @@ func TestSearch_EmptyResult_ReturnsEmptyArray(t *testing.T) {
 
 // TestXRefs_NoSymbol_Returns400 — the endpoint is a query-string GET,
 // so a missing/empty symbol is unambiguous client error. JSON shape
-// matches the rest of canopy's API error envelope.
+// matches the rest of bzlhub's API error envelope.
 func TestXRefs_NoSymbol_Returns400(t *testing.T) {
 	ctx := context.Background()
 	s, err := store.Open(ctx, ":memory:")
@@ -444,7 +444,7 @@ func TestListModules_GroupsAndCountsVersions(t *testing.T) {
 	// "Latest" is the last version in ASC order — for lexical
 	// sort that's "1.2.0" for alpha and "0.0.7" for zebra (since
 	// "0.0.10" < "0.0.7" lexically). This matches the store's
-	// existing sort behaviour; the UI uses canopy-cli for version
+	// existing sort behaviour; the UI uses bzlhub-cli for version
 	// ordering, not this endpoint.
 	if got.Modules[0].LatestVersion != "1.2.0" {
 		t.Errorf("alpha latest = %q, want 1.2.0", got.Modules[0].LatestVersion)

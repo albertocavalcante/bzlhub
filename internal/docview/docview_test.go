@@ -8,7 +8,7 @@ import (
 
 // fakeResolver is a minimal LinkResolver that produces predictable
 // URLs so the tests can compare strings without depending on
-// canopy's link helpers.
+// bzlhub's link helpers.
 type fakeResolver struct{}
 
 func (fakeResolver) ModuleHref(name string) string { return "/modules/" + name }

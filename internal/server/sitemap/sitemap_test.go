@@ -11,7 +11,7 @@ import (
 	"github.com/albertocavalcante/bzlhub/internal/server/sitemap"
 )
 
-func TestStream_NilCanopy_StaticOnly(t *testing.T) {
+func TestStream_NilBzlhub_StaticOnly(t *testing.T) {
 	var buf bytes.Buffer
 	if err := sitemap.Stream(context.Background(), nil, "https://bzlhub.com", &buf); err != nil {
 		t.Fatalf("Stream: %v", err)
@@ -46,25 +46,25 @@ func TestStream_NilCanopy_StaticOnly(t *testing.T) {
 	}
 }
 
-// fakeCanopy is the minimum stub satisfying api.Canopy that
+// fakeBzlhub is the minimum stub satisfying api.Bzlhub that
 // Stream actually calls (ListModules + ListVersions). All other
 // methods return zero-value or panic; tests that need them should
 // extend.
-type fakeCanopy struct {
-	api.Canopy // embeds nil interface; calling other methods panics
+type fakeBzlhub struct {
+	api.Bzlhub // embeds nil interface; calling other methods panics
 	mods       []api.ModuleSummary
 	versions   map[string][]string
 }
 
-func (f *fakeCanopy) ListModules(_ context.Context) ([]api.ModuleSummary, error) {
+func (f *fakeBzlhub) ListModules(_ context.Context) ([]api.ModuleSummary, error) {
 	return f.mods, nil
 }
-func (f *fakeCanopy) ListVersions(_ context.Context, name string) ([]string, error) {
+func (f *fakeBzlhub) ListVersions(_ context.Context, name string) ([]string, error) {
 	return f.versions[name], nil
 }
 
-func TestStream_WithCanopy_EmitsModuleAndVersion(t *testing.T) {
-	c := &fakeCanopy{
+func TestStream_WithBzlhub_EmitsModuleAndVersion(t *testing.T) {
+	c := &fakeBzlhub{
 		mods: []api.ModuleSummary{
 			{Name: "rules_go", LatestVersion: "0.50.1", LatestIngestedAt: "2026-05-17T13:19:08Z"},
 		},
@@ -94,14 +94,14 @@ func TestStream_WithCanopy_EmitsModuleAndVersion(t *testing.T) {
 // but never ingested for real. They render empty pages and shouldn't
 // be advertised to crawlers — the sitemap must skip them.
 func TestStream_SkipsStubVersions(t *testing.T) {
-	c := &fakeCanopy{
+	c := &fakeBzlhub{
 		mods: []api.ModuleSummary{
 			{Name: "rules_oci", LatestVersion: "2.0.1"},
 			{Name: "gazelle", LatestVersion: "0.40.0"},
 		},
 		versions: map[string][]string{
-			"rules_oci": {"2.0.1", "0.0.0"},                     // 0.0.0 = synthetic floor
-			"gazelle":   {"0.40.0", "0.36.0", "HEAD"},           // HEAD = git-shaped placeholder
+			"rules_oci": {"2.0.1", "0.0.0"},           // 0.0.0 = synthetic floor
+			"gazelle":   {"0.40.0", "0.36.0", "HEAD"}, // HEAD = git-shaped placeholder
 		},
 	}
 	var buf bytes.Buffer
@@ -133,7 +133,7 @@ func TestStream_SkipsStubVersions(t *testing.T) {
 }
 
 func TestStream_EmptyLastIngestedFallsBackToToday(t *testing.T) {
-	c := &fakeCanopy{
+	c := &fakeBzlhub{
 		mods:     []api.ModuleSummary{{Name: "foo", LatestVersion: "1.0"}},
 		versions: map[string][]string{"foo": {"1.0"}},
 	}
@@ -149,14 +149,14 @@ func TestStream_EmptyLastIngestedFallsBackToToday(t *testing.T) {
 
 func TestStream_OriginIsRespected(t *testing.T) {
 	var buf bytes.Buffer
-	if err := sitemap.Stream(context.Background(), nil, "https://canopy.example.com", &buf); err != nil {
+	if err := sitemap.Stream(context.Background(), nil, "https://bzlhub.example.com", &buf); err != nil {
 		t.Fatalf("Stream: %v", err)
 	}
 	out := buf.String()
 	if strings.Contains(out, "bzlhub.com") {
 		t.Error("origin should not leak bzlhub.com when given a different origin")
 	}
-	if !strings.Contains(out, "https://canopy.example.com/") {
+	if !strings.Contains(out, "https://bzlhub.example.com/") {
 		t.Error("custom origin missing from output")
 	}
 }

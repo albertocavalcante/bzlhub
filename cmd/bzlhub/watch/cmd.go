@@ -2,7 +2,7 @@
 // daemon that polls a forge for new commits on the registry branch,
 // keeps a local worktree in sync via git fetch + reset --hard, and
 // (when --db is supplied) re-ingests changed modules/<m>/<v>/ paths
-// into the canopy SQLite index.
+// into the bzlhub SQLite index.
 //
 // File layout:
 //   - cmd.go      Cobra command + watchFlags
@@ -49,7 +49,7 @@ func NewCmd() *cobra.Command {
 commits on the registry branch. On each new commit, the local worktree
 is sync'd via 'git fetch' + 'git reset --hard <remote>/<branch>'.
 Changed modules/<name>/<version>/ paths are then re-ingested into
-canopy's SQLite index when --db is supplied. Without --db the daemon
+bzlhub's SQLite index when --db is supplied. Without --db the daemon
 runs in sync-only mode: worktree stays current but no index updates
 happen (useful for staging deploys before standing up the database).
 
@@ -71,7 +71,7 @@ Stop the daemon with SIGINT / SIGTERM.`,
 	cmd.Flags().StringVar(&f.remote, "remote", "origin", "git remote name to fetch from")
 
 	cmd.Flags().StringVar(&f.dbPath, "db", "", "SQLite index path for re-ingest (omit for sync-only mode)")
-	cmd.Flags().StringVar(&f.stateFile, "state-file", "", "path to JSON state file (env BZLHUB_WATCH_STATE_FILE; default $HOME/.canopy/watch-state.json)")
+	cmd.Flags().StringVar(&f.stateFile, "state-file", "", "path to JSON state file (env BZLHUB_WATCH_STATE_FILE; default $HOME/.bzlhub/watch-state.json)")
 
 	cmd.Flags().DurationVar(&f.interval, "interval", 0, "base poll interval (env BZLHUB_WATCH_INTERVAL; default 60s)")
 	cmd.Flags().DurationVar(&f.maxInterval, "max-interval", 0, "upper bound on adaptive backoff (default 5× --interval)")

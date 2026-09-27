@@ -15,11 +15,11 @@ import (
 //
 // Recognized vendors (case-insensitive):
 //   - "" or "noop"      — NoOp{} (no CDN). Default; safe for local
-//                         dev, on-prem, demos with no CDN in front.
+//     dev, on-prem, demos with no CDN in front.
 //   - "cloudflare"      — cdnpurge.NewCloudflare(...). Requires
-//                         APIToken + ZoneID.
+//     APIToken + ZoneID.
 //   - "fastly"          — cdnpurge.NewFastly(...). Requires
-//                         APIToken + ServiceID.
+//     APIToken + ServiceID.
 type Config struct {
 	Vendor string
 
@@ -32,7 +32,7 @@ type Config struct {
 	FastlyServiceID string
 
 	// HTTPClient is shared across vendors. nil → http.DefaultClient.
-	// Production callers should pass canopy's egress-policy-wrapped
+	// Production callers should pass bzlhub's egress-policy-wrapped
 	// client (fetch.NewClient().HTTP) so CDN calls flow through the
 	// same audit + allowlist + timeout posture as other egress.
 	HTTPClient *http.Client
@@ -96,4 +96,3 @@ func Build(cfg Config) (Provider, error) {
 		return NoOp{}, fmt.Errorf("purge: unknown vendor %q (want one of: noop, cloudflare, fastly)", cfg.Vendor)
 	}
 }
-

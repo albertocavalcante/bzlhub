@@ -35,7 +35,7 @@ func (h *handler) apiGetAirgapDownloaderConfig(w http.ResponseWriter, r *http.Re
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="canopy-downloader-config-%s-%s.txt"`, module, version))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="bzlhub-downloader-config-%s-%s.txt"`, module, version))
 	_, _ = w.Write([]byte(resp.Text))
 }
 
@@ -63,7 +63,7 @@ func (h *handler) apiGetAirgapModuleMirrors(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="canopy-module-mirrors-%s-%s.bazelrc"`, module, version))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="bzlhub-module-mirrors-%s-%s.bazelrc"`, module, version))
 	_, _ = w.Write([]byte(resp.Text))
 }
 

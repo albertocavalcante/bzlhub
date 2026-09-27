@@ -1,4 +1,4 @@
-// Package featureflags is canopy's 12-factor configuration surface.
+// Package featureflags is bzlhub's 12-factor configuration surface.
 //
 // Every operational knob that influences runtime behavior is read from
 // environment variables here, in one place. There is no global state:
@@ -103,7 +103,7 @@ type Flags struct {
 	DemoBanner string
 
 	// MCPHTTPEnabled mounts the Streamable-HTTP MCP transport at /mcp
-	// when true. Default off — exposing canopy's tool catalogue over
+	// when true. Default off — exposing bzlhub's tool catalogue over
 	// HTTP without an explicit operator opt-in is too sharp a default
 	// for self-hosted installs. Per plan-64 §2 decision 8 the handler
 	// constructs a per-request *MCPServer to defend against the
@@ -121,12 +121,12 @@ type Flags struct {
 	//
 	// Distinct from IngestWriteEnabled which gates the HTTP
 	// /api/v1/actions/* surface; an operator hosting a private
-	// canopy with HTTP MCP for trusted internal agents can flip both
+	// bzlhub with HTTP MCP for trusted internal agents can flip both
 	// on, and a public instance keeps both off.
 	MCPWriteToolsEnabled bool
 }
 
-// Parse reads the canopy feature-flag env vars and returns the Flags.
+// Parse reads the bzlhub feature-flag env vars and returns the Flags.
 // Returns an error if any var is set to something we can't parse —
 // silent fallbacks are how operators end up with mystery behavior.
 func Parse() (Flags, error) {
@@ -193,6 +193,30 @@ func (f Flags) CheckSafeStartup(hasTrustedProxy bool) error {
 		return nil
 	}
 	return fmt.Errorf("%w: BZLHUB_INGEST_WRITE_ENABLED=true with no BZLHUB_TRUSTED_PROXY_CIDR — set BZLHUB_REQUIRE_FRONT_PROXY=false to override (acknowledges direct-exposure risk)", ErrUnsafeStartup)
+}
+
+// CheckMCPWriteStartup validates the stronger requirements for the
+// HTTP MCP mutation surface. A feature flag only selects capability;
+// it is never authorization. Write tools require the HTTP transport,
+// an application policy with use_mcp_write, and at least one identity
+// source (trusted proxy headers or bearer registry).
+func (f Flags) CheckMCPWriteStartup(hasIdentitySource, hasPolicy bool) error {
+	if !f.MCPWriteToolsEnabled {
+		return nil
+	}
+	if !f.MCPHTTPEnabled {
+		return fmt.Errorf("%w: BZLHUB_MCP_WRITE_TOOLS_ENABLED=true requires BZLHUB_MCP_HTTP_ENABLED=true",
+			ErrUnsafeStartup)
+	}
+	if !hasIdentitySource {
+		return fmt.Errorf("%w: HTTP MCP writes require BZLHUB_IDENTITY_FILE or BZLHUB_TRUSTED_PROXY_CIDR",
+			ErrUnsafeStartup)
+	}
+	if !hasPolicy {
+		return fmt.Errorf("%w: HTTP MCP writes require BZLHUB_POLICY_FILE with auth.actions.use_mcp_write",
+			ErrUnsafeStartup)
+	}
+	return nil
 }
 
 // IsRateBypassIP reports whether remoteAddr is on the bypass list.

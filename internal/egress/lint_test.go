@@ -11,23 +11,41 @@ import (
 	"testing"
 )
 
-// TestLint_NoRawHTTPClientOutsideEgress is canopy's anti-egress-leak
+// TestLint_NoRawHTTPClientOutsideEgress is bzlhub's anti-egress-leak
 // lint check. The rule (Plan 20 PR 2 / Plan 21 / Plan 28 commit C4):
-// canopy production code MUST NOT construct *http.Client* directly.
+// bzlhub production code MUST NOT construct *http.Client* directly.
 // All outbound HTTP goes through internal/egress.NewHTTPClient or
 // egress.Client(ctx). The egress package is the single point of
 // enforcement for the --no-egress policy + audit-log emission.
 //
 // Why a go-test instead of golangci-lint? Two reasons.
-// 1. Zero new tooling dep. Canopy CI runs `go vet`, `go build`,
-//    `go test -race`. This test runs alongside; no new step.
-// 2. Self-documenting. A future contributor reading the diff sees
-//    the rule + its rationale in one file, without needing to
-//    learn the forbidigo plugin's matcher syntax.
+//  1. Zero new tooling dep. Bzlhub CI runs `go vet`, `go build`,
+//     `go test -race`. This test runs alongside; no new step.
+//  2. Self-documenting. A future contributor reading the diff sees
+//     the rule + its rationale in one file, without needing to
+//     learn the forbidigo plugin's matcher syntax.
 //
-// The test scans every .go file under the canopy repo (except
+// The test scans every .go file under the bzlhub repo (except
 // vendor/, tests, and the egress package itself) and fails if it
 // finds a composite literal of type http.Client.
+//
+// 🚨 WHAT THIS CANNOT SEE. The rule above is "all outbound HTTP goes through
+// internal/egress", but what the test actually detects is "no `http.Client{...}`
+// literal in our own code". Those are not the same, and the gap is not
+// theoretical: internal/closurediff called gobzlmod.Resolve WITHOUT
+// gobzlmod.WithHTTPClient, and gobzlmod builds its own default client when
+// none is supplied. A closure walk therefore reached the upstream registry
+// with the egress mode ignored and nothing written to the audit sink, while
+// this test stayed green -- there is no literal to find when a vendored
+// library constructs the client.
+//
+// So: passing this test is necessary, not sufficient. When calling a library
+// that performs HTTP, check whether it accepts a client and pass
+// egress.DefaultHTTPClient(). Where that matters, the assertion belongs next
+// to the caller and must assert DENIAL under ModeDeny -- a test that checks a
+// successful fetch passes with the policy bypassed, because bypassing it is
+// what makes a blocked request succeed. See
+// internal/closurediff.TestWalkClosure_HonoursEgressPolicy.
 //
 // Exemptions are listed explicitly below. Each entry corresponds
 // to a refactor on the Plan 28 commit chain; the entry is removed
@@ -38,7 +56,7 @@ import (
 //
 //	go test -run TestLint_NoRawHTTPClientOutsideEgress ./internal/egress
 func TestLint_NoRawHTTPClientOutsideEgress(t *testing.T) {
-	// Exemptions: paths (relative to the canopy repo root) that
+	// Exemptions: paths (relative to the bzlhub repo root) that
 	// are KNOWN to still construct raw http.Client. Plan 28 chain
 	// retires these one per commit (C5 fetch, C6 backend cascade,
 	// C7 githubmeta, C8 forge + bcrprov).

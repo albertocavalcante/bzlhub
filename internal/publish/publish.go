@@ -1,4 +1,4 @@
-// Package publish defines the write-side abstraction for canopy's
+// Package publish defines the write-side abstraction for bzlhub's
 // registry. The Backend interface (internal/backend) is read-only;
 // Publisher is its writing counterpart.
 //

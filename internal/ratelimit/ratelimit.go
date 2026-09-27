@@ -168,7 +168,7 @@ func (b *bucket) allow(now time.Time) bool {
 
 // RemoteIP extracts the client IP from an http.Request.
 //
-// canopy runs behind cloudflared in production; the tunnel SETS
+// bzlhub runs behind cloudflared in production; the tunnel SETS
 // (replaces, not appends) Cf-Connecting-IP to the real client IP, so
 // that header is safe to trust when present. X-Forwarded-For is NOT
 // trusted: cloudflared APPENDS to it, so its leftmost entry is whatever
