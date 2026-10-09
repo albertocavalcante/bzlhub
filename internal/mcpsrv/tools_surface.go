@@ -40,7 +40,7 @@ func registerSurfaceTools(srv *server.MCPServer, c api.MCPSurfaceService) {
 
 	srv.AddTool(
 		mcp.NewTool("bzlhub_closure_graph",
-			mcp.WithDescription("Return the bazel_dep closure of (module, version) as a directed graph — nodes + edges walked from the locally-persisted reports. Each node is a (name, version) pair plus an `external` flag indicating modules referenced but NOT indexed in this bzlhub (use bzlhub_ingest_recursive to fill the gap). The graph stops at a depth cap; `max_depth_reached` flags when the walk hit it.\n\nUse this to ground answers to 'what does X@Y pull in?' and to surface gaps in the corpus before recommending bumps. For VISUAL output, consumers usually render via Mermaid (see bzlhub's UI); the JSON shape here is the same one the UI consumes."),
+			mcp.WithDescription("Return the bazel_dep closure of (module, version) as a directed graph — nodes + edges walked from the locally-persisted reports. Each node is a (name, version) pair plus an `external` flag indicating modules referenced but NOT indexed in this bzlhub (bzlhub_ingest_recursive mirrors them but does not index; use bzlhub_bump to index). The graph stops at a depth cap; `max_depth_reached` flags when the walk hit it.\n\nUse this to ground answers to 'what does X@Y pull in?' and to surface gaps in the corpus before recommending bumps. For VISUAL output, consumers usually render via Mermaid (see bzlhub's UI); the JSON shape here is the same one the UI consumes."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Root module name (e.g., 'rules_go').")),
 			mcp.WithString("version", mcp.Required(), mcp.Description("Root version.")),
 		),
@@ -71,7 +71,7 @@ func registerSurfaceTools(srv *server.MCPServer, c api.MCPSurfaceService) {
 func registerSurfaceWriteTools(srv *server.MCPServer, c api.MCPMutationService) {
 	srv.AddTool(
 		mcp.NewTool("bzlhub_ingest_recursive",
-			mcp.WithDescription("Walk the bazel_dep closure of (module, version) and mirror every reached version into bzlhub's local tree. Each module is fetched, SRI-verified, mirrored (modules/<n>/<v>/* + content-addressed blobs/<sha256>), and indexed. Errors on individual modules don't abort sibling fetches — partial closures are useful inputs to bzlhub_drift. Returns visited/mirrored counts + per-module error list. Use with include_bazel_tools=true to also seed Bazel's implicit MODULE.tools deps for a self-sufficient air-gap mirror."),
+			mcp.WithDescription("Walk the bazel_dep closure of (module, version) and mirror every reached version into bzlhub's local tree. Each module is fetched, SRI-verified, and mirrored (modules/<n>/<v>/* + content-addressed blobs/<sha256>). This populates the mirror/closure ONLY — it does NOT index any module (no report, SCIP blob, or source index, including for the root); call bzlhub_bump to index a module. Errors on individual modules don't abort sibling fetches — partial closures are useful inputs to bzlhub_drift. Returns visited/mirrored counts + per-module error list. Use with include_bazel_tools=true to also seed Bazel's implicit MODULE.tools deps for a self-sufficient air-gap mirror."),
 			mcp.WithString("module", mcp.Required(), mcp.Description("Root module name (e.g., 'rules_go').")),
 			mcp.WithString("version", mcp.Required(), mcp.Description("Root version (e.g., '0.52.0').")),
 			mcp.WithString("upstream", mcp.Description("Upstream registry URL. Default: the service's configured default.")),

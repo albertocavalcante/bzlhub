@@ -255,6 +255,14 @@
     ingestError = null;
     ingestSummary = null;
     try {
+      // Bump the root first: the recursive walker only mirrors, so
+      // without this the root has no report / SCIP blob / source index.
+      // A bump failure throws and is surfaced via ingestError below.
+      await bumpModule({
+        module: ingestModule.trim(),
+        version: ingestVersion.trim(),
+        upstream,
+      });
       const res = await ingestRecursive({
         module: ingestModule.trim(),
         version: ingestVersion.trim(),

@@ -292,6 +292,39 @@ func TestHTTP_WriteTools_GatedByFlag(t *testing.T) {
 	}
 }
 
+// TestHTTP_IngestRecursiveDescriptionTruthful guards against the tool
+// description claiming it "indexes" modules: IngestRecursive is
+// mirror-only by design, and indexing the root needs bzlhub_bump.
+func TestHTTP_IngestRecursiveDescriptionTruthful(t *testing.T) {
+	ts := newTestServer(t)
+	resp := postJSONRPC(t, ts, `{"jsonrpc":"2.0","method":"tools/list","id":1}`)
+	var payload struct {
+		Tools []struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		} `json:"tools"`
+	}
+	if err := json.Unmarshal(resp.Result, &payload); err != nil {
+		t.Fatalf("decode tools/list: %v", err)
+	}
+	found := false
+	for _, tool := range payload.Tools {
+		if tool.Name != "bzlhub_ingest_recursive" {
+			continue
+		}
+		found = true
+		if strings.Contains(strings.ToLower(tool.Description), "indexed") {
+			t.Errorf("description claims modules are indexed: %s", tool.Description)
+		}
+		if !strings.Contains(tool.Description, "bzlhub_bump") {
+			t.Errorf("description must point at bzlhub_bump for indexing: %s", tool.Description)
+		}
+	}
+	if !found {
+		t.Fatal("bzlhub_ingest_recursive not registered on the write-enabled test server")
+	}
+}
+
 func mapKeys(m map[string]bool) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
