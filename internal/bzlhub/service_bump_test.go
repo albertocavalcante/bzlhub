@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/albertocavalcante/bzlhub/internal/api"
@@ -74,12 +75,18 @@ func TestServiceBump_MirrorsAndIndexesFakeRegistry(t *testing.T) {
 	svc.MirrorRoot = mirrorRoot
 	svc.DefaultUpstream = baseURL
 
+	logs := captureSlog(t)
 	got, err := svc.Bump(ctx, api.BumpOptions{Module: module, Version: version, Source: "test"})
 	if err != nil {
 		t.Fatalf("Bump: %v", err)
 	}
 	if got.Name != module || got.Version != version {
 		t.Fatalf("report coords = %s@%s, want %s@%s", got.Name, got.Version, module, version)
+	}
+	// Smoke check only: a self-contained module must not trip a false
+	// positive. The positive case is covered by the IngestDir and helper tests.
+	if strings.Contains(logs.String(), "scip index has unresolved refs") {
+		t.Fatalf("unexpected unresolved-refs warning:\n%s", logs.String())
 	}
 
 	stored, err := svc.GetModuleVersion(ctx, module, version)

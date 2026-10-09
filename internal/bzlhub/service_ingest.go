@@ -48,27 +48,8 @@ func (s *Service) IngestDir(ctx context.Context, dir string) (*report.ModuleRepo
 	// assay extracted, which may be the fallback "HEAD" for local dirs
 	// without an explicit version — that's fine; the symbol prefix
 	// will just be "bzlmod <name>@HEAD".
-	// Transitive closure from the store, not just r's direct bazel_deps: a
-	// load() that reaches a dependency-of-a-dependency resolves only if that
-	// module's coordinate is in the closure. Deps not yet ingested are simply
-	// absent, leaving those references unresolved exactly as before.
-	scipClosure, closureErr := bzlhubscip.TransitiveClosure(ctx, s.scipDepSources(), r)
-	if closureErr != nil {
-		// Only a cancelled context gets here; the walk treats a missing report
-		// as "stop descending". Fall back to the direct deps rather than skip
-		// indexing altogether.
-		slog.Warn("scip closure walk failed; falling back to direct deps",
-			"module", r.Name, "version", r.Version, "err", closureErr)
-		scipClosure = bzlhubscip.DirectClosure(r)
-	}
-	if scipBlob, scipErr := bzlhubscip.Generate(dir, r.Name, r.Version, scipClosure); scipErr == nil {
-		if werr := s.store.WriteScipBlob(ctx, r.Name, r.Version, scipBlob); werr != nil {
-			slog.Warn("scip blob write failed", "module", r.Name, "version", r.Version, "err", werr)
-		} else if uerr := s.store.SetHasSourceIndex(ctx, r.Name, r.Version, scipBlobHasFiles(scipBlob)); uerr != nil {
-			slog.Warn("set has_source_index failed", "module", r.Name, "version", r.Version, "err", uerr)
-		}
-	} else {
-		slog.Warn("scip index generation failed", "module", r.Name, "version", r.Version, "err", scipErr)
+	if _, err := s.generateAndStoreScip(ctx, dir, r); err != nil {
+		return r, err
 	}
 	s.emit("module_indexed", eventFromReport(r))
 	return r, nil
@@ -282,25 +263,14 @@ func (s *Service) Bump(ctx context.Context, opts api.BumpOptions) (rep *report.M
 		}
 	}
 	// Generate + store a SCIP index alongside the canonical
-	// ModuleReport. Treated as best-effort: a failure here never
-	// aborts a successful bump — SCIP is supplementary navigation
-	// data, not part of the build-correctness guarantee. The error
-	// gets logged so an operator can investigate without losing the
-	// ingest's primary output.
-	scipClosure, closureErr := bzlhubscip.TransitiveClosure(ctx, s.scipDepSources(), r)
-	if closureErr != nil {
-		slog.Warn("scip closure walk failed; falling back to direct deps",
-			"module", opts.Module, "version", opts.Version, "err", closureErr)
-		scipClosure = bzlhubscip.DirectClosure(r)
-	}
-	if scipBlob, scipErr := bzlhubscip.Generate(mat.Dir, opts.Module, opts.Version, scipClosure); scipErr == nil {
-		if werr := s.store.WriteScipBlob(ctx, opts.Module, opts.Version, scipBlob); werr != nil {
-			slog.Warn("scip blob write failed", "module", opts.Module, "version", opts.Version, "err", werr)
-		} else if uerr := s.store.SetHasSourceIndex(ctx, opts.Module, opts.Version, scipBlobHasFiles(scipBlob)); uerr != nil {
-			slog.Warn("set has_source_index failed", "module", opts.Module, "version", opts.Version, "err", uerr)
-		}
-	} else {
-		slog.Warn("scip index generation failed", "module", opts.Module, "version", opts.Version, "err", scipErr)
+	// ModuleReport. Generation and storage are best-effort: those
+	// failures are logged and never abort a successful bump — SCIP is
+	// supplementary navigation data, not part of the build-correctness
+	// guarantee. The one exception is an index we generated but cannot
+	// read back: that is a bug in the indexer, so it fails the bump
+	// (as reindex does) rather than storing a blob nobody can inspect.
+	if _, err := s.generateAndStoreScip(ctx, mat.Dir, r); err != nil {
+		return nil, err
 	}
 	// Persist the compressed tarball size so the per-version
 	// header can render it as a chip. Best-effort: a failed UPDATE
@@ -442,4 +412,43 @@ func (s *Service) scipDepSources() bzlhubscip.DepsFunc {
 			bzlhubscip.DepsFromModuleBazel(backend.NewBCRMirror(bcrmirror.New(s.MirrorRoot, ""))))
 	}
 	return bzlhubscip.FirstOf(sources...)
+}
+
+// generateAndStoreScip builds the SCIP index for the module rooted at dir,
+// stores it, and flags the version as having a source index. Generation and
+// storage failures are logged and swallowed (SCIP is supplementary navigation
+// data), but a blob that cannot be inspected for unresolved references is
+// returned as an error, matching reindexOne. Repos that were loaded but not
+// resolved are logged and returned.
+func (s *Service) generateAndStoreScip(ctx context.Context, dir string, r *report.ModuleReport) ([]string, error) {
+	// Transitive closure from the store, not just r's direct bazel_deps: a
+	// load() that reaches a dependency-of-a-dependency resolves only if that
+	// module's coordinate is in the closure. Deps not yet ingested are simply
+	// absent, leaving those references unresolved.
+	scipClosure, closureErr := bzlhubscip.TransitiveClosure(ctx, s.scipDepSources(), r)
+	if closureErr != nil {
+		// Only a cancelled context gets here; fall back to the direct deps
+		// rather than skip indexing altogether.
+		slog.Warn("scip closure walk failed; falling back to direct deps",
+			"module", r.Name, "version", r.Version, "err", closureErr)
+		scipClosure = bzlhubscip.DirectClosure(r)
+	}
+	scipBlob, scipErr := bzlhubscip.Generate(dir, r.Name, r.Version, scipClosure)
+	if scipErr != nil {
+		slog.Warn("scip index generation failed", "module", r.Name, "version", r.Version, "err", scipErr)
+		return nil, nil
+	}
+	unresolved, err := bzlhubscip.UnresolvedRepos(scipBlob)
+	if err != nil {
+		return nil, fmt.Errorf("inspect generated index: %w", err)
+	}
+	if werr := s.store.WriteScipBlob(ctx, r.Name, r.Version, scipBlob); werr != nil {
+		slog.Warn("scip blob write failed", "module", r.Name, "version", r.Version, "err", werr)
+	} else if uerr := s.store.SetHasSourceIndex(ctx, r.Name, r.Version, scipBlobHasFiles(scipBlob)); uerr != nil {
+		slog.Warn("set has_source_index failed", "module", r.Name, "version", r.Version, "err", uerr)
+	}
+	if len(unresolved) > 0 {
+		slog.Warn("scip index has unresolved refs", "module", r.Name, "version", r.Version, "repos", unresolved)
+	}
+	return unresolved, nil
 }

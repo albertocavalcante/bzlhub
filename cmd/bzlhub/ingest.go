@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/albertocavalcante/bzlhub/internal/backend"
 	bcrmirror "github.com/albertocavalcante/go-bcr-mirror"
+	"io"
 	"os"
+	"strings"
 
+	"github.com/albertocavalcante/scip-bazel/pkg/bzlmod"
+	"github.com/albertocavalcante/understory/pkg/understory"
 	"github.com/spf13/cobra"
 
 	"github.com/albertocavalcante/assay/report"
@@ -63,10 +68,13 @@ func newIngestCmd() *cobra.Command {
 					return fmt.Errorf("with --from, arg must be <module>@<version>, got %q", arg)
 				}
 
-				// --recursive: walk the bazel_dep closure. The walker
-				// mirrors as it goes but doesn't extract/assay each module
-				// (that would be expensive for a large closure). The root
-				// module still gets the full extract+assay treatment below.
+				// --recursive: walk the bazel_dep closure. The walker only
+				// MIRRORS the dependencies (it does not extract/assay them --
+				// that would be expensive for a large closure). The root
+				// module is then fully indexed by the steps below (resolve,
+				// analyze, report, SCIP), exactly as in a non-recursive run;
+				// those steps fetch the root's source themselves, so they do
+				// not depend on the mirror the walk just populated.
 				if recursive {
 					var mw *mirror.Writer
 					if mirrorTo != "" {
@@ -99,11 +107,8 @@ func newIngestCmd() *cobra.Command {
 					if rerr != nil {
 						return rerr
 					}
-					// Recursive walk doesn't return a single root report —
-					// caller doesn't need one. Just print a closing line
-					// and exit.
-					fmt.Println("recursive ingest complete")
-					return nil
+					// Fall through: the root still needs its report and index.
+					fmt.Println("recursive mirror walk complete")
 				}
 
 				// If mirroring, prepare the sink BEFORE fetching so the
@@ -181,21 +186,17 @@ func newIngestCmd() *cobra.Command {
 				// don't abort the ingest (the canonical report already
 				// landed). Mirrors what bzlhub.Service.Bump does for
 				// the API-driven path.
-				// Transitive closure from the store: by this point the recursive
-				// ingest has already written the dependency reports this walk
-				// reads, so a load() reaching a dep-of-a-dep resolves.
+				// Transitive closure: read from the store, then from the mirror
+				// (populated by the recursive walk when --mirror-to is set), so
+				// a load() reaching a dep-of-a-dep resolves.
 				scipClosure, closureErr := bzlhubscip.TransitiveClosure(cmd.Context(), scipDeps, r)
 				if closureErr != nil {
 					fmt.Fprintf(os.Stderr, "warn: scip closure walk failed for %s@%s, using direct deps: %v\n",
 						module, version, closureErr)
 					scipClosure = bzlhubscip.DirectClosure(r)
 				}
-				if scipBlob, scipErr := bzlhubscip.Generate(m.Dir, module, version, scipClosure); scipErr == nil {
-					if werr := s.WriteScipBlob(cmd.Context(), module, version, scipBlob); werr != nil {
-						fmt.Fprintf(os.Stderr, "warn: scip blob write failed for %s@%s: %v\n", module, version, werr)
-					}
-				} else {
-					fmt.Fprintf(os.Stderr, "warn: scip index generation failed for %s@%s: %v\n", module, version, scipErr)
+				if err := indexModule(cmd.Context(), s, m.Dir, module, version, scipClosure, os.Stderr); err != nil {
+					return err
 				}
 			} else {
 				// Local-dir path.
@@ -219,12 +220,8 @@ func newIngestCmd() *cobra.Command {
 						r.Name, r.Version, closureErr)
 					scipClosure = bzlhubscip.DirectClosure(r)
 				}
-				if scipBlob, scipErr := bzlhubscip.Generate(arg, r.Name, r.Version, scipClosure); scipErr == nil {
-					if werr := s.WriteScipBlob(cmd.Context(), r.Name, r.Version, scipBlob); werr != nil {
-						fmt.Fprintf(os.Stderr, "warn: scip blob write failed for %s@%s: %v\n", r.Name, r.Version, werr)
-					}
-				} else {
-					fmt.Fprintf(os.Stderr, "warn: scip index generation failed for %s@%s: %v\n", r.Name, r.Version, scipErr)
+				if err := indexModule(cmd.Context(), s, arg, r.Name, r.Version, scipClosure, os.Stderr); err != nil {
+					return err
 				}
 			}
 
@@ -246,6 +243,47 @@ func newIngestCmd() *cobra.Command {
 	cmd.Flags().StringVar(&nameOverride, "name", "", "override module name (local-dir mode only)")
 	cmd.Flags().StringVar(&versionOverride, "version", "", "override module version (local-dir mode only)")
 	return cmd
+}
+
+// indexModule generates the SCIP index for the module at dir, persists it, and
+// keeps the cached has_source_index flag in step (the flag decides whether the
+// UI offers code navigation at all, so a stored blob without it is invisible).
+// It follows Service.generateAndStoreScip: generation, blob-write and flag
+// failures are best-effort warnings (the canonical report already landed), but
+// an index that cannot be read back is an error. Repos the index could not
+// resolve are reported on warn as a single line.
+func indexModule(ctx context.Context, s *store.Store, dir, module, version string, closure bzlmod.Closure, warn io.Writer) error {
+	blob, err := bzlhubscip.Generate(dir, module, version, closure)
+	if err != nil {
+		fmt.Fprintf(warn, "warn: scip index generation failed for %s@%s: %v\n", module, version, err)
+		return nil
+	}
+	unresolved, err := bzlhubscip.UnresolvedRepos(blob)
+	if err != nil {
+		return fmt.Errorf("inspect generated index: %w", err)
+	}
+	if len(unresolved) > 0 {
+		fmt.Fprintf(warn, "warn: %s@%s has unresolved references to repos: %s\n",
+			module, version, strings.Join(unresolved, ", "))
+	}
+	if err := s.WriteScipBlob(ctx, module, version, blob); err != nil {
+		fmt.Fprintf(warn, "warn: scip blob write failed for %s@%s: %v\n", module, version, err)
+		return nil
+	}
+	if err := s.SetHasSourceIndex(ctx, module, version, blobHasFiles(blob)); err != nil {
+		fmt.Fprintf(warn, "warn: set has_source_index failed for %s@%s: %v\n", module, version, err)
+	}
+	return nil
+}
+
+// blobHasFiles reports whether a SCIP blob indexes at least one file; same
+// semantics as the unexported scipBlobHasFiles in internal/bzlhub.
+func blobHasFiles(blob []byte) bool {
+	idx, err := understory.OpenBytes(blob)
+	if err != nil {
+		return false
+	}
+	return len(idx.Files()) > 0
 }
 
 // splitModVer parses "<module>@<version>".
