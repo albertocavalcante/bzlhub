@@ -17,7 +17,7 @@ are design records, and `docs/plan.md` is the archived original phase plan.
   `sync-runner`) with allowlists and durable audit output.
 - Pinned CI actions and container bases, Go module verification, UI tests,
   pinned `govulncheck`, UI dependency audit, and bundle-size budgets.
-- Go 1.26.6 as the application and container-build baseline; module checksums
+- Go 1.26.9 as the application and container-build baseline; module checksums
   are generated and reconciled by the Go toolchain.
 
 The Go call-graph scan currently reports zero reachable vulnerabilities. The

@@ -65,7 +65,7 @@ docker build -f Dockerfile.rhel9 \
 | ARG | Default (alpine) | Default (rhel9) | Stage |
 |---|---|---|---|
 | `UI_BUILDER_BASE` | `node:22-alpine` | `node:22-alpine` | UI build |
-| `GO_BUILDER_BASE` | `golang:1.26.6-alpine` | `golang:1.26.6-alpine` | Go build |
+| `GO_BUILDER_BASE` | `golang:1.26.9-alpine` | `golang:1.26.9-alpine` | Go build |
 | `RUNTIME_BASE` | `alpine:3` | `registry.access.redhat.com/ubi9/ubi-minimal:latest` | Runtime |
 | `VERSION` | `dev` | `dev` | `bzlhub --version` string |
 | `COMMIT` | `unknown` | `unknown` | injected into `/api/version` |

@@ -2,7 +2,7 @@
 # MINIMUM -- with a newer Go installed it is ignored, so it cannot pin downward.
 # Only GOTOOLCHAIN does. Keep this in lockstep with go.mod and the
 # GO_BUILDER_BASE in Dockerfile; `just toolchain` prints what actually ran.
-export GOTOOLCHAIN := "go1.26.6"
+export GOTOOLCHAIN := "go1.26.9"
 
 # Recipes stay to a single command. A recipe body is invisible to shellcheck and
 # shfmt, so anything with real logic lives in tools/*.sh instead.

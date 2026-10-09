@@ -36,7 +36,7 @@
 # retaining the human-readable tag. Refresh deliberately with
 # `docker buildx imagetools inspect <tag>` after reviewing the image.
 ARG UI_BUILDER_BASE=node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
-ARG GO_BUILDER_BASE=golang:1.26.6-alpine@sha256:1b2cb58c3df8b93b8bcb5739778692c35e491087599139deb2c8c03567cbb03e
+ARG GO_BUILDER_BASE=golang:1.26.9-alpine@sha256:cdfd4fe2da6b225d8b40c6b7a105736e548e83ff56d5d8f9394446eeb5eb84e0
 ARG RUNTIME_BASE=alpine:3@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
 # -------- ui-builder --------------------------------------------------------
